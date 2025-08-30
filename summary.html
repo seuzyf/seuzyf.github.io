@@ -37,8 +37,8 @@
             background-position: center;
         }
         .container {
-            width: 90%;
-            max-width: 1400px;
+            width: 95%;
+            max-width: 1600px;
             margin: 0 auto;
             background-color: var(--header-bg-color);
             backdrop-filter: blur(10px);
@@ -101,9 +101,9 @@
             height: var(--control-height);
         }
         #nav-links a:hover { background-color: rgba(214, 69, 80, 0.1); }
-        #stats-table { width: 100%; border-collapse: collapse; }
+        #stats-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
         #stats-table thead { background-color: var(--primary-color); color: white; }
-        #stats-table th, #stats-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        #stats-table th, #stats-table td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
         #stats-table tbody tr:hover { background-color: rgba(255,255,255,0.05); }
         #stats-table th { cursor: pointer; }
         #stats-table td a { color: var(--primary-color); text-decoration: none; font-weight: bold; }
@@ -114,7 +114,7 @@
 
     <div class="container">
         <div id="controls">
-            <div style="display: flex; gap: 15px; align-items: center;">
+            <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
                 <div class="filter-buttons" id="group-filter-buttons">
                     <button class="active" data-group="all">所有组</button>
                     <button data-group="传奇组">传奇组</button>
@@ -135,14 +135,18 @@
             <thead>
                 <tr>
                     <th data-sort-key="id">ID</th>
+                    <th data-sort-key="group">组别</th>
                     <th data-sort-key="team">队伍</th>
                     <th>最常用角色</th>
-                    <th data-sort-key="matches_played">出场次数</th>
-                    <th data-sort-key="avg_acs">平均ACS</th>
+                    <th data-sort-key="matches_played">出场</th>
+                    <th data-sort-key="avg_acs">ACS</th>
                     <th data-sort-key="kda">KDA</th>
-                    <th data-sort-key="total_k">总击杀</th>
-                    <th data-sort-key="total_d">总死亡</th>
-                    <th data-sort-key="total_a">总助攻</th>
+                    <th data-sort-key="map_k">每局击杀</th>
+                    <th data-sort-key="map_d">每局死亡</th>
+                    <th data-sort-key="map_a">每局助攻</th>
+                    <th data-sort-key="round_k">每回合击杀</th>
+                    <th data-sort-key="round_d">每回合死亡</th>
+                    <th data-sort-key="round_a">每回合助攻</th>
                 </tr>
             </thead>
             <tbody id="stats-table-body"></tbody>
@@ -159,7 +163,7 @@
 
             function loadAndProcessData() {
                 const rawData = JSON.parse(localStorage.getItem('valorantPlayerSummary') || '{}');
-                if(Object.keys(rawData).length === 0){
+                if (Object.keys(rawData).length === 0) {
                     alert("请先访问比赛中心主页以加载和处理最新数据！");
                     return;
                 }
@@ -171,14 +175,11 @@
             function updateTeamFilter() {
                 const selectedGroup = groupFilterButtons.querySelector('.active').dataset.group;
                 const teams = new Set();
-                for (const playerId in allPlayerData) {
-                    const player = allPlayerData[playerId];
-                    const groups = selectedGroup === 'all' ? Object.keys(player.by_group) : [selectedGroup];
-                    groups.forEach(groupName => {
-                        if (player.by_group[groupName] && player.by_group[groupName].team) {
-                            teams.add(player.by_group[groupName].team);
-                        }
-                    });
+                for (const uniqueKey in allPlayerData) {
+                    const player = allPlayerData[uniqueKey];
+                    if (selectedGroup === 'all' || player.group === selectedGroup) {
+                        teams.add(player.team);
+                    }
                 }
                 const currentTeam = teamFilter.value;
                 teamFilter.innerHTML = '<option value="all">所有队伍</option>';
@@ -190,83 +191,70 @@
                 });
                 teamFilter.value = teams.has(currentTeam) ? currentTeam : 'all';
             }
-            
+
             function filterAndDisplayData() {
                 const selectedGroup = groupFilterButtons.querySelector('.active').dataset.group;
                 const selectedTeam = teamFilter.value;
-                const filteredPlayerData = {};
+                const filteredPlayerData = [];
 
-                for (const playerId in allPlayerData) {
-                    const player = allPlayerData[playerId];
-                    let playerAggregatedStats = {
-                        id: playerId, team: '', matches_played: 0, total_k: 0, total_d: 0, total_a: 0, total_acs: 0, characters: {}
-                    };
-                    
-                    const groupsToProcess = selectedGroup === 'all' ? Object.keys(player.by_group) : [selectedGroup];
+                for (const uniqueKey in allPlayerData) {
+                    const player = allPlayerData[uniqueKey];
+                    if (selectedGroup !== 'all' && player.group !== selectedGroup) continue;
+                    if (selectedTeam !== 'all' && player.team !== selectedTeam) continue;
 
-                    groupsToProcess.forEach(groupName => {
-                        const groupData = player.by_group[groupName];
-                        if (groupData) {
-                            playerAggregatedStats.team = groupData.team;
-                            playerAggregatedStats.matches_played += groupData.total_stats.matchCount;
-                            playerAggregatedStats.total_k += groupData.total_stats.kills;
-                            playerAggregatedStats.total_d += groupData.total_stats.deaths;
-                            playerAggregatedStats.total_a += groupData.total_stats.assists;
-                            playerAggregatedStats.total_acs += groupData.total_stats.acs;
-
-                            for (const charName in groupData.by_character) {
-                                if (!playerAggregatedStats.characters[charName]) {
-                                    playerAggregatedStats.characters[charName] = { matchCount: 0 };
-                                }
-                                playerAggregatedStats.characters[charName].matchCount += groupData.by_character[charName].matchCount;
-                            }
-                        }
+                    const stats = player.total_stats;
+                    filteredPlayerData.push({
+                        id: player.id,
+                        group: player.group,
+                        team: player.team,
+                        matches_played: stats.matchCount,
+                        avg_acs: stats.matchCount > 0 ? stats.acs / stats.matchCount : 0,
+                        kda: stats.deaths > 0 ? (stats.kills + stats.assists) / stats.deaths : (stats.kills + stats.assists),
+                        map_k: stats.matchCount > 0 ? stats.kills / stats.matchCount : 0,
+                        map_d: stats.matchCount > 0 ? stats.deaths / stats.matchCount : 0,
+                        map_a: stats.matchCount > 0 ? stats.assists / stats.matchCount : 0,
+                        round_k: stats.totalRounds > 0 ? stats.kills / stats.totalRounds : 0,
+                        round_d: stats.totalRounds > 0 ? stats.deaths / stats.totalRounds : 0,
+                        round_a: stats.totalRounds > 0 ? stats.assists / stats.totalRounds : 0,
+                        topChars: Object.entries(player.by_character)
+                            .sort(([,a],[,b]) => b.matchCount - a.matchCount)
+                            .slice(0, 3)
+                            .map(([charName]) => charName)
+                            .join('、') || 'N/A',
                     });
-
-                    if (playerAggregatedStats.matches_played > 0) {
-                        if (selectedTeam === 'all' || playerAggregatedStats.team === selectedTeam) {
-                            playerAggregatedStats.avg_acs = playerAggregatedStats.total_acs / playerAggregatedStats.matches_played;
-                            playerAggregatedStats.kda = playerAggregatedStats.total_d > 0 ? (playerAggregatedStats.total_k + playerAggregatedStats.total_a) / playerAggregatedStats.total_d : (playerAggregatedStats.total_k + playerAggregatedStats.total_a);
-                            filteredPlayerData[playerId] = playerAggregatedStats;
-                        }
-                    }
                 }
                 updateTable(filteredPlayerData);
             }
 
             function updateTable(data) {
                 const tableBody = document.getElementById('stats-table-body');
-                const activeGroup = groupFilterButtons.querySelector('.active').dataset.group;
                 tableBody.innerHTML = '';
 
-                const sortedPlayerIds = Object.keys(data).sort((a, b) => {
-                    const aVal = data[a][currentSort.key];
-                    const bVal = data[b][currentSort.key];
+                data.sort((a, b) => {
+                    const aVal = a[currentSort.key];
+                    const bVal = b[currentSort.key];
                     if (typeof aVal === 'string') {
                         return currentSort.order === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
                     }
                     return currentSort.order === 'asc' ? aVal - bVal : bVal - aVal;
                 });
 
-                sortedPlayerIds.forEach(playerId => {
-                    const stats = data[playerId];
-                    const topChars = Object.entries(stats.characters)
-                        .sort(([,a],[,b]) => b.matchCount - a.matchCount)
-                        .slice(0, 3)
-                        .map(([charName]) => charName)
-                        .join('、') || 'N/A';
-                    
+                data.forEach(player => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td><a href="player.html?id=${encodeURIComponent(playerId)}&group=${encodeURIComponent(activeGroup)}" target="_blank">${playerId}</a></td>
-                        <td>${stats.team}</td>
-                        <td>${topChars}</td>
-                        <td>${stats.matches_played}</td>
-                        <td>${stats.avg_acs.toFixed(2)}</td>
-                        <td>${stats.kda.toFixed(2)}</td>
-                        <td>${stats.total_k}</td>
-                        <td>${stats.total_d}</td>
-                        <td>${stats.total_a}</td>
+                        <td><a href="player.html?id=${encodeURIComponent(player.id)}&group=${encodeURIComponent(player.group)}" target="_blank">${player.id}</a></td>
+                        <td>${player.group}</td>
+                        <td>${player.team}</td>
+                        <td>${player.topChars}</td>
+                        <td>${player.matches_played}</td>
+                        <td>${player.avg_acs.toFixed(2)}</td>
+                        <td>${player.kda.toFixed(2)}</td>
+                        <td>${player.map_k.toFixed(1)}</td>
+                        <td>${player.map_d.toFixed(1)}</td>
+                        <td>${player.map_a.toFixed(1)}</td>
+                        <td>${player.round_k.toFixed(2)}</td>
+                        <td>${player.round_d.toFixed(2)}</td>
+                        <td>${player.round_a.toFixed(2)}</td>
                     `;
                     tableBody.appendChild(row);
                 });

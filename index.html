@@ -90,7 +90,7 @@
         }
         #matches-view {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(680px, 1fr)); /* 稍微加宽以容纳新列 */
+            grid-template-columns: repeat(auto-fill, minmax(680px, 1fr));
             gap: 25px;
         }
         .match-card {
@@ -135,7 +135,7 @@
         .player-comparison-table .score-cell { font-size: 1.8em; font-weight: 700; color: var(--primary-color); vertical-align: middle; border-bottom: 1px solid var(--border-color); }
         .player-comparison-table .stat-header th { font-weight: normal; opacity: 0.8; font-size: 0.85em; background-color: rgba(0,0,0,0.03); }
         .player-comparison-table td.player-id { font-weight: 500; text-align: left; white-space: nowrap; }
-        .player-comparison-table td.player-character { font-weight: 500; } /* 角色列样式 */
+        .player-comparison-table td.player-character { font-weight: 500; }
         .player-comparison-table td.player-acs { font-weight: bold; color: var(--primary-color); }
         .player-comparison-table .separator { width: 1px; padding: 0; }
         #standings-table { width: 100%; border-collapse: collapse; background-color: var(--card-bg-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px var(--shadow-color); border: 1px solid var(--border-color); }
@@ -301,15 +301,14 @@
                 });
             }
             
-            // --- 核心改动：重写数据处理函数 ---
             function processAndStorePlayerData() {
-                const playerData = {};
-                const rankingData = { by_group: {}, by_character: {} };
-
+                const playerData = {}; 
+                
                 for (const groupName in tournamentData) {
-                    if (!rankingData.by_group[groupName]) rankingData.by_group[groupName] = [];
-                    
                     tournamentData[groupName].forEach(match => {
+                        const score = String(match['比分']).split(/[/:：]/).map(Number);
+                        const totalRounds = (score.length === 2 && !isNaN(score[0]) && !isNaN(score[1])) ? (score[0] + score[1]) : 0;
+
                         ['teamA', 'teamB'].forEach(teamKey => {
                             const teamName = match[teamKey];
                             for (let p = 1; p <= 5; p++) {
@@ -317,71 +316,51 @@
                                 const playerDataStr = match[`${teamKey}_player${p}数据`];
                                 const playerCh = match[`${teamKey}_player${p}Ch`];
 
-                                if (playerId && String(playerId).trim() && playerDataStr && String(playerDataStr).trim()) {
-                                    const stats = String(playerDataStr).split('/').map(Number);
-                                    if (stats.length !== 4 || stats.some(isNaN)) continue;
-                                    
-                                    if (!playerData[playerId]) playerData[playerId] = { by_group: {} };
-                                    if (!playerData[playerId].by_group[groupName]) {
-                                        playerData[playerId].by_group[groupName] = { team: teamName, total_stats: { kills: 0, deaths: 0, assists: 0, matchCount: 0, acs: 0 }, by_character: {} };
+                                if (!playerId || !String(playerId).trim() || !playerDataStr || !String(playerDataStr).trim()) continue;
+                                
+                                const stats = String(playerDataStr).split('/').map(Number);
+                                if (stats.length !== 4 || stats.some(isNaN)) continue;
+                                
+                                const uniquePlayerKey = `${playerId}::${groupName}`;
+
+                                if (!playerData[uniquePlayerKey]) {
+                                    playerData[uniquePlayerKey] = {
+                                        id: playerId,
+                                        group: groupName,
+                                        team: teamName,
+                                        total_stats: { kills: 0, deaths: 0, assists: 0, acs: 0, matchCount: 0, totalRounds: 0 },
+                                        by_character: {}
+                                    };
+                                }
+                                
+                                const playerEntry = playerData[uniquePlayerKey];
+                                playerEntry.team = teamName; 
+
+                                playerEntry.total_stats.acs += stats[0];
+                                playerEntry.total_stats.kills += stats[1];
+                                playerEntry.total_stats.deaths += stats[2];
+                                playerEntry.total_stats.assists += stats[3];
+                                playerEntry.total_stats.matchCount++;
+                                playerEntry.total_stats.totalRounds += totalRounds;
+
+                                if (playerCh && String(playerCh).trim()) {
+                                    const charName = String(playerCh).trim();
+                                    if (!playerEntry.by_character[charName]) {
+                                        playerEntry.by_character[charName] = { kills: 0, deaths: 0, assists: 0, acs: 0, matchCount: 0, totalRounds: 0 };
                                     }
-                                    const playerGroup = playerData[playerId].by_group[groupName];
-                                    playerGroup.team = teamName;
-
-                                    playerGroup.total_stats.acs += stats[0];
-                                    playerGroup.total_stats.kills += stats[1];
-                                    playerGroup.total_stats.deaths += stats[2];
-                                    playerGroup.total_stats.assists += stats[3];
-                                    playerGroup.total_stats.matchCount++;
-
-                                    if (playerCh && String(playerCh).trim()) {
-                                        const charName = String(playerCh).trim();
-                                        if (!playerGroup.by_character[charName]) {
-                                            playerGroup.by_character[charName] = { kills: 0, deaths: 0, assists: 0, matchCount: 0, acs: 0 };
-                                        }
-                                        const charStats = playerGroup.by_character[charName];
-                                        charStats.acs += stats[0];
-                                        charStats.kills += stats[1];
-                                        charStats.deaths += stats[2];
-                                        charStats.assists += stats[3];
-                                        charStats.matchCount++;
-
-                                        if(!rankingData.by_character[charName]) rankingData.by_character[charName] = [];
-                                    }
+                                    const charStats = playerEntry.by_character[charName];
+                                    charStats.acs += stats[0];
+                                    charStats.kills += stats[1];
+                                    charStats.deaths += stats[2];
+                                    charStats.assists += stats[3];
+                                    charStats.matchCount++;
+                                    charStats.totalRounds += totalRounds;
                                 }
                             }
                         });
                     });
                 }
-
-                // 第二次遍历，计算平均值并填充排名数据
-                for(const playerId in playerData) {
-                    for(const groupName in playerData[playerId].by_group) {
-                        const pGroup = playerData[playerId].by_group[groupName].total_stats;
-                        if(pGroup.matchCount > 0) {
-                             rankingData.by_group[groupName].push({
-                                id: playerId,
-                                acs: pGroup.acs / pGroup.matchCount,
-                                kda: pGroup.deaths > 0 ? (pGroup.kills + pGroup.assists) / pGroup.deaths : (pGroup.kills + pGroup.assists),
-                             });
-                        }
-                        
-                        for(const charName in playerData[playerId].by_group[groupName].by_character) {
-                             const cStats = playerData[playerId].by_group[groupName].by_character[charName];
-                             if(cStats.matchCount > 0) {
-                                rankingData.by_character[charName].push({
-                                    id: playerId,
-                                    group: groupName,
-                                    acs: cStats.acs / cStats.matchCount,
-                                    kda: cStats.deaths > 0 ? (cStats.kills + cStats.assists) / cStats.deaths : (cStats.kills + cStats.assists),
-                                });
-                             }
-                        }
-                    }
-                }
-
                 localStorage.setItem('valorantPlayerSummary', JSON.stringify(playerData));
-                localStorage.setItem('valorantRankingData', JSON.stringify(rankingData));
             }
             
             function displayMatchCards(matches) {
