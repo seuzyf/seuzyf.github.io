@@ -8,7 +8,7 @@
     <style>
         :root {
             --primary-color: #D64550;
-            --bg-color: rgba(15, 25, 35, 0.85); /* 增加透明度以显示背景图 */
+            --bg-color: rgba(15, 25, 35, 0.85);
             --text-color: #ece8e1;
             --card-bg-color: rgba(26, 40, 54, 0.9);
             --header-bg-color: rgba(26, 40, 54, 0.95);
@@ -34,7 +34,8 @@
             padding: 20px 0;
             line-height: 1.6;
             transition: background-color 0.3s, color 0.3s;
-            background-image: url('https://cdnb.artstation.com/p/assets/images/images/071/028/701/large/envar-studio-valorant-final.jpg?1704288950');
+            /* 更新背景图片URL */
+            background-image: url('https://cdnb.artstation.com/p/assets/images/images/048/686/679/large/suke-episode-4-keyart-4k-4-f1.jpg?1650654264');
             background-attachment: fixed;
             background-size: cover;
             background-position: center center;
@@ -43,7 +44,7 @@
         .container { width: 90%; max-width: 1400px; margin: 0 auto; }
         header {
             background-color: var(--header-bg-color);
-            backdrop-filter: blur(10px); /* 毛玻璃效果 */
+            backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             padding: 25px;
             border-radius: 12px;
@@ -70,8 +71,7 @@
             font-weight: 500;
             transition: background-color 0.3s, color 0.3s, border-color 0.3s;
         }
-        .file-input-label { background-color: var(--bg-color); border: 1px dashed var(--primary-color); color: var(--text-color); padding: 0 20px; cursor: pointer; }
-        .file-input-label:hover { background-color: var(--primary-color); border-style: solid; color: white; }
+        /* 移除 .file-input-label 和 #excel-file 的样式，因为它们将被移除 */
         .filter-group { background-color: var(--card-bg-color); padding: 5px; border: 1px solid var(--border-color); }
         .filter-group button { padding: 0 15px; border: none; background-color: transparent; color: var(--text-color); opacity: 0.7; cursor: pointer; border-radius: 6px; font-size: 0.9em; height: 100%; }
         .filter-group button.active { background-color: var(--primary-color); color: white; opacity: 1; }
@@ -167,11 +167,8 @@
             </label>
         </div>
         <div class="container">
-            <h1>HWVCTS4比赛中心</h1>
+            <h1>HWVCTS4 比赛中心</h1>
             <div class="controls-container">
-                <label for="excel-file" class="control-button file-input-label">选择文件</label>
-                <input type="file" id="excel-file" accept=".xlsx, .xls" style="display: none;">
-                
                 <div class="control-group">
                     <div class="filter-group" id="group-filter-buttons">
                         <button class="active" data-group="传奇组">传奇组</button>
@@ -197,7 +194,7 @@
         <section id="matches-section">
             <h2 id="matches-title">比赛结果 - 传奇组</h2>
             <div id="matches-view">
-                <p class="placeholder-text">请先加载包含“传奇组”、“中坚组”、“挑战组”Sheet页的Excel文件。</p>
+                <p class="placeholder-text">正在加载数据，请稍候...</p>
             </div>
         </section>
         <section id="standings-section">
@@ -218,7 +215,6 @@
             const standingsTableBody = document.getElementById('standings-table-body');
             const themeToggle = document.getElementById('theme-toggle-checkbox');
             const themeText = document.getElementById('theme-text');
-            const fileInput = document.getElementById('excel-file');
             const groupFilterButtons = document.getElementById('group-filter-buttons');
             const stageFilterButtons = document.getElementById('stage-filter-buttons');
             const matchesTitle = document.getElementById('matches-title');
@@ -237,28 +233,47 @@
             setTheme((savedTheme === null) ? true : (savedTheme === 'light'));
             themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
 
-            // --- 文件加载 ---
-            fileInput.addEventListener('change', (event) => {
-                const file = event.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const data = new Uint8Array(e.target.result);
+            // --- 自动加载数据 ---
+            async function loadDataFromRepo() {
+                matchesView.innerHTML = '<p class="placeholder-text">正在从GitHub加载数据，请稍候...</p>';
+                try {
+                    const response = await fetch('data.xlsx');
+                    if (!response.ok) {
+                        // 如果文件不存在，显示更具体的错误信息
+                        if (response.status === 404) {
+                            throw new Error(`错误: data.xlsx 文件未找到。请确保文件在仓库根目录且命名正确。`);
+                        }
+                        throw new Error(`网络响应错误: ${response.statusText} (${response.status})`);
+                    }
+                    const arrayBuffer = await response.arrayBuffer();
+                    const data = new Uint8Array(arrayBuffer);
                     const workbook = XLSX.read(data, { type: 'array' });
                     
                     parseAllSheets(workbook);
                     processAndStorePlayerData();
                     
                     // 默认显示第一个组别
-                    const firstGroup = groupFilterButtons.querySelector('button').dataset.group;
-                    groupFilterButtons.querySelector('.active').classList.remove('active');
-                    groupFilterButtons.querySelector(`[data-group="${firstGroup}"]`).classList.add('active');
-                    stageFilterButtons.querySelector('.active').classList.remove('active');
-                    stageFilterButtons.querySelector('[data-stage="all"]').classList.add('active');
+                    const firstGroupButton = groupFilterButtons.querySelector('button');
+                    if (firstGroupButton) {
+                        groupFilterButtons.querySelector('.active')?.classList.remove('active');
+                        firstGroupButton.classList.add('active');
+                    }
+                    
+                    const firstStageButton = stageFilterButtons.querySelector('[data-stage="all"]');
+                    if (firstStageButton) {
+                         stageFilterButtons.querySelector('.active')?.classList.remove('active');
+                         firstStageButton.classList.add('active');
+                    }
+                   
                     updateDisplay();
-                };
-                reader.readAsArrayBuffer(file);
-            });
+                } catch (error) {
+                    matchesView.innerHTML = `<p class="placeholder-text" style="color:red;">数据加载失败: ${error.message}</p><p class="placeholder-text">请检查 data.xlsx 文件是否存在于GitHub仓库根目录，并且Sheet页命名为“传奇组”、“中坚组”、“挑战组”。</p>`;
+                    console.error("加载Excel文件时出错:", error);
+                }
+            }
+            
+            // 页面加载完成后自动触发数据加载
+            loadDataFromRepo();
 
             // --- 筛选器事件监听 ---
             groupFilterButtons.addEventListener('click', (e) => {
@@ -310,13 +325,19 @@
                             if (!row || row.length === 0) continue;
                             const match = {};
                             headers.forEach((header, index) => { match[header] = row[index]; });
-                            if (match['比赛日期'] && match['赛段']) {
+                            // 确保 match['比赛日期'] 和 match['赛段'] 存在且不是空值
+                            if (match['比赛日期'] && String(match['比赛日期']).trim() !== '' && match['赛段'] && String(match['赛段']).trim() !== '') {
                                 matches.push(match);
                             }
                         }
                         tournamentData[sheetName] = matches;
                     }
                 });
+                // 如果所有组别的数据都为空，则显示提示
+                const totalMatchesLoaded = Object.values(tournamentData).flat().length;
+                if (totalMatchesLoaded === 0) {
+                     matchesView.innerHTML = `<p class="placeholder-text" style="color: orange;">警告: Excel文件中没有找到有效的比赛数据。请检查Sheet页内容是否为空。</p>`;
+                }
             }
             
             function processAndStorePlayerData() {
@@ -328,10 +349,18 @@
                             const teamName = match[teamKey];
                             for (let p = 1; p <= 5; p++) {
                                 const playerId = match[`${teamKey}_player${p}ID`], playerDataStr = match[`${teamKey}_player${p}数据`];
-                                if (playerId && playerDataStr) {
+                                if (playerId && String(playerId).trim() !== '' && playerDataStr && String(playerDataStr).trim() !== '') { // 确保ID和数据存在
                                     const score = String(match['比分']).split(/[/:：]/).map(Number);
-                                    const totalRounds = score[0] + score[1];
+                                    // 检查比分是否有效，避免 NaN
+                                    const totalRounds = (score.length === 2 && !isNaN(score[0]) && !isNaN(score[1])) ? (score[0] + score[1]) : 0;
+
                                     const stats = playerDataStr.split('/').map(Number);
+                                    // 检查stats是否包含4个有效数字
+                                    if (stats.length !== 4 || stats.some(isNaN)) {
+                                        console.warn(`玩家 ${playerId} (${teamName}) 在 ${match['比赛日期']} 的数据格式不正确: ${playerDataStr}`);
+                                        continue; // 跳过此玩家数据
+                                    }
+
                                     if (!playerData[playerId]) playerData[playerId] = {};
                                     if (!playerData[playerId][groupName]) playerData[playerId][groupName] = {};
                                     if (!playerData[playerId][groupName][stageType]) {
@@ -367,8 +396,19 @@
                 matches.forEach(match => {
                     const teamA = match['teamA'], teamB = match['teamB'];
                     if (!match['比分']) return;
-                    const score = String(match['比分']).split(/[/:：]/).map(Number);
-                    const scoreA = score[0], scoreB = score[1];
+                    const scoreParts = String(match['比分']).split(/[/:：]/);
+                    if (scoreParts.length !== 2) {
+                        console.warn(`比赛 ${match['比赛日期']} - ${match['teamA']} vs ${match['teamB']} 比分格式不正确: ${match['比分']}`);
+                        return; // 跳过格式不正确的比分
+                    }
+                    const scoreA = Number(scoreParts[0]), scoreB = Number(scoreParts[1]);
+
+                    if (isNaN(scoreA) || isNaN(scoreB)) {
+                        console.warn(`比赛 ${match['比赛日期']} - ${match['teamA']} vs ${match['teamB']} 比分包含非数字字符: ${match['比分']}`);
+                        return; // 跳过包含非数字的比分
+                    }
+
+
                     if (!teamStandings[teamA]) teamStandings[teamA] = { wins: 0, losses: 0, roundDiff: 0 };
                     if (!teamStandings[teamB]) teamStandings[teamB] = { wins: 0, losses: 0, roundDiff: 0 };
                     if (scoreA > scoreB) { teamStandings[teamA].wins++; teamStandings[teamB].losses++; } else { teamStandings[teamB].wins++; teamStandings[teamA].losses++; }
@@ -395,14 +435,18 @@
                 const placeholder = { id: '-', acs: 0, k: '-', d: '-', a: '-' };
                 for (let i = 1; i <= 5; i++) {
                     const pidA = matchData[`teamA_player${i}ID`], pdataA = matchData[`teamA_player${i}数据`];
-                    if (pidA && pdataA) {
-                        const [acs, k, d, a] = pdataA.split('/');
-                        teamAPlayers.push({ id: pidA, acs: parseInt(acs, 10), k, d, a });
+                    if (pidA && String(pidA).trim() !== '' && pdataA && String(pdataA).trim() !== '') {
+                        const [acs, k, d, a] = pdataA.split('/').map(s => parseInt(s, 10));
+                        if (![acs, k, d, a].some(isNaN)) { // 确保所有数据都是有效数字
+                            teamAPlayers.push({ id: pidA, acs, k, d, a });
+                        }
                     }
                     const pidB = matchData[`teamB_player${i}ID`], pdataB = matchData[`teamB_player${i}数据`];
-                    if (pidB && pdataB) {
-                        const [acs, k, d, a] = pdataB.split('/');
-                        teamBPlayers.push({ id: pidB, acs: parseInt(acs, 10), k, d, a });
+                    if (pidB && String(pidB).trim() !== '' && pdataB && String(pdataB).trim() !== '') {
+                        const [acs, k, d, a] = pdataB.split('/').map(s => parseInt(s, 10));
+                        if (![acs, k, d, a].some(isNaN)) { // 确保所有数据都是有效数字
+                            teamBPlayers.push({ id: pidB, acs, k, d, a });
+                        }
                     }
                 }
                 teamAPlayers.sort((a, b) => b.acs - a.acs);
