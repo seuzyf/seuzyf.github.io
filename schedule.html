@@ -42,11 +42,10 @@
             background-position: center center;
             background-repeat: no-repeat;
         }
-        .container { width: 90%; max-width: 1400px; margin: 0 auto; }
+        .container { width: 90%; max-width: 1600px; margin: 0 auto; }
         header {
             background-color: var(--header-bg-color);
             backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
             padding: 25px;
             border-radius: 12px;
             box-shadow: 0 8px 16px var(--shadow-color);
@@ -78,40 +77,13 @@
         .nav-button { padding: 0 25px; border: 2px solid var(--primary-color); color: var(--primary-color); text-decoration: none; }
         .nav-button:hover { background-color: var(--primary-color); color: white; }
 
-        main section { margin-bottom: 40px; }
-        main h2 {
-            font-size: 2em;
-            color: var(--primary-color);
-            border-bottom: 2px solid var(--border-color);
-            padding-bottom: 10px;
-            margin-bottom: 25px;
-            background-color: var(--header-bg-color);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            padding: 10px 15px;
-            border-radius: 8px;
-        }
-        .bracket-display {
-            display: flex;
-            flex-direction: column;
-            gap: 30px;
-        }
         .group-section {
             background-color: var(--card-bg-color);
             backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
             border-radius: 12px;
             box-shadow: 0 4px 12px var(--shadow-color);
             border: 1px solid var(--border-color);
             padding: 20px;
-        }
-        .group-name {
-            font-size: 1.8em;
-            color: var(--primary-color);
-            text-align: center;
-            margin-bottom: 20px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
         }
         .bracket-container {
             width: 100%;
@@ -128,71 +100,44 @@
         .round {
             display: flex;
             flex-direction: column;
-            justify-content: space-around;
-            gap: 30px;
+            gap: 20px;
+            justify-content: center;
+            flex-shrink: 0;
+            width: 190px;
         }
         .round-title {
             text-align: center;
             color: var(--primary-color);
             font-weight: bold;
-            margin-bottom: 10px;
             font-size: 1.1em;
-            width: 180px;
-            flex-shrink: 0;
+            margin-bottom: 5px;
         }
-        .match-card {
+        .match-card, .result-card {
             background-color: var(--bg-color);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 10px;
-            width: 180px;
-            flex-shrink: 0;
+            width: 100%;
             box-shadow: 0 2px 8px var(--shadow-color);
-            position: relative;
         }
-        .team {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 2px 0;
-        }
+        .team { display: flex; justify-content: space-between; align-items: center; padding: 2px 0; }
         .team-name { font-size: 1em; }
         .team-score { font-weight: bold; }
         .team.winner .team-name { color: var(--winner-color); }
         .team.loser .team-name { opacity: 0.6; }
         hr { border-color: var(--border-color); margin: 5px 0; }
-
         .result-card {
-            background-color: var(--bg-color);
-            border: 2px solid var(--primary-color);
-            border-radius: 8px;
-            padding: 10px;
-            width: 180px;
-            flex-shrink: 0;
+            border-width: 2px;
             text-align: center;
             font-weight: bold;
             display: flex;
             align-items: center;
             justify-content: center;
             min-height: 50px;
-            box-shadow: 0 2px 8px var(--shadow-color);
         }
-        .champion-card {
-            border-color: var(--winner-color);
-            font-size: 1.5em;
-            background-color: rgba(76, 175, 80, 0.1);
-        }
-        .eliminated-card {
-            border-color: var(--loser-color);
-            font-size: 1.1em;
-            opacity: 0.7;
-            background-color: rgba(244, 67, 54, 0.1);
-        }
-        .align-top { justify-content: flex-start; }
-        .align-center { justify-content: center; }
-        .align-bottom { justify-content: flex-end; }
-        
-        /* 日夜模式切换按钮样式 */
+        .promoted { border-color: var(--winner-color); }
+        .champion { border-color: var(--winner-color); font-size: 1.5em; background-color: rgba(76, 175, 80, 0.1); }
+        .eliminated { border-color: var(--loser-color); opacity: 0.8; }
         .theme-switch-wrapper { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 10px; }
         #theme-text { font-size: 0.8em; opacity: 0.8; }
         .theme-switch { display: inline-block; height: 24px; position: relative; width: 48px; }
@@ -221,9 +166,9 @@
             </div>
             <div class="controls-container" style="margin-top: 20px;">
                 <div class="filter-group" id="group-filters">
-                    <button class="active" data-group="挑战组">挑战组</button>
+                    <button class="active" data-group="传奇组">传奇组</button>
                     <button data-group="中坚组">中坚组</button>
-                    <button data-group="传奇组">传奇组</button>
+                    <button data-group="挑战组">挑战组</button>
                 </div>
             </div>
         </div>
@@ -231,13 +176,11 @@
 
     <main class="container">
         <section class="group-section">
-            <h2 id="current-group-name"></h2>
-            
+            <h2 id="current-group-name" style="text-align:center; border:none; font-size: 2.2em;"></h2>
             <h3>小组赛 (瑞士轮)</h3>
             <div class="bracket-container">
                 <div id="swiss-bracket" class="bracket"></div>
             </div>
-            
             <h3>淘汰赛 (双败)</h3>
             <div class="bracket-container">
                 <div id="playoff-bracket" class="bracket"></div>
@@ -251,144 +194,134 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeToggle = document.getElementById('theme-toggle-checkbox');
     const themeText = document.getElementById('theme-text');
 
-    // --- 主题切换逻辑 ---
     function setTheme(isLight) {
         document.body.classList.toggle('light-theme', isLight);
         if(themeToggle) themeToggle.checked = isLight;
         if(themeText) themeText.textContent = isLight ? '点击切换夜间模式' : '点击切换日间模式';
         localStorage.setItem('theme', isLight ? 'light' : 'dark');
     }
-
     const savedTheme = localStorage.getItem('theme');
-    setTheme(savedTheme === 'light'); // 默认夜间，除非保存了日间
+    setTheme((savedTheme === null) ? true : (savedTheme === 'light'));
     if(themeToggle) {
         themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
     }
 
-    // --- 赛程渲染逻辑 ---
-    const swissBracketStructure = [
-        { roundTitle: '0-0组', matches: ['S1-1', 'S1-2', 'S1-3', 'S1-4'], align: 'align-top' },
-        { roundTitle: '1-0组 / 0-1组', matches: ['S2-1W', 'S2-2W', 'spacer', 'S2-1L', 'S2-2L'], align: 'align-center' },
-        { roundTitle: '1-1组', matches: ['S3-1M', 'S3-2M'], align: 'align-center' },
-        { roundTitle: '晋级 / 淘汰', matches: ['S4-PROMO1', 'S4-ELIM1', 'S4-PROMO2', 'S4-ELIM2'], align: 'align-center' },
+    const swissBracketLayout = [
+        { type: 'round', content: [ { title: '0-0组', ids: ['S1-1', 'S1-2', 'S1-3', 'S1-4'] } ] },
+        { type: 'round', content: [ { title: '1-0组', ids: ['S2-1W', 'S2-2W'] }, { title: '0-1组', ids: ['S2-1L', 'S2-2L'] } ] },
+        { type: 'round', content: [ { title: '2-0 晋级', ids: ['S3-PROMO-A', 'S3-PROMO-B'], type: 'promoted' }, { title: '1-1组', ids: ['S3-1M', 'S3-2M'] }, { title: '0-2 淘汰', ids: ['S3-ELIM-A', 'S3-ELIM-B'], type: 'eliminated' } ] },
+        { type: 'round', content: [ { title: '2-1 晋级', ids: ['S4-PROMO-A', 'S4-PROMO-B'], type: 'promoted' }, { title: '1-2 淘汰', ids: ['S4-ELIM-A', 'S4-ELIM-B'], type: 'eliminated' } ] }
     ];
 
-    const playoffBracketStructure = [
-        { roundTitle: '胜者组 R1', matches: ['P-WB1-1', 'P-WB1-2'], align: 'align-top' },
-        { roundTitle: '胜者组决赛 / 败者组 R1', matches: ['P-WBF', 'spacer', 'P-LB1'], align: 'align-center' },
-        { roundTitle: '败者组决赛', matches: ['P-LBF'], align: 'align-center' },
-        { roundTitle: '总决赛', matches: ['P-GF'], align: 'align-center' },
-        { roundTitle: '总冠军', matches: ['P-CHAMPION'], align: 'align-center' }
+    const playoffBracketLayout = [
+        { type: 'round', content: [ { title: '胜者组 R1', ids: ['P-WB1-1', 'P-WB1-2'] } ] },
+        { type: 'round', content: [ { title: '胜者组决赛', ids: ['P-WBF'] }, { title: '败者组 R1', ids: ['P-LB1'] } ] },
+        { type: 'round', content: [ { title: '败者组决赛', ids: ['P-LBF'] } ] },
+        { type: 'round', content: [ { title: '总决赛', ids: ['P-GF'] } ] },
+        { type: 'round', content: [ { title: '总冠军', ids: ['P-CHAMPION'], type: 'champion' } ] }
     ];
+
+    function getWinner(match) {
+        if (!match || typeof match.score_a === 'undefined' || typeof match.score_b === 'undefined') return null;
+        return Number(match.score_a) > Number(match.score_b) ? match.team_a : match.team_b;
+    }
+
+    function getLoser(match) {
+        if (!match || typeof match.score_a === 'undefined' || typeof match.score_b === 'undefined') return null;
+        return Number(match.score_a) < Number(match.score_b) ? match.team_a : match.team_b;
+    }
+
+    function processResultNodes(rawData) {
+        const data = JSON.parse(JSON.stringify(rawData));
+        const ensureNodeExists = (id) => { if (!data[id]) data[id] = {}; };
+
+        // --- 仅计算瑞士轮结果节点 ---
+        ensureNodeExists('S3-PROMO-A'); data['S3-PROMO-A'].result_team = getWinner(data['S2-1W']);
+        ensureNodeExists('S3-PROMO-B'); data['S3-PROMO-B'].result_team = getWinner(data['S2-2W']);
+        ensureNodeExists('S3-ELIM-A'); data['S3-ELIM-A'].result_team = getLoser(data['S2-1L']);
+        ensureNodeExists('S3-ELIM-B'); data['S3-ELIM-B'].result_team = getLoser(data['S2-2L']);
+        ensureNodeExists('S4-PROMO-A'); data['S4-PROMO-A'].result_team = getWinner(data['S3-1M']);
+        ensureNodeExists('S4-PROMO-B'); data['S4-PROMO-B'].result_team = getWinner(data['S3-2M']);
+        ensureNodeExists('S4-ELIM-A'); data['S4-ELIM-A'].result_team = getLoser(data['S3-1M']);
+        ensureNodeExists('S4-ELIM-B'); data['S4-ELIM-B'].result_team = getLoser(data['S3-2M']);
+
+        // --- 仅计算总冠军结果节点 ---
+        ensureNodeExists('P-CHAMPION'); data['P-CHAMPION'].result_team = getWinner(data['P-GF']);
+        
+        return data;
+    }
 
     async function loadData() {
         try {
             const response = await fetch('match_data.xlsx');
             const arrayBuffer = await response.arrayBuffer();
             const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
             workbook.SheetNames.forEach(sheetName => {
                 const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
                 allMatchesData[sheetName] = sheetData.reduce((acc, row) => {
-                    acc[String(row.match_id).trim()] = row; 
+                    if(row.match_id) acc[String(row.match_id).trim()] = row; 
                     return acc;
                 }, {});
             });
-            
-            renderBrackets('挑战组');
+            renderBrackets('传奇组');
         } catch (error) {
             console.error("加载或解析match_data.xlsx失败:", error);
             document.getElementById('swiss-bracket').innerHTML = `<p style="color:red; text-align:center;">无法加载赛程数据: ${error.message}</p>`;
         }
     }
 
-    function createMatchCardElement(matchData, matchId) {
-        const teamA = matchData?.team_a || 'TBD';
-        const teamB = matchData?.team_b || 'TBD';
-        const scoreA = matchData?.score_a ?? 0;
-        const scoreB = matchData?.score_b ?? 0;
-        
-        const winnerA = Number(scoreA) > Number(scoreB);
-        const winnerB = Number(scoreB) > Number(scoreA);
-
-        return `
-            <div class="match-card" id="${matchId}">
-                <div class="team ${winnerA ? 'winner' : ''} ${winnerB ? 'loser' : ''}">
-                    <span class="team-name">${teamA}</span>
-                    <span class="team-score">${scoreA}</span>
-                </div>
-                <hr>
-                <div class="team ${winnerB ? 'winner' : ''} ${winnerA ? 'loser' : ''}">
-                    <span class="team-name">${teamB}</span>
-                    <span class="team-score">${scoreB}</span>
-                </div>
-            </div>
-        `;
+    function createMatchCard(data) {
+        const teamA = data?.team_a || 'TBD', teamB = data?.team_b || 'TBD';
+        const scoreA = data?.score_a ?? 0, scoreB = data?.score_b ?? 0;
+        const winnerA = Number(scoreA) > Number(scoreB), winnerB = Number(scoreB) > Number(scoreA);
+        return `<div class="match-card">
+                    <div class="team ${winnerA ? 'winner' : ''} ${winnerB ? 'loser' : ''}"><span class="team-name">${teamA}</span><span class="team-score">${scoreA}</span></div>
+                    <hr>
+                    <div class="team ${winnerB ? 'winner' : ''} ${winnerA ? 'loser' : ''}"><span class="team-name">${teamB}</span><span class="team-score">${scoreB}</span></div>
+                </div>`;
     }
 
-    function createResultCardElement(resultTeam, type, matchId) {
-        if (!resultTeam || String(resultTeam).trim() === '') {
-            resultTeam = 'TBD';
-        }
-        let className = 'result-card';
-        if (type === 'champion') className += ' champion-card';
-        if (type === 'eliminated') className += ' eliminated-card';
-
-        return `<div class="${className}" id="${matchId}">${resultTeam}</div>`;
+    function createResultCard(data, type = '') {
+        const team = data?.result_team || 'TBD';
+        return `<div class="result-card ${type}">${team}</div>`;
+    }
+    
+    function buildBracket(container, layout, data) {
+        container.innerHTML = '';
+        layout.forEach(col => {
+            const roundDiv = document.createElement('div');
+            roundDiv.className = 'round';
+            col.content.forEach(group => {
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'round-title';
+                titleDiv.textContent = group.title;
+                roundDiv.appendChild(titleDiv);
+                group.ids.forEach(id => {
+                    const cardData = data[id];
+                    let cardHtml = '';
+                    if (group.type) {
+                        cardHtml = createResultCard(cardData, group.type);
+                    } else {
+                        cardHtml = createMatchCard(cardData);
+                    }
+                    roundDiv.innerHTML += cardHtml;
+                });
+            });
+            container.appendChild(roundDiv);
+        });
     }
 
     function renderBrackets(groupName) {
-        const groupData = allMatchesData[groupName] || {};
-        const swissContainer = document.getElementById('swiss-bracket');
-        const playoffContainer = document.getElementById('playoff-bracket');
-        const currentGroupNameElement = document.getElementById('current-group-name');
-
-        currentGroupNameElement.textContent = groupName;
-        swissContainer.innerHTML = '';
-        playoffContainer.innerHTML = '';
-
-        swissBracketStructure.forEach(round => {
-            let roundHtml = `<div class="round ${round.align || ''}">`;
-            roundHtml += `<div class="round-title">${round.roundTitle}</div>`;
-            round.matches.forEach(matchId => {
-                if (matchId === 'spacer') {
-                    roundHtml += `<div style="height: 50px; width: 180px; flex-shrink: 0;"></div>`;
-                } else if (matchId.startsWith('S4-PROMO')) {
-                     const team = groupData[matchId] ? groupData[matchId].result_team : '';
-                     roundHtml += createResultCardElement(team, 'promoted', matchId);
-                } else if (matchId.startsWith('S4-ELIM')) {
-                     const team = groupData[matchId] ? groupData[matchId].result_team : '';
-                     roundHtml += createResultCardElement(team, 'eliminated', matchId);
-                } else {
-                    roundHtml += createMatchCardElement(groupData[matchId], matchId);
-                }
-            });
-            roundHtml += `</div>`;
-            swissContainer.innerHTML += roundHtml;
-        });
-
-        playoffBracketStructure.forEach(round => {
-            let roundHtml = `<div class="round ${round.align || ''}">`;
-            roundHtml += `<div class="round-title">${round.roundTitle}</div>`;
-            round.matches.forEach(matchId => {
-                if (matchId === 'spacer') {
-                    roundHtml += `<div style="height: 50px; width: 180px; flex-shrink: 0;"></div>`;
-                } else if (matchId === 'P-CHAMPION') {
-                     const team = groupData[matchId] ? groupData[matchId].result_team : '';
-                     roundHtml += createResultCardElement(team, 'champion', matchId);
-                } else {
-                    roundHtml += createMatchCardElement(groupData[matchId], matchId);
-                }
-            });
-            roundHtml += `</div>`;
-            playoffContainer.innerHTML += roundHtml;
-        });
+        const rawData = allMatchesData[groupName] || {};
+        const processedData = processResultNodes(rawData);
+        document.getElementById('current-group-name').textContent = `${groupName}赛程`;
+        buildBracket(document.getElementById('swiss-bracket'), swissBracketLayout, processedData);
+        buildBracket(document.getElementById('playoff-bracket'), playoffBracketLayout, processedData);
     }
 
-    const groupFilters = document.getElementById('group-filters');
-    groupFilters.addEventListener('click', (e) => {
+    document.getElementById('group-filters').addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON') {
-            groupFilters.querySelector('.active').classList.remove('active');
+            document.querySelector('#group-filters .active').classList.remove('active');
             e.target.classList.add('active');
             renderBrackets(e.target.dataset.group);
         }
