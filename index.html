@@ -13,9 +13,9 @@
             --card-bg-color: rgba(26, 40, 54, 0.9);
             --header-bg-color: rgba(26, 40, 54, 0.95);
             --border-color: #2a3a49;
+            --gold-color: #ffd700;
             --shadow-color: rgba(0,0,0,0.3);
             --control-height: 42px;
-            /* 新增颜色变量 */
             --group-stage-bg: rgba(83, 104, 126, 0.2);
             --playoff-stage-bg: rgba(74, 144, 226, 0.2);
             --final-stage-bg: rgba(255, 215, 0, 0.15);
@@ -28,7 +28,6 @@
             --header-bg-color: rgba(255, 255, 255, 0.95);
             --border-color: #dadde1;
             --shadow-color: rgba(0,0,0,0.1);
-            /* 新增颜色变量 */
             --group-stage-bg: rgba(83, 104, 126, 0.1);
             --playoff-stage-bg: rgba(74, 144, 226, 0.1);
             --final-stage-bg: rgba(255, 215, 0, 0.1);
@@ -48,10 +47,10 @@
             background-repeat: no-repeat;
         }
         .container { width: 90%; max-width: 1400px; margin: 0 auto; }
-        header {
+        
+        .main-header-block {
             background-color: var(--header-bg-color);
             backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
             padding: 25px;
             border-radius: 12px;
             box-shadow: 0 8px 16px var(--shadow-color);
@@ -60,7 +59,7 @@
             border: 1px solid var(--border-color);
             position: relative;
         }
-        header h1 { color: var(--primary-color); margin: 0 0 10px 0; font-weight: 700; font-size: 2.5em; }
+        .main-header-block h1 { color: var(--primary-color); margin: 0 0 10px 0; font-weight: 700; font-size: 2.5em; }
         .controls-container {
             display: flex;
             justify-content: center;
@@ -110,29 +109,26 @@
             background-color: var(--bg-color);
             border-radius: 12px;
             box-shadow: 0 4px 12px var(--shadow-color);
-            border: 1px solid var(--border-color);
             overflow: hidden;
             transition: transform 0.3s, box-shadow 0.3s;
             cursor: pointer;
-            position: relative; /* 为角标定位 */
+            position: relative;
         }
-        /* 新增：为不同赛段的卡片添加背景色 */
         .match-card.stage-小组赛 { background-color: var(--group-stage-bg); }
         .match-card.stage-淘汰赛 { background-color: var(--playoff-stage-bg); }
-        .match-card.stage-is-final { background-color: var(--final-stage-bg); }
+        .match-card.stage-is-final { background-color: var(--final-stage-bg); border: 1px solid var(--gold-color); }
         
         .match-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px var(--shadow-color); }
         .match-header { display: flex; flex-direction: column; padding: 15px; }
         .match-card::after {
             content: attr(data-stage-name);
-            position: absolute; top: -1px; right: -1px; padding: 4px 12px;
-            border-bottom-left-radius: 12px; border-top-right-radius: 12px;
+            position: absolute; top: 0; right: 0; padding: 4px 12px;
+            border-bottom-left-radius: 12px;
             font-size: 0.8em; font-weight: 500; color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             z-index: 5;
         }
         .stage-小组赛::after { background-color: #53687E; }
         .stage-淘汰赛::after { background-color: #4A90E2; }
-        .stage-is-final.stage-淘汰赛 { border-color: var(--gold-color); }
         .stage-is-final::after { background-image: linear-gradient(135deg, #e4c400, #b48600); color: #0f1923; }
         .match-meta { display: flex; justify-content: space-between; align-items: baseline; width: 100%; margin-bottom: 10px; }
         .match-meta .map { font-weight: 500; font-size: 1.2em; }
@@ -147,51 +143,38 @@
         #standings-table tbody tr:last-child td { border-bottom: none; }
         #standings-table tbody tr:hover { background-color: rgba(255, 255, 255, 0.05); }
         #standings-table td:first-child, #standings-table th:first-child { text-align: center; }
+        .team-name-cell { color: var(--primary-color); font-weight: bold; cursor: pointer; }
+        .team-name-cell:hover { text-decoration: underline; }
 
         /* Modal (弹窗) 样式 */
         .modal-backdrop {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
-            z-index: 1000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s, visibility 0.3s;
+            backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+            z-index: 1000; display: flex; justify-content: center; align-items: center;
+            opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s;
         }
-        .modal-backdrop.visible {
-            opacity: 1;
-            visibility: visible;
-        }
+        .modal-backdrop.visible { opacity: 1; visibility: visible; }
         .modal-content {
             background-color: var(--card-bg-color);
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
+            border-radius: 12px; border: 1px solid var(--border-color);
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            width: 90%;
-            max-width: 800px;
-            max-height: 90vh;
-            overflow-y: auto;
-            transform: scale(0.9);
-            transition: transform 0.3s;
+            width: 90%; max-width: 800px; max-height: 90vh;
+            overflow-y: auto; transform: scale(0.9); transition: transform 0.3s;
+            padding: 20px 30px;
         }
-        .modal-backdrop.visible .modal-content {
-            transform: scale(1);
-        }
-        .player-comparison-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
-        .player-comparison-table th, .player-comparison-table td { padding: 8px; text-align: center; border-bottom: 1px solid var(--border-color); }
-        .player-comparison-table thead th { padding: 10px; }
+        .modal-backdrop.visible .modal-content { transform: scale(1); }
+        .modal-header { font-size: 1.8em; color: var(--primary-color); margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        .roster-list { list-style: none; padding: 0; font-size: 1.2em; }
+        .roster-list li { padding: 8px 0; }
+        .player-comparison-table { width: 100%; border-collapse: collapse; font-size: 1em; }
+        .player-comparison-table th, .player-comparison-table td { padding: 12px; text-align: center; border-bottom: 1px solid var(--border-color); }
+        .player-comparison-table thead th { padding: 14px; }
         .player-comparison-table tbody tr:last-child td { border-bottom: none; }
-        .player-comparison-table .team-name-header { font-size: 1.4em; font-weight: 700; }
-        .player-comparison-table .score-cell { font-size: 1.8em; font-weight: 700; color: var(--primary-color); vertical-align: middle; border-bottom: 1px solid var(--border-color); }
-        .player-comparison-table .stat-header th { font-weight: normal; opacity: 0.8; font-size: 0.85em; background-color: rgba(0,0,0,0.03); }
+        .player-comparison-table .team-name-header { font-size: 1.5em; }
+        .player-comparison-table .score-cell { font-size: 2em; }
+        .player-comparison-table .stat-header th { font-size: 0.9em; }
         .player-comparison-table td.player-id, .player-comparison-table td.player-character { font-weight: 500; text-align: left; white-space: nowrap; }
         .player-comparison-table td.player-acs { font-weight: bold; color: var(--primary-color); }
         .player-comparison-table .separator { width: 1px; padding: 0; }
@@ -207,15 +190,15 @@
     </style>
 </head>
 <body>
-    <header>
-        <div class="theme-switch-wrapper">
-            <span id="theme-text"></span>
-            <label class="theme-switch">
-                <input type="checkbox" id="theme-toggle-checkbox">
-                <span class="slider"></span>
-            </label>
-        </div>
-        <div class="container">
+    <div class="container">
+        <div class="main-header-block">
+            <div class="theme-switch-wrapper">
+                <span id="theme-text"></span>
+                <label class="theme-switch">
+                    <input type="checkbox" id="theme-toggle-checkbox">
+                    <span class="slider"></span>
+                </label>
+            </div>
             <h1>HWVCTS4 比赛中心</h1>
             <div class="controls-container">
                 <div class="control-group">
@@ -236,27 +219,27 @@
                 <a href="schedule.html" class="nav-button" target="_blank">查看赛程</a>
             </div>
         </div>
-    </header>
 
-    <main class="container">
-        <section class="content-block">
-            <h2 id="standings-title">战队积分榜 - 传奇组</h2>
-            <div style="overflow-x: auto;">
-                <table id="standings-table">
-                    <thead>
-                        <tr><th>排名</th><th>队伍</th><th>胜场</th><th>负场</th><th>净胜分</th></tr>
-                    </thead>
-                    <tbody id="standings-table-body"></tbody>
-                </table>
-            </div>
-        </section>
-        <section class="content-block">
-            <h2 id="matches-title">比赛结果 - 传奇组</h2>
-            <div id="matches-view"></div>
-        </section>
-    </main>
+        <main>
+            <section class="content-block">
+                <h2 id="standings-title">战队积分榜 - 传奇组</h2>
+                <div style="overflow-x: auto;">
+                    <table id="standings-table">
+                        <thead>
+                            <tr><th>排名</th><th>队伍</th><th>胜场</th><th>负场</th><th>净胜分</th></tr>
+                        </thead>
+                        <tbody id="standings-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+            <section class="content-block">
+                <h2 id="matches-title">比赛结果 - 传奇组</h2>
+                <div id="matches-view"></div>
+            </section>
+        </main>
+    </div>
 
-    <div id="match-modal" class="modal-backdrop">
+    <div id="modal" class="modal-backdrop">
         <div class="modal-content" id="modal-content-body"></div>
     </div>
 
@@ -264,7 +247,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const matchesView = document.getElementById('matches-view');
-            const modal = document.getElementById('match-modal');
+            const modal = document.getElementById('modal');
             const modalContent = document.getElementById('modal-content-body');
             const standingsTableBody = document.getElementById('standings-table-body');
             const themeToggle = document.getElementById('theme-toggle-checkbox');
@@ -275,6 +258,7 @@
             const standingsTitle = document.getElementById('standings-title');
             let tournamentData = { '传奇组': [], '中坚组': [], '挑战组': [] };
             let currentFilteredMatches = [];
+            let allPlayerData = {};
 
             function setTheme(isLight) {
                 document.body.classList.toggle('light-theme', isLight);
@@ -378,6 +362,7 @@
                         });
                     });
                 }
+                allPlayerData = playerData; // Store for local use
                 localStorage.setItem('valorantPlayerSummary', JSON.stringify(playerData));
             }
 
@@ -403,7 +388,7 @@
                 const sortedTeams = Object.keys(teamStandings).sort((a, b) => teamStandings[b].wins - teamStandings[a].wins || teamStandings[b].roundDiff - teamStandings[a].roundDiff);
                 standingsTableBody.innerHTML = sortedTeams.map((teamName, index) => {
                     const team = teamStandings[teamName];
-                    return `<tr><td>${index + 1}</td><td>${teamName}</td><td>${team.wins}</td><td>${team.losses}</td><td>${team.roundDiff > 0 ? '+' : ''}${team.roundDiff}</td></tr>`;
+                    return `<tr><td>${index + 1}</td><td class="team-name-cell" data-team="${teamName}">${teamName}</td><td>${team.wins}</td><td>${team.losses}</td><td>${team.roundDiff > 0 ? '+' : ''}${team.roundDiff}</td></tr>`;
                 }).join('');
             }
 
@@ -430,7 +415,12 @@
                 matchesView.appendChild(card);
             }
 
-            function showModalWithMatchData(matchData) {
+            function showModalWithContent(htmlContent) {
+                modalContent.innerHTML = htmlContent;
+                modal.classList.add('visible');
+            }
+
+            function showMatchDetails(matchData) {
                 const teamAPlayers = [], teamBPlayers = [];
                 const placeholder = { id: '-', ch: '-', acs: '-', k: '-', d: '-', a: '-' };
                 for (let i = 1; i <= 5; i++) {
@@ -458,7 +448,7 @@
                     </tr>`;
                 }
                 const score = String(matchData['比分']).replace(/[/：]/, ' : ');
-                modalContent.innerHTML = `
+                const modalHTML = `
                     <table class="player-comparison-table">
                         <thead>
                             <tr><th colspan="6" class="team-name-header">${matchData['teamA']}</th><th class="score-cell">${score}</th><th colspan="6" class="team-name-header">${matchData['teamB']}</th></tr>
@@ -466,7 +456,24 @@
                         </thead>
                         <tbody>${rowsHTML}</tbody>
                     </table>`;
-                modal.classList.add('visible');
+                showModalWithContent(modalHTML);
+            }
+            
+            function showTeamRoster(teamName, groupName) {
+                const roster = [];
+                for(const key in allPlayerData) {
+                    const player = allPlayerData[key];
+                    if(player.team === teamName && player.group === groupName) {
+                        roster.push(player.id);
+                    }
+                }
+                const rosterHTML = `
+                    <div class="modal-header">${teamName} (${groupName}) 成员列表</div>
+                    <ul class="roster-list">
+                        ${roster.length > 0 ? roster.map(name => `<li>${name}</li>`).join('') : '<li>暂无该队伍成员信息</li>'}
+                    </ul>
+                `;
+                showModalWithContent(rosterHTML);
             }
 
             matchesView.addEventListener('click', (e) => {
@@ -474,8 +481,18 @@
                 if (!clickedCard) return;
                 const matchIndex = parseInt(clickedCard.dataset.matchIndex, 10);
                 const matchData = currentFilteredMatches[matchIndex];
-                if (matchData) {
-                    showModalWithMatchData(matchData);
+                if (matchData) showMatchDetails(matchData);
+            });
+
+            standingsTableBody.addEventListener('click', (e) => {
+                const clickedCell = e.target.closest('.team-name-cell');
+                if (!clickedCell) return;
+                const teamName = clickedCell.dataset.team;
+                const activeGroup = groupFilterButtons.querySelector('.active').dataset.group;
+                if(teamName && activeGroup !== 'all') {
+                    showTeamRoster(teamName, activeGroup);
+                } else {
+                    alert('请先在上方筛选一个具体的组别，再查看队伍成员。');
                 }
             });
 
