@@ -13,9 +13,12 @@
             --card-bg-color: rgba(26, 40, 54, 0.9);
             --header-bg-color: rgba(26, 40, 54, 0.95);
             --border-color: #2a3a49;
-            --gold-color: #ffd700;
             --shadow-color: rgba(0,0,0,0.3);
             --control-height: 42px;
+            /* 新增颜色变量 */
+            --group-stage-bg: rgba(83, 104, 126, 0.2);
+            --playoff-stage-bg: rgba(74, 144, 226, 0.2);
+            --final-stage-bg: rgba(255, 215, 0, 0.15);
         }
         body.light-theme {
             --primary-color: #D64550;
@@ -25,6 +28,10 @@
             --header-bg-color: rgba(255, 255, 255, 0.95);
             --border-color: #dadde1;
             --shadow-color: rgba(0,0,0,0.1);
+            /* 新增颜色变量 */
+            --group-stage-bg: rgba(83, 104, 126, 0.1);
+            --playoff-stage-bg: rgba(74, 144, 226, 0.1);
+            --final-stage-bg: rgba(255, 215, 0, 0.1);
         }
         body {
             font-family: 'Roboto', sans-serif;
@@ -107,14 +114,21 @@
             overflow: hidden;
             transition: transform 0.3s, box-shadow 0.3s;
             cursor: pointer;
+            position: relative; /* 为角标定位 */
         }
+        /* 新增：为不同赛段的卡片添加背景色 */
+        .match-card.stage-小组赛 { background-color: var(--group-stage-bg); }
+        .match-card.stage-淘汰赛 { background-color: var(--playoff-stage-bg); }
+        .match-card.stage-is-final { background-color: var(--final-stage-bg); }
+        
         .match-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px var(--shadow-color); }
-        .match-header { display: flex; flex-direction: column; padding: 15px; position: relative; }
+        .match-header { display: flex; flex-direction: column; padding: 15px; }
         .match-card::after {
             content: attr(data-stage-name);
             position: absolute; top: -1px; right: -1px; padding: 4px 12px;
             border-bottom-left-radius: 12px; border-top-right-radius: 12px;
             font-size: 0.8em; font-weight: 500; color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            z-index: 5;
         }
         .stage-小组赛::after { background-color: #53687E; }
         .stage-淘汰赛::after { background-color: #4A90E2; }
@@ -243,8 +257,7 @@
     </main>
 
     <div id="match-modal" class="modal-backdrop">
-        <div class="modal-content" id="modal-content-body">
-            </div>
+        <div class="modal-content" id="modal-content-body"></div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -396,7 +409,8 @@
 
             function createMatchCard(matchData, index) {
                 const card = document.createElement('div');
-                card.className = `match-card stage-${(matchData['赛段'] === '小组赛' ? '小组赛' : '淘汰赛')} ${matchData['赛段'] === '决赛' ? 'stage-is-final' : ''}`;
+                const stageType = (matchData['赛段'] === '小组赛') ? '小组赛' : '淘汰赛';
+                card.className = `match-card stage-${stageType} ${matchData['赛段'] === '决赛' ? 'stage-is-final' : ''}`;
                 card.dataset.stageName = matchData['赛段'];
                 card.dataset.matchIndex = index;
                 const score = String(matchData['比分']).replace(/[/：]/, ' : ');
