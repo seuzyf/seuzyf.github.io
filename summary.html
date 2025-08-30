@@ -31,60 +31,40 @@
             color: var(--text-color);
             margin: 0;
             padding: 20px 0;
-            line-height: 1.6;
-            transition: background-color 0.3s, color 0.3s;
-            /* 更新背景图片URL */
-            background-image: url('https://cdnb.artstation.com/p/assets/images/images/090/820/709/large/envar-studio-valorantact4kv2-render-ot-7.jpg?1755007151');
+            background-image: url('https://cdnb.artstation.com/p/assets/images/images/090/820/719/large/envar-studio-valorantact4kv3-render-17-fd-ot-gis-jett-2.jpg?1755007158');
             background-attachment: fixed;
             background-size: cover;
-            background-position: center center;
-            background-repeat: no-repeat;
+            background-position: center;
         }
-        .container { width: 90%; max-width: 1400px; margin: 0 auto; }
-        header {
+        .container {
+            width: 90%;
+            max-width: 1400px;
+            margin: 0 auto;
             background-color: var(--header-bg-color);
             backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            padding: 25px;
+            border: 1px solid var(--border-color);
             border-radius: 12px;
+            padding: 20px;
             box-shadow: 0 8px 16px var(--shadow-color);
-            text-align: center;
-            margin-bottom: 40px;
-            border: 1px solid var(--border-color);
-            position: relative;
         }
-        header h1 { color: var(--primary-color); margin: 0 0 10px 0; font-weight: 700; font-size: 2.5em; }
-        header p { margin: 0; font-size: 1.1em; opacity: 0.8; }
-        .controls-container {
-            margin: 25px 0;
+        #controls {
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
-            gap: 20px;
+            margin-bottom: 20px;
             flex-wrap: wrap;
+            gap: 15px;
         }
-        .control-group { display: flex; align-items: center; }
-        .control-group label { font-size: 1.1em; font-weight: 500; margin-right: 10px; }
-        select {
-            background-color: var(--card-bg-color);
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 0 12px;
-            font-size: 1em;
-            height: var(--control-height);
-        }
-        .filter-group {
+        .filter-buttons {
             display: inline-flex;
             align-items: center;
             background-color: var(--card-bg-color);
-            border-radius: 8px;
             padding: 5px;
             border: 1px solid var(--border-color);
+            border-radius: 8px;
             height: var(--control-height);
-            box-sizing: border-box;
         }
-        .filter-group button {
+        .filter-buttons button {
             padding: 0 15px;
             border: none;
             background-color: transparent;
@@ -95,310 +75,222 @@
             font-size: 0.9em;
             height: 100%;
         }
-        .filter-group button.active { background-color: var(--primary-color); color: white; opacity: 1; }
-        table { width: 100%; border-collapse: collapse; background-color: var(--card-bg-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px var(--shadow-color); border: 1px solid var(--border-color); }
-        table thead { background-color: var(--primary-color); color: white; font-weight: 500; }
-        table th, table td { padding: 15px; text-align: left; }
-        table tbody tr { border-bottom: 1px solid var(--border-color); transition: background-color 0.2s; }
-        table tbody tr:last-child { border-bottom: none; }
-        table tbody tr:hover { background-color: rgba(0, 0, 0, 0.05); }
-        #summary-table thead th { cursor: pointer; position: relative; }
-        #summary-table thead th::after { content: ' \2195'; position: absolute; right: 15px; opacity: 0.5; }
-        #summary-table thead th.sorted-asc::after { content: ' \2193'; opacity: 1; }
-        #summary-table thead th.sorted-desc::after { content: ' \2191'; opacity: 1; }
-        .theme-switch-wrapper { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 10px; }
-        #theme-text { font-size: 0.8em; opacity: 0.8; }
-        .theme-switch { display: inline-block; height: 24px; position: relative; width: 48px; }
-        .theme-switch input { display:none; }
-        .slider { background-color: var(--border-color); bottom: 0; cursor: pointer; left: 0; position: absolute; right: 0; top: 0; transition: .4s; border-radius: 24px; }
-        .slider:before { background-color: var(--text-color); bottom: 4px; content: ""; height: 16px; left: 4px; position: absolute; transition: .4s; width: 16px; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--primary-color); }
-        input:checked + .slider:before { transform: translateX(24px); }
+        .filter-buttons button.active {
+            background-color: var(--primary-color);
+            color: white;
+            opacity: 1;
+        }
+        select#team-filter {
+            height: var(--control-height);
+            padding: 0 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--card-bg-color);
+            color: var(--text-color);
+        }
+        #nav-links { display: flex; gap: 15px; }
+        #nav-links a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 12px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            height: var(--control-height);
+        }
+        #nav-links a:hover { background-color: rgba(214, 69, 80, 0.1); }
+        #stats-table { width: 100%; border-collapse: collapse; }
+        #stats-table thead { background-color: var(--primary-color); color: white; }
+        #stats-table th, #stats-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        #stats-table tbody tr:hover { background-color: rgba(255,255,255,0.05); }
+        #stats-table th { cursor: pointer; }
+        #stats-table td a { color: var(--primary-color); text-decoration: none; font-weight: bold; }
+        #stats-table td a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
 
-    <header>
-        <div class="theme-switch-wrapper">
-            <span id="theme-text"></span>
-            <label class="theme-switch">
-                <input type="checkbox" id="theme-toggle-checkbox">
-                <span class="slider"></span>
-            </label>
-        </div>
-        <div class="container">
-            <h1>HWVCTS4 选手数据汇总</h1>
-            <p>点击表头可排序，使用按钮和下拉菜单进行筛选</p>
-        </div>
-    </header>
-
-    <main class="container">
-        <div class="controls-container">
-            <div class="control-group">
-                <label>筛选组别:</label>
-                <div class="filter-group" id="group-filter-buttons">
-                    <button class="active" data-group="all">所有组别</button>
+    <div class="container">
+        <div id="controls">
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <div class="filter-buttons" id="group-filter-buttons">
+                    <button class="active" data-group="all">所有组</button>
                     <button data-group="传奇组">传奇组</button>
                     <button data-group="中坚组">中坚组</button>
                     <button data-group="挑战组">挑战组</button>
                 </div>
-            </div>
-            <div class="control-group">
-                <label>筛选赛段:</label>
-                <div class="filter-group" id="stage-filter-buttons">
-                    <button class="active" data-stage="all">所有赛段</button>
-                    <button data-stage="小组赛">小组赛</button>
-                    <button data-stage="淘汰赛">淘汰赛</button>
-                </div>
-            </div>
-            <div class="control-group">
-                <label for="team-filter">筛选队伍:</label>
                 <select id="team-filter">
                     <option value="all">所有队伍</option>
                 </select>
             </div>
+            <div id="nav-links">
+                <a href="index.html">返回比赛中心</a>
+                <a href="schedule.html" target="_blank">查看赛程</a>
+            </div>
         </div>
-        <section id="summary-view">
-            <table id="summary-table">
-                <thead>
-                    <tr>
-                        <th data-column-index="0" rowspan="2">选手ID</th>
-                        <th data-column-index="1" rowspan="2">所属队伍</th>
-                        <th data-column-index="2" rowspan="2" data-type="number">场数</th>
-                        <th data-column-index="3" rowspan="2" data-type="number">平均ACS</th>
-                        <th colspan="4">每场平均 (Per-Match)</th>
-                        <th colspan="3">每回合平均 (Per-Round)</th>
-                    </tr>
-                    <tr>
-                        <th data-column-index="4" data-type="number">击杀</th>
-                        <th data-column-index="5" data-type="number">死亡</th>
-                        <th data-column-index="6" data-type="number">助攻</th>
-                        <th data-column-index="7" data-type="number">K/D</th>
-                        <th data-column-index="8" data-type="number">KPR</th>
-                        <th data-column-index="9" data-type="number">DPR</th>
-                        <th data-column-index="10" data-type="number">APR</th>
-                    </tr>
-                </thead>
-                <tbody id="summary-table-body"></tbody>
-            </table>
-        </section>
-    </main>
-    
+
+        <table id="stats-table">
+            <thead>
+                <tr>
+                    <th data-sort-key="id">ID</th>
+                    <th data-sort-key="team">队伍</th>
+                    <th>最常用角色</th>
+                    <th data-sort-key="matches_played">出场次数</th>
+                    <th data-sort-key="avg_acs">平均ACS</th>
+                    <th data-sort-key="kda">KDA</th>
+                    <th data-sort-key="total_k">总击杀</th>
+                    <th data-sort-key="total_d">总死亡</th>
+                    <th data-sort-key="total_a">总助攻</th>
+                </tr>
+            </thead>
+            <tbody id="stats-table-body"></tbody>
+        </table>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const summaryTableBody = document.getElementById('summary-table-body');
-            const tableHeaders = document.querySelectorAll('#summary-table thead th[data-column-index]');
-            const teamFilter = document.getElementById('team-filter');
-            const stageFilterButtons = document.getElementById('stage-filter-buttons');
             const groupFilterButtons = document.getElementById('group-filter-buttons');
-            const themeToggle = document.getElementById('theme-toggle-checkbox');
-            const themeText = document.getElementById('theme-text');
-            
-            let rawPlayerData = {};
-            let currentSort = { column: 0, asc: true };
+            const teamFilter = document.getElementById('team-filter');
+            const tableHead = document.querySelector('#stats-table thead');
+            let allPlayerData = {};
+            let currentSort = { key: 'avg_acs', order: 'desc' };
 
-            function setTheme(isLight) {
-                document.body.classList.toggle('light-theme', isLight);
-                themeToggle.checked = isLight;
-                themeText.textContent = isLight ? '点击切换夜间模式' : '点击切换日间模式';
-                localStorage.setItem('theme', isLight ? 'light' : 'dark');
-            }
-            const savedTheme = localStorage.getItem('theme');
-            setTheme((savedTheme === null) ? true : (savedTheme === 'light'));
-            themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
-            
-            const playerDataJSON = localStorage.getItem('valorantPlayerSummary');
-            if (playerDataJSON && playerDataJSON !== '{}') { // 检查数据是否存在且不为空对象
-                rawPlayerData = JSON.parse(playerDataJSON);
-                initializePage();
-            } else {
-                summaryTableBody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: orange;">没有找到选手数据。请先返回 <a href="index.html" style="color: var(--primary-color);">比赛中心</a> 页面加载数据。</td></tr>';
-                // 禁用筛选按钮，避免用户在无数据时操作
-                groupFilterButtons.querySelectorAll('button').forEach(btn => btn.disabled = true);
-                stageFilterButtons.querySelectorAll('button').forEach(btn => btn.disabled = true);
-                teamFilter.disabled = true;
+            function loadAndProcessData() {
+                const rawData = JSON.parse(localStorage.getItem('valorantPlayerSummary') || '{}');
+                allPlayerData = rawData;
+                updateTeamFilter();
+                filterAndDisplayData();
             }
 
-            function initializePage() {
-                populateTeamFilter(rawPlayerData);
-                updateDisplay();
-
-                groupFilterButtons.addEventListener('click', (e) => {
-                    if (e.target.tagName === 'BUTTON' && !e.target.disabled) {
-                        groupFilterButtons.querySelector('.active').classList.remove('active');
-                        e.target.classList.add('active');
-                        populateTeamFilter(rawPlayerData); // 切换组别后重新填充队伍筛选
-                        updateDisplay();
-                    }
-                });
-                stageFilterButtons.addEventListener('click', (e) => {
-                    if (e.target.tagName === 'BUTTON' && !e.target.disabled) {
-                        stageFilterButtons.querySelector('.active').classList.remove('active');
-                        e.target.classList.add('active');
-                        populateTeamFilter(rawPlayerData); // 切换赛段后重新填充队伍筛选
-                        updateDisplay();
-                    }
-                });
-                teamFilter.addEventListener('change', updateDisplay);
-
-                tableHeaders.forEach(header => {
-                    header.addEventListener('click', () => {
-                        const columnIndex = parseInt(header.dataset.columnIndex, 10);
-                        currentSort = { column: columnIndex, asc: (columnIndex === currentSort.column) ? !currentSort.asc : true };
-                        updateDisplay();
-                    });
-                });
-            }
-
-            function updateDisplay() {
+            function updateTeamFilter() {
                 const selectedGroup = groupFilterButtons.querySelector('.active').dataset.group;
-                const selectedStage = stageFilterButtons.querySelector('.active').dataset.stage;
-                const selectedTeam = teamFilter.value;
-                
-                const calculatedData = calculateStats(rawPlayerData, selectedGroup, selectedStage);
-                buildTableRows(calculatedData, selectedTeam);
-                
-                tableHeaders.forEach(th => th.classList.remove('sorted-asc', 'sorted-desc'));
-                const activeHeader = document.querySelector(`#summary-table thead th[data-column-index="${currentSort.column}"]`);
-                if (activeHeader) activeHeader.classList.add(currentSort.asc ? 'sorted-asc' : 'sorted-desc');
-            }
-
-            function calculateStats(fullData, selectedGroup, selectedStage) {
-                const finalStats = {};
-                for (const playerId in fullData) {
-                    const playerAllGroups = fullData[playerId];
-                    
-                    let aggregatedStats = { acs: 0, kills: 0, deaths: 0, assists: 0, matchCount: 0, totalRounds: 0, team: '' };
-                    let hasData = false;
-
-                    const groupsToProcess = (selectedGroup === 'all') ? Object.keys(playerAllGroups) : [selectedGroup];
-
-                    groupsToProcess.forEach(groupName => {
-                        const playerStages = playerAllGroups[groupName];
-                        if (!playerStages) return;
-
-                        const stagesToProcess = (selectedStage === 'all') ? Object.keys(playerStages) : [selectedStage];
-                        
-                        stagesToProcess.forEach(stageName => {
-                            const stageData = playerStages[stageName];
-                            if(stageData){
-                                aggregatedStats.acs += stageData.acs;
-                                aggregatedStats.kills += stageData.kills;
-                                aggregatedStats.deaths += stageData.deaths;
-                                aggregatedStats.assists += stageData.assists;
-                                aggregatedStats.matchCount += stageData.matchCount;
-                                aggregatedStats.totalRounds += stageData.totalRounds;
-                                // 确保 team 是最新的或第一个非空的值
-                                if (stageData.team) {
-                                    aggregatedStats.team = stageData.team;
-                                }
-                                hasData = true;
-                            }
-                        });
-                    });
-
-                    if (hasData) {
-                        finalStats[playerId] = aggregatedStats;
-                    }
-                }
-                return finalStats;
-            }
-            
-            function buildTableRows(data, selectedTeam) {
-                summaryTableBody.innerHTML = '';
-                let dataArray = Object.entries(data).map(([id, stats]) => ({id, ...stats}));
-                
-                if (selectedTeam !== 'all') {
-                    dataArray = dataArray.filter(player => player.team === selectedTeam);
-                }
-
-                const { column, asc } = currentSort;
-                const direction = asc ? 1 : -1;
-                dataArray.sort((a, b) => {
-                    const statsA = calculateAverages(a), statsB = calculateAverages(b);
-                    let valA, valB;
-                    switch(column) {
-                        case 0: valA = a.id; valB = b.id; break;
-                        case 1: valA = a.team; valB = b.team; break;
-                        case 2: valA = statsA.matchCount; valB = statsB.matchCount; break;
-                        case 3: valA = parseFloat(statsA.avg_acs); valB = parseFloat(statsB.avg_acs); break;
-                        case 4: valA = parseFloat(statsA.avg_kills); valB = parseFloat(statsB.avg_kills); break;
-                        case 5: valA = parseFloat(statsA.avg_deaths); valB = parseFloat(statsB.avg_deaths); break;
-                        case 6: valA = parseFloat(statsA.avg_assists); valB = parseFloat(statsB.avg_assists); break;
-                        case 7: 
-                            valA = statsA.avg_kd === '∞' ? Infinity : parseFloat(statsA.avg_kd); 
-                            valB = statsB.avg_kd === '∞' ? Infinity : parseFloat(statsB.avg_kd); 
-                            break;
-                        case 8: valA = parseFloat(statsA.kpr); valB = parseFloat(statsB.kpr); break;
-                        case 9: valA = parseFloat(statsA.dpr); valB = parseFloat(statsB.dpr); break;
-                        case 10: valA = parseFloat(statsA.apr); valB = parseFloat(statsB.apr); break;
-                    }
-                    if (typeof valA === 'string') return valA.localeCompare(valB) * direction;
-                    else return (valA - valB) * direction;
-                });
-                
-                if (dataArray.length === 0) {
-                    summaryTableBody.innerHTML = `<tr><td colspan="11">当前筛选条件下没有选手数据。</td></tr>`;
-                } else {
-                    dataArray.forEach(player => {
-                        const averages = calculateAverages(player);
-                        const row = document.createElement('tr');
-                        row.innerHTML = `<td>${player.id}</td><td>${player.team || 'N/A'}</td><td>${player.matchCount}</td><td>${averages.avg_acs}</td><td>${averages.avg_kills}</td><td>${averages.avg_deaths}</td><td>${averages.avg_assists}</td><td>${averages.avg_kd}</td><td>${averages.kpr}</td><td>${averages.dpr}</td><td>${averages.apr}</td>`;
-                        summaryTableBody.appendChild(row);
+                const teams = new Set(['all']);
+                for (const playerId in allPlayerData) {
+                    const player = allPlayerData[playerId];
+                    const groups = selectedGroup === 'all' ? Object.keys(player.by_group) : [selectedGroup];
+                    groups.forEach(groupName => {
+                        if (player.by_group[groupName] && player.by_group[groupName].team) {
+                            teams.add(player.by_group[groupName].team);
+                        }
                     });
                 }
-            }
-
-            function calculateAverages(stats) {
-                const matchCount = stats.matchCount || 0, totalRounds = stats.totalRounds || 0;
-                const result = { matchCount };
-                result.avg_acs = matchCount === 0 ? 0 : (stats.acs / matchCount);
-                result.avg_kills = matchCount === 0 ? 0 : (stats.kills / matchCount);
-                result.avg_deaths = matchCount === 0 ? 0 : (stats.deaths / matchCount);
-                result.avg_assists = matchCount === 0 ? 0 : (stats.assists / matchCount);
-                result.avg_kd = (stats.deaths === 0) ? Infinity : (stats.kills / stats.deaths);
-                result.kpr = totalRounds === 0 ? 0 : (stats.kills / totalRounds);
-                result.dpr = totalRounds === 0 ? 0 : (stats.deaths / totalRounds);
-                result.apr = totalRounds === 0 ? 0 : (stats.assists / totalRounds);
-                Object.keys(result).forEach(key => {
-                    if (typeof result[key] === 'number' && key !== 'matchCount') {
-                         if (result[key] === Infinity) result[key] = '∞';
-                         else result[key] = result[key].toFixed(2);
-                    }
-                });
-                return result;
-            }
-
-            function populateTeamFilter(data) {
-                teamFilter.innerHTML = '<option value="all">所有队伍</option>'; // 重置
-                const teams = new Set();
-                
-                const selectedGroup = groupFilterButtons.querySelector('.active').dataset.group;
-                const selectedStage = stageFilterButtons.querySelector('.active').dataset.stage;
-
-                for (const playerId in data) {
-                    const playerAllGroups = data[playerId];
-                    const groupsToProcess = (selectedGroup === 'all') ? Object.keys(playerAllGroups) : [selectedGroup];
-
-                    groupsToProcess.forEach(groupName => {
-                        const playerStages = playerAllGroups[groupName];
-                        if (!playerStages) return;
-                        const stagesToProcess = (selectedStage === 'all') ? Object.keys(playerStages) : [selectedStage];
-                        
-                        stagesToProcess.forEach(stageName => {
-                            const stageData = playerStages[stageName];
-                            if (stageData && stageData.team) teams.add(stageData.team);
-                        });
-                    });
-                }
-                const sortedTeams = Array.from(teams).sort();
-                sortedTeams.forEach(team => {
+                teamFilter.innerHTML = '';
+                Array.from(teams).sort().forEach(team => {
                     const option = document.createElement('option');
                     option.value = team;
-                    option.textContent = team;
+                    option.textContent = team === 'all' ? '所有队伍' : team;
                     teamFilter.appendChild(option);
                 });
             }
+            
+            function filterAndDisplayData() {
+                const selectedGroup = groupFilterButtons.querySelector('.active').dataset.group;
+                const selectedTeam = teamFilter.value;
+                const filteredPlayerData = {};
+
+                for (const playerId in allPlayerData) {
+                    const player = allPlayerData[playerId];
+                    let playerAggregatedStats = {
+                        id: playerId, team: '', matches_played: 0, total_k: 0, total_d: 0, total_a: 0, total_acs: 0, characters: {}
+                    };
+                    
+                    const groupsToProcess = selectedGroup === 'all' ? Object.keys(player.by_group) : [selectedGroup];
+
+                    groupsToProcess.forEach(groupName => {
+                        const groupData = player.by_group[groupName];
+                        if (groupData) {
+                            playerAggregatedStats.team = groupData.team;
+                            playerAggregatedStats.matches_played += groupData.total_stats.matchCount;
+                            playerAggregatedStats.total_k += groupData.total_stats.kills;
+                            playerAggregatedStats.total_d += groupData.total_stats.deaths;
+                            playerAggregatedStats.total_a += groupData.total_stats.assists;
+                            playerAggregatedStats.total_acs += groupData.total_stats.acs;
+
+                            for (const charName in groupData.by_character) {
+                                if (!playerAggregatedStats.characters[charName]) {
+                                    playerAggregatedStats.characters[charName] = { matchCount: 0 };
+                                }
+                                playerAggregatedStats.characters[charName].matchCount += groupData.by_character[charName].matchCount;
+                            }
+                        }
+                    });
+
+                    if (playerAggregatedStats.matches_played > 0) {
+                        if (selectedTeam === 'all' || playerAggregatedStats.team === selectedTeam) {
+                            playerAggregatedStats.avg_acs = playerAggregatedStats.total_acs / playerAggregatedStats.matches_played;
+                            playerAggregatedStats.kda = playerAggregatedStats.total_d > 0 ? (playerAggregatedStats.total_k + playerAggregatedStats.total_a) / playerAggregatedStats.total_d : (playerAggregatedStats.total_k + playerAggregatedStats.total_a);
+                            filteredPlayerData[playerId] = playerAggregatedStats;
+                        }
+                    }
+                }
+                updateTable(filteredPlayerData);
+            }
+
+            function updateTable(data) {
+                const tableBody = document.getElementById('stats-table-body');
+                const activeGroup = groupFilterButtons.querySelector('.active').dataset.group;
+                tableBody.innerHTML = '';
+
+                const sortedPlayerIds = Object.keys(data).sort((a, b) => {
+                    const aVal = data[a][currentSort.key];
+                    const bVal = data[b][currentSort.key];
+                    if (typeof aVal === 'string') {
+                        return currentSort.order === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                    }
+                    return currentSort.order === 'asc' ? aVal - bVal : bVal - aVal;
+                });
+
+                sortedPlayerIds.forEach(playerId => {
+                    const stats = data[playerId];
+                    const topChars = Object.entries(stats.characters)
+                        .sort(([,a],[,b]) => b.matchCount - a.matchCount)
+                        .slice(0, 3)
+                        .map(([charName]) => charName)
+                        .join('、') || 'N/A';
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><a href="player.html?id=${encodeURIComponent(playerId)}&group=${encodeURIComponent(activeGroup)}" target="_blank">${playerId}</a></td>
+                        <td>${stats.team}</td>
+                        <td>${topChars}</td>
+                        <td>${stats.matches_played}</td>
+                        <td>${stats.avg_acs.toFixed(2)}</td>
+                        <td>${stats.kda.toFixed(2)}</td>
+                        <td>${stats.total_k}</td>
+                        <td>${stats.total_d}</td>
+                        <td>${stats.total_a}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            groupFilterButtons.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    groupFilterButtons.querySelector('.active').classList.remove('active');
+                    e.target.classList.add('active');
+                    updateTeamFilter();
+                    filterAndDisplayData();
+                }
+            });
+
+            teamFilter.addEventListener('change', filterAndDisplayData);
+
+            tableHead.addEventListener('click', (e) => {
+                if (e.target.tagName === 'TH' && e.target.dataset.sortKey) {
+                    const key = e.target.dataset.sortKey;
+                    if (currentSort.key === key) {
+                        currentSort.order = currentSort.order === 'desc' ? 'asc' : 'desc';
+                    } else {
+                        currentSort.key = key;
+                        currentSort.order = 'desc';
+                    }
+                    filterAndDisplayData();
+                }
+            });
+
+            loadAndProcessData();
         });
     </script>
 </body>
