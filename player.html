@@ -53,18 +53,18 @@
         }
         header h1 { color: var(--primary-color); margin: 0; font-weight: 700; font-size: 2.5em; }
         .group-badge {
-            position: absolute; top: -1px; right: -1px; padding: 6px 15px;
-            border-bottom-left-radius: 12px; border-top-right-radius: 12px;
-            font-size: 0.9em; font-weight: 500; color: #0f1923; 
+            position: absolute; top: -1px; left: -1px; padding: 8px 20px;
+            border-bottom-right-radius: 12px; border-top-left-radius: 12px;
+            font-size: 1.1em; font-weight: 500; color: #0f1923; 
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
         .group-badge.legend { background-image: linear-gradient(135deg, #FFD700, #B8860B); }
         .group-badge.contender { background-image: linear-gradient(135deg, #e0e0e0, #a0a0a0); }
         .group-badge.challenger { background-image: linear-gradient(135deg, #CD7F32, #A0522D); }
 
-        .main-layout { display: flex; gap: 30px; align-items: flex-start; }
+        .main-layout { display: flex; gap: 30px; align-items: flex-start; flex-wrap: wrap; }
         #career-stats-card { flex: 1; min-width: 320px; position: sticky; top: 20px; }
-        #character-stats-section { flex: 2.5; }
+        #character-stats-section { flex: 2.5; min-width: 600px; }
 
         .data-section {
             background-color: var(--card-bg-color);
@@ -115,7 +115,7 @@
                 <h2>各角色平均数据</h2>
                 <div style="overflow-x: auto;">
                     <table id="character-stats-table">
-                        <thead>
+                         <thead>
                             <tr>
                                 <th>角色</th>
                                 <th>出场</th>

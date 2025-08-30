@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HWVCTS4 - 比赛中心</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap">
     <style>
         :root {
             --primary-color: #D64550;
@@ -75,21 +75,35 @@
         .filter-group button.active { background-color: var(--primary-color); color: white; opacity: 1; }
         .nav-button { padding: 0 25px; border: 2px solid var(--primary-color); color: var(--primary-color); text-decoration: none; }
         .nav-button:hover { background-color: var(--primary-color); color: white; }
-        main section { margin-bottom: 40px; }
-        main h2 {
-            font-size: 2em;
-            color: var(--primary-color);
-            border-bottom: 2px solid var(--border-color);
-            padding-bottom: 10px;
-            margin-bottom: 25px;
-            background-color: var(--header-bg-color);
-            backdrop-filter: blur(10px);
-            padding: 10px 15px;
-            border-radius: 8px;
+        
+        .functional-area {
+            position: relative;
+            padding-top: 50px; /* 为背景标题留出空间 */
+            margin-bottom: 50px;
         }
+        .background-title {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: clamp(60px, 12vw, 200px); /* 响应式字体大小 */
+            font-weight: 900;
+            color: var(--text-color);
+            opacity: 0.05;
+            z-index: 1;
+            text-transform: uppercase;
+            white-space: nowrap;
+            user-select: none;
+        }
+        .content-overlay {
+            position: relative;
+            z-index: 2;
+        }
+
         #matches-view {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
             gap: 25px;
         }
         .match-card {
@@ -99,11 +113,17 @@
             box-shadow: 0 4px 12px var(--shadow-color);
             border: 1px solid var(--border-color);
             overflow: hidden;
-            transition: transform 0.3s, box-shadow 0.3s;
+            transition: all 0.3s ease-in-out;
             cursor: pointer;
+            flex: 1 1 500px; 
+            max-width: 650px;
         }
         .match-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px var(--shadow-color); }
-        .match-card.expanded { grid-column: 1 / -1; cursor: default; transform: translateY(0); }
+        .match-card.expanded {
+            flex-basis: 100%; 
+            max-width: 100%;
+            cursor: default;
+        }
         .match-header { display: flex; flex-direction: column; padding: 15px 20px; position: relative; }
         .match-card::after {
             content: attr(data-stage-name);
@@ -152,7 +172,6 @@
     </style>
 </head>
 <body>
-
     <header>
         <div class="theme-switch-wrapper">
             <span id="theme-text"></span>
@@ -185,18 +204,22 @@
     </header>
 
     <main class="container">
-        <section id="matches-section">
-            <h2 id="matches-title">比赛结果 - 传奇组</h2>
-            <div id="matches-view"></div>
+        <section class="functional-area">
+            <div id="matches-title" class="background-title">比赛结果</div>
+            <div class="content-overlay">
+                <div id="matches-view"></div>
+            </div>
         </section>
-        <section id="standings-section">
-            <h2 id="standings-title">战队积分榜 - 传奇组</h2>
-            <table id="standings-table">
-                <thead>
-                    <tr><th>排名</th><th>队伍</th><th>胜场</th><th>负场</th><th>净胜分</th></tr>
-                </thead>
-                <tbody id="standings-table-body"></tbody>
-            </table>
+        <section class="functional-area">
+            <div id="standings-title" class="background-title">积分榜</div>
+            <div class="content-overlay">
+                <table id="standings-table">
+                    <thead>
+                        <tr><th>排名</th><th>队伍</th><th>胜场</th><th>负场</th><th>净胜分</th></tr>
+                    </thead>
+                    <tbody id="standings-table-body"></tbody>
+                </table>
+            </div>
         </section>
     </main>
 
@@ -209,8 +232,6 @@
             const themeText = document.getElementById('theme-text');
             const groupFilterButtons = document.getElementById('group-filter-buttons');
             const stageFilterButtons = document.getElementById('stage-filter-buttons');
-            const matchesTitle = document.getElementById('matches-title');
-            const standingsTitle = document.getElementById('standings-title');
             let tournamentData = { '传奇组': [], '中坚组': [], '挑战组': [] };
 
             function setTheme(isLight) {
@@ -259,8 +280,6 @@
             function updateDisplay() {
                 const activeGroup = groupFilterButtons.querySelector('.active').dataset.group;
                 const selectedStage = stageFilterButtons.querySelector('.active').dataset.stage;
-                matchesTitle.textContent = `比赛结果 - ${activeGroup}`;
-                standingsTitle.textContent = `战队积分榜 - ${activeGroup}`;
                 const filteredMatches = (tournamentData[activeGroup] || []).filter(match => selectedStage === 'all' || ((match['赛段'] === '小组赛' ? '小组赛' : '淘汰赛') === selectedStage));
                 displayMatchCards(filteredMatches);
                 calculateAndDisplayStandings(filteredMatches);
@@ -402,8 +421,10 @@
                 if (!clickedCard) return;
                 if (e.target.tagName === 'A') return;
                 const isExpanded = clickedCard.classList.contains('expanded');
-                document.querySelectorAll('.match-card.expanded').forEach(card => card.classList.remove('expanded'));
-                if (!isExpanded) clickedCard.classList.add('expanded');
+                document.querySelectorAll('.match-card.expanded').forEach(card => {
+                    if (card !== clickedCard) card.classList.remove('expanded');
+                });
+                clickedCard.classList.toggle('expanded');
             });
         });
     </script>
