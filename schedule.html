@@ -85,6 +85,13 @@
             border: 1px solid var(--border-color);
             padding: 20px;
         }
+        .group-section h3 {
+            text-align: center; /* 新增：居中标题 */
+            font-size: 1.5em;
+            color: var(--text-color);
+            opacity: 0.9;
+            margin-top: 20px;
+        }
         .bracket-container {
             width: 100%;
             overflow-x: auto;
@@ -92,9 +99,10 @@
         }
         .bracket {
             display: flex;
+            justify-content: center;
             gap: 40px;
             min-width: max-content;
-            padding: 20px 0;
+            padding: 20px;
             position: relative;
         }
         .round {
@@ -170,6 +178,10 @@
                     <button data-group="中坚组">中坚组</button>
                     <button data-group="挑战组">挑战组</button>
                 </div>
+                <div class="filter-group" id="stage-filters">
+                    <button class="active" data-stage="swiss">小组赛</button>
+                    <button data-stage="playoff">淘汰赛</button>
+                </div>
             </div>
         </div>
     </header>
@@ -177,14 +189,21 @@
     <main class="container">
         <section class="group-section">
             <h2 id="current-group-name" style="text-align:center; border:none; font-size: 2.2em;"></h2>
-            <h3>小组赛 (瑞士轮)</h3>
-            <div class="bracket-container">
-                <div id="swiss-bracket" class="bracket"></div>
+            
+            <div id="swiss-stage-section">
+                <h3>小组赛 (瑞士轮)</h3>
+                <div class="bracket-container">
+                    <div id="swiss-bracket" class="bracket"></div>
+                </div>
             </div>
-            <h3>淘汰赛 (双败)</h3>
-            <div class="bracket-container">
-                <div id="playoff-bracket" class="bracket"></div>
+
+            <div id="playoff-stage-section" style="display: none;">
+                <h3>淘汰赛 (双败)</h3>
+                <div class="bracket-container">
+                    <div id="playoff-bracket" class="bracket"></div>
+                </div>
             </div>
+
         </section>
     </main>
 
@@ -193,6 +212,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let allMatchesData = {};
     const themeToggle = document.getElementById('theme-toggle-checkbox');
     const themeText = document.getElementById('theme-text');
+    const groupFilters = document.getElementById('group-filters');
+    const stageFilters = document.getElementById('stage-filters');
+    const swissSection = document.getElementById('swiss-stage-section');
+    const playoffSection = document.getElementById('playoff-stage-section');
 
     function setTheme(isLight) {
         document.body.classList.toggle('light-theme', isLight);
@@ -235,7 +258,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = JSON.parse(JSON.stringify(rawData));
         const ensureNodeExists = (id) => { if (!data[id]) data[id] = {}; };
 
-        // --- 仅计算瑞士轮结果节点 ---
         ensureNodeExists('S3-PROMO-A'); data['S3-PROMO-A'].result_team = getWinner(data['S2-1W']);
         ensureNodeExists('S3-PROMO-B'); data['S3-PROMO-B'].result_team = getWinner(data['S2-2W']);
         ensureNodeExists('S3-ELIM-A'); data['S3-ELIM-A'].result_team = getLoser(data['S2-1L']);
@@ -244,8 +266,6 @@ document.addEventListener('DOMContentLoaded', () => {
         ensureNodeExists('S4-PROMO-B'); data['S4-PROMO-B'].result_team = getWinner(data['S3-2M']);
         ensureNodeExists('S4-ELIM-A'); data['S4-ELIM-A'].result_team = getLoser(data['S3-1M']);
         ensureNodeExists('S4-ELIM-B'); data['S4-ELIM-B'].result_team = getLoser(data['S3-2M']);
-
-        // --- 仅计算总冠军结果节点 ---
         ensureNodeExists('P-CHAMPION'); data['P-CHAMPION'].result_team = getWinner(data['P-GF']);
         
         return data;
@@ -319,11 +339,21 @@ document.addEventListener('DOMContentLoaded', () => {
         buildBracket(document.getElementById('playoff-bracket'), playoffBracketLayout, processedData);
     }
 
-    document.getElementById('group-filters').addEventListener('click', (e) => {
+    groupFilters.addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON') {
-            document.querySelector('#group-filters .active').classList.remove('active');
+            groupFilters.querySelector('.active').classList.remove('active');
             e.target.classList.add('active');
             renderBrackets(e.target.dataset.group);
+        }
+    });
+
+    stageFilters.addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') {
+            stageFilters.querySelector('.active').classList.remove('active');
+            e.target.classList.add('active');
+            const stage = e.target.dataset.stage;
+            swissSection.style.display = (stage === 'swiss') ? 'block' : 'none';
+            playoffSection.style.display = (stage === 'playoff') ? 'block' : 'none';
         }
     });
 
