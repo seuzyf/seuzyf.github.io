@@ -10,8 +10,8 @@
             --primary-color: #D64550;
             --bg-color: rgba(15, 25, 35, 0.85);
             --text-color: #ece8e1;
-            --card-bg-color: rgba(26, 40, 54, 0.8); /* 透明度增加 */
-            --header-bg-color: rgba(26, 40, 54, 0.85); /* 透明度增加 */
+            --card-bg-color: rgba(26, 40, 54, 0.8);
+            --header-bg-color: rgba(26, 40, 54, 0.85);
             --border-color: #2a3a49;
             --gold-color: #ffd700;
             --shadow-color: rgba(0,0,0,0.3);
@@ -24,8 +24,8 @@
             --primary-color: #D64550;
             --bg-color: rgba(240, 242, 245, 0.85);
             --text-color: #1c1e21;
-            --card-bg-color: rgba(255, 255, 255, 0.8); /* 透明度增加 */
-            --header-bg-color: rgba(255, 255, 255, 0.85); /* 透明度增加 */
+            --card-bg-color: rgba(255, 255, 255, 0.8);
+            --header-bg-color: rgba(255, 255, 255, 0.85);
             --border-color: #dadde1;
             --shadow-color: rgba(0,0,0,0.1);
             --group-stage-bg: rgba(83, 104, 126, 0.1);
@@ -130,7 +130,15 @@
         .stage-小组赛::after { background-color: #53687E; }
         .stage-淘汰赛::after { background-color: #4A90E2; }
         .stage-is-final::after { background-image: linear-gradient(135deg, #e4c400, #b48600); color: #0f1923; }
-        .match-meta { display: flex; justify-content: space-between; align-items: baseline; width: 100%; margin-bottom: 10px; }
+        
+        .match-meta {
+            display: flex;
+            justify-content: flex-start; /* 改为左对齐 */
+            align-items: baseline;
+            width: 100%;
+            margin-bottom: 10px;
+            gap: 15px; /* 增加地图和日期之间的间距 */
+        }
         .match-meta .map { font-weight: 500; font-size: 1.2em; }
         .match-meta .date { font-size: 0.8em; opacity: 0.8; }
         .match-teams { display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 1.3em; font-weight: bold; }
@@ -362,7 +370,7 @@
                         });
                     });
                 }
-                allPlayerData = playerData; // Store for local use
+                allPlayerData = playerData;
                 localStorage.setItem('valorantPlayerSummary', JSON.stringify(playerData));
             }
 
@@ -460,17 +468,17 @@
             }
             
             function showTeamRoster(teamName, groupName) {
-                const roster = [];
+                const roster = new Set();
                 for(const key in allPlayerData) {
                     const player = allPlayerData[key];
                     if(player.team === teamName && player.group === groupName) {
-                        roster.push(player.id);
+                        roster.add(player.id);
                     }
                 }
                 const rosterHTML = `
                     <div class="modal-header">${teamName} (${groupName}) 成员列表</div>
                     <ul class="roster-list">
-                        ${roster.length > 0 ? roster.map(name => `<li>${name}</li>`).join('') : '<li>暂无该队伍成员信息</li>'}
+                        ${roster.size > 0 ? Array.from(roster).map(name => `<li>${name}</li>`).join('') : '<li>暂无该队伍成员信息</li>'}
                     </ul>
                 `;
                 showModalWithContent(rosterHTML);
@@ -491,7 +499,7 @@
                 const activeGroup = groupFilterButtons.querySelector('.active').dataset.group;
                 if(teamName && activeGroup !== 'all') {
                     showTeamRoster(teamName, activeGroup);
-                } else {
+                } else if (teamName) {
                     alert('请先在上方筛选一个具体的组别，再查看队伍成员。');
                 }
             });
