@@ -133,11 +133,11 @@
         
         .match-meta {
             display: flex;
-            justify-content: flex-start; /* 改为左对齐 */
+            justify-content: flex-start;
             align-items: baseline;
             width: 100%;
             margin-bottom: 10px;
-            gap: 15px; /* 增加地图和日期之间的间距 */
+            gap: 15px;
         }
         .match-meta .map { font-weight: 500; font-size: 1.2em; }
         .match-meta .date { font-size: 0.8em; opacity: 0.8; }
@@ -285,8 +285,10 @@
                     if (!response.ok) throw new Error(`错误: data.xlsx 文件未找到。`);
                     const arrayBuffer = await response.arrayBuffer();
                     const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+                    
                     parseAllSheets(workbook);
-                    processAndStorePlayerData();
+                    processAndStorePlayerData(workbook);
+
                     document.querySelector('#group-filter-buttons button.active')?.classList.remove('active');
                     document.querySelector('#group-filter-buttons button[data-group="传奇组"]')?.classList.add('active');
                     updateDisplay();
@@ -329,7 +331,7 @@
                 });
             }
 
-            function processAndStorePlayerData() {
+            function processAndStorePlayerData(workbook) {
                 const playerData = {};
                 for (const groupName in tournamentData) {
                     tournamentData[groupName].forEach(match => {
@@ -372,6 +374,16 @@
                 }
                 allPlayerData = playerData;
                 localStorage.setItem('valorantPlayerSummary', JSON.stringify(playerData));
+
+                const idSheet = workbook.Sheets['id'];
+                if (idSheet) {
+                    const idData = XLSX.utils.sheet_to_json(idSheet);
+                    const idNameMap = idData.reduce((map, row) => {
+                        if(row.id && row.name) map[row.id] = row.name;
+                        return map;
+                    }, {});
+                    localStorage.setItem('valorantIdNameMap', JSON.stringify(idNameMap));
+                }
             }
 
             function displayMatchCards(matches) {
@@ -468,6 +480,7 @@
             }
             
             function showTeamRoster(teamName, groupName) {
+                const idNameMap = JSON.parse(localStorage.getItem('valorantIdNameMap') || '{}');
                 const roster = new Set();
                 for(const key in allPlayerData) {
                     const player = allPlayerData[key];
@@ -475,10 +488,14 @@
                         roster.add(player.id);
                     }
                 }
+                
                 const rosterHTML = `
                     <div class="modal-header">${teamName} (${groupName}) 成员列表</div>
                     <ul class="roster-list">
-                        ${roster.size > 0 ? Array.from(roster).map(name => `<li>${name}</li>`).join('') : '<li>暂无该队伍成员信息</li>'}
+                        ${roster.size > 0 ? Array.from(roster).map(playerId => {
+                            const realName = idNameMap[playerId] || playerId;
+                            return `<li>${realName} (${playerId})</li>`;
+                        }).join('') : '<li>暂无该队伍成员信息</li>'}
                     </ul>
                 `;
                 showModalWithContent(rosterHTML);

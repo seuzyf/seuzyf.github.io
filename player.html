@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>选手主页</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap">
     <style>
         :root {
             --primary-color: #D64550;
@@ -37,7 +37,7 @@
             background-position: center;
         }
         .container { width: 90%; max-width: 1400px; margin: 0 auto; }
-        header {
+        .main-header-block {
             background-color: var(--header-bg-color);
             backdrop-filter: blur(10px);
             padding: 25px;
@@ -48,7 +48,7 @@
             border: 1px solid var(--border-color);
             position: relative;
         }
-        header h1 { color: var(--primary-color); margin: 0; font-weight: 700; font-size: 2.5em; }
+        .main-header-block h1 { color: var(--primary-color); margin: 0; font-weight: 700; font-size: 2.5em; }
         .group-badge {
             position: absolute; top: -1px; left: -1px; padding: 8px 20px;
             border-bottom-right-radius: 12px; border-top-left-radius: 12px;
@@ -92,7 +92,7 @@
 </head>
 <body>
     <div class="container">
-        <header>
+        <div class="main-header-block">
             <div id="group-badge-container"></div>
             <div class="theme-switch-wrapper">
                 <span id="theme-text"></span>
@@ -102,7 +102,11 @@
                 </label>
             </div>
             <h1 id="player-id-header">Loading...</h1>
-        </header>
+             <div class="controls-container">
+                <a href="index.html" class="nav-button">返回比赛中心</a>
+                <a href="summary.html" class="nav-button">查看选手数据</a>
+            </div>
+        </div>
         <main class="main-layout">
             <section class="data-section" id="career-stats-card">
                 <h2>生涯平均数据</h2>
@@ -132,63 +136,120 @@
         </main>
     </div>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    const params = new URLSearchParams(window.location.search);
-    const playerId = params.get('id');
-    const groupName = params.get('group');
+    document.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        const playerId = params.get('id');
+        const groupName = params.get('group');
 
-    if (!playerId || !groupName) {
-        document.body.innerHTML = '<h1>错误：缺少选手ID或组别信息</h1>';
-        return;
-    }
+        if (!playerId || !groupName) {
+            document.body.innerHTML = '<h1>错误：缺少选手ID或组别信息</h1>';
+            return;
+        }
 
-    const themeToggle = document.getElementById('theme-toggle-checkbox');
-    const themeText = document.getElementById('theme-text');
-    function setTheme(isLight) {
-        document.body.classList.toggle('light-theme', isLight);
-        themeToggle.checked = isLight;
-        themeText.textContent = isLight ? '点击切换夜间模式' : '点击切换日间模式';
-        localStorage.setItem('theme', isLight ? 'light' : 'dark');
-    }
-    const savedTheme = localStorage.getItem('theme');
-    setTheme((savedTheme === null) ? true : (savedTheme === 'light'));
-    themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
+        const themeToggle = document.getElementById('theme-toggle-checkbox');
+        const themeText = document.getElementById('theme-text');
+        function setTheme(isLight) {
+            document.body.classList.toggle('light-theme', isLight);
+            themeToggle.checked = isLight;
+            themeText.textContent = isLight ? '点击切换夜间模式' : '点击切换日间模式';
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        }
+        const savedTheme = localStorage.getItem('theme');
+        setTheme((savedTheme === null) ? true : (savedTheme === 'light'));
+        themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
+        
+        const allPlayerData = JSON.parse(localStorage.getItem('valorantPlayerSummary') || '{}');
+        const idNameMap = JSON.parse(localStorage.getItem('valorantIdNameMap') || '{}');
 
-    document.getElementById('player-id-header').textContent = playerId;
-    const groupBadgeContainer = document.getElementById('group-badge-container');
-    let groupClass = '';
-    if (groupName === '传奇组') groupClass = 'legend';
-    else if (groupName === '中坚组') groupClass = 'contender';
-    else if (groupName === '挑战组') groupClass = 'challenger';
-    groupBadgeContainer.innerHTML = `<div class="group-badge ${groupClass}">${groupName}</div>`;
-    
-    const allPlayerData = JSON.parse(localStorage.getItem('valorantPlayerSummary') || '{}');
-    if (Object.keys(allPlayerData).length === 0) {
-        document.getElementById('summary-list-content').innerHTML = `<p style="color:red;">数据未加载。请先访问比赛中心主页以生成统计数据。</p>`;
-        return;
-    }
+        if (Object.keys(allPlayerData).length === 0) {
+            document.getElementById('summary-list-content').innerHTML = `<p style="color:red;">数据未加载。请先访问比赛中心主页以生成统计数据。</p>`;
+            return;
+        }
+        
+        const realName = idNameMap[playerId] || playerId;
+        document.getElementById('player-id-header').textContent = `${realName} (${playerId})`;
 
-    const uniquePlayerKey = `${playerId}::${groupName}`;
-    const playerData = allPlayerData[uniquePlayerKey];
+        const groupBadgeContainer = document.getElementById('group-badge-container');
+        let groupClass = '';
+        if (groupName === '传奇组') groupClass = 'legend';
+        else if (groupName === '中坚组') groupClass = 'contender';
+        else if (groupName === '挑战组') groupClass = 'challenger';
+        groupBadgeContainer.innerHTML = `<div class="group-badge ${groupClass}">${groupName}</div>`;
 
-    if (!playerData) {
-        document.body.innerHTML = `<h1>错误：未找到选手 ${playerId} 在 ${groupName} 组的数据</h1>`;
-        return;
-    }
+        const uniquePlayerKey = `${playerId}::${groupName}`;
+        const playerData = allPlayerData[uniquePlayerKey];
 
-    function getRank(id, key, rankList, invert = false) {
-        const sortedList = [...rankList].sort((a, b) => invert ? a[key] - b[key] : b[key] - a[key]);
-        const rank = sortedList.findIndex(p => p.id === id) + 1;
-        return rank > 0 ? `(TOP ${rank})` : '';
-    }
-    
-    const groupPlayersForRank = [];
-    for (const key in allPlayerData) {
-        const p = allPlayerData[key];
-        if (p.group === groupName) {
-            const stats = p.total_stats;
-            groupPlayersForRank.push({
-                id: p.id,
+        if (!playerData) {
+            document.body.innerHTML = `<h1>错误：未找到选手 ${playerId} 在 ${groupName} 组的数据</h1>`;
+            return;
+        }
+
+        function getRank(id, key, rankList, invert = false) {
+            const sortedList = [...rankList].sort((a, b) => invert ? a[key] - b[key] : b[key] - a[key]);
+            const rank = sortedList.findIndex(p => p.id === id) + 1;
+            return rank > 0 ? `(TOP ${rank})` : '';
+        }
+        
+        const groupPlayersForRank = [];
+        for (const key in allPlayerData) {
+            const p = allPlayerData[key];
+            if (p.group === groupName) {
+                const stats = p.total_stats;
+                groupPlayersForRank.push({
+                    id: p.id,
+                    acs: stats.matchCount > 0 ? stats.acs / stats.matchCount : 0,
+                    k_map: stats.matchCount > 0 ? stats.kills / stats.matchCount : 0,
+                    d_map: stats.matchCount > 0 ? stats.deaths / stats.matchCount : 0,
+                    a_map: stats.matchCount > 0 ? stats.assists / stats.matchCount : 0,
+                    k_round: stats.totalRounds > 0 ? stats.kills / stats.totalRounds : 0,
+                    d_round: stats.totalRounds > 0 ? stats.deaths / stats.totalRounds : 0,
+                    a_round: stats.totalRounds > 0 ? stats.assists / stats.totalRounds : 0,
+                });
+            }
+        }
+        const playerTotals = playerData.total_stats;
+        const playerAverages = {
+            acs: playerTotals.matchCount > 0 ? playerTotals.acs / playerTotals.matchCount : 0,
+            k_map: playerTotals.matchCount > 0 ? playerTotals.kills / playerTotals.matchCount : 0,
+            d_map: playerTotals.matchCount > 0 ? playerTotals.deaths / playerTotals.matchCount : 0,
+            a_map: playerTotals.matchCount > 0 ? playerTotals.assists / playerTotals.matchCount : 0,
+            k_round: playerTotals.totalRounds > 0 ? playerTotals.kills / playerTotals.totalRounds : 0,
+            d_round: playerTotals.totalRounds > 0 ? playerTotals.deaths / playerTotals.totalRounds : 0,
+            a_round: playerTotals.totalRounds > 0 ? playerTotals.assists / playerTotals.totalRounds : 0,
+        };
+        
+        document.getElementById('summary-list-content').innerHTML = `
+            <div><strong>平均ACS:</strong> <span>${playerAverages.acs.toFixed(2)} <span class="rank-top">${getRank(playerId, 'acs', groupPlayersForRank)}</span></span></div>
+            <div><strong>每局击杀:</strong> <span>${playerAverages.k_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_map', groupPlayersForRank)}</span></span></div>
+            <div><strong>每局死亡:</strong> <span>${playerAverages.d_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_map', groupPlayersForRank, true)}</span></span></div>
+            <div><strong>每局助攻:</strong> <span>${playerAverages.a_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_map', groupPlayersForRank)}</span></span></div>
+            <div><strong>每回合击杀:</strong> <span>${playerAverages.k_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_round', groupPlayersForRank)}</span></span></div>
+            <div><strong>每回合死亡:</strong> <span>${playerAverages.d_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_round', groupPlayersForRank, true)}</span></span></div>
+            <div><strong>每回合助攻:</strong> <span>${playerAverages.a_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_round', groupPlayersForRank)}</span></span></div>
+        `;
+
+        const tableBody = document.getElementById('character-stats-body');
+        tableBody.innerHTML = '';
+        Object.entries(playerData.by_character).sort(([,a],[,b]) => b.matchCount - a.matchCount).forEach(([charName, stats]) => {
+            const charPlayersForRank = [];
+            for (const key in allPlayerData) {
+                const p = allPlayerData[key];
+                if (p.group === groupName && p.by_character[charName]) {
+                    const c_stats = p.by_character[charName];
+                    charPlayersForRank.push({
+                        id: p.id,
+                        acs: c_stats.matchCount > 0 ? c_stats.acs / c_stats.matchCount : 0,
+                        k_map: c_stats.matchCount > 0 ? c_stats.kills / c_stats.matchCount : 0,
+                        d_map: c_stats.matchCount > 0 ? c_stats.deaths / c_stats.matchCount : 0,
+                        a_map: c_stats.matchCount > 0 ? c_stats.assists / c_stats.matchCount : 0,
+                        k_round: c_stats.totalRounds > 0 ? c_stats.kills / c_stats.totalRounds : 0,
+                        d_round: c_stats.totalRounds > 0 ? c_stats.deaths / c_stats.totalRounds : 0,
+                        a_round: c_stats.totalRounds > 0 ? c_stats.assists / c_stats.totalRounds : 0,
+                    });
+                }
+            }
+            
+            const avg = {
                 acs: stats.matchCount > 0 ? stats.acs / stats.matchCount : 0,
                 k_map: stats.matchCount > 0 ? stats.kills / stats.matchCount : 0,
                 d_map: stats.matchCount > 0 ? stats.deaths / stats.matchCount : 0,
@@ -196,76 +257,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 k_round: stats.totalRounds > 0 ? stats.kills / stats.totalRounds : 0,
                 d_round: stats.totalRounds > 0 ? stats.deaths / stats.totalRounds : 0,
                 a_round: stats.totalRounds > 0 ? stats.assists / stats.totalRounds : 0,
-            });
-        }
-    }
-    const playerTotals = playerData.total_stats;
-    const playerAverages = {
-        acs: playerTotals.matchCount > 0 ? playerTotals.acs / playerTotals.matchCount : 0,
-        k_map: playerTotals.matchCount > 0 ? playerTotals.kills / playerTotals.matchCount : 0,
-        d_map: playerTotals.matchCount > 0 ? playerTotals.deaths / playerTotals.matchCount : 0,
-        a_map: playerTotals.matchCount > 0 ? playerTotals.assists / playerTotals.matchCount : 0,
-        k_round: playerTotals.totalRounds > 0 ? playerTotals.kills / playerTotals.totalRounds : 0,
-        d_round: playerTotals.totalRounds > 0 ? playerTotals.deaths / playerTotals.totalRounds : 0,
-        a_round: playerTotals.totalRounds > 0 ? playerTotals.assists / playerTotals.totalRounds : 0,
-    };
-    
-    document.getElementById('summary-list-content').innerHTML = `
-        <div><strong>平均ACS:</strong> <span>${playerAverages.acs.toFixed(2)} <span class="rank-top">${getRank(playerId, 'acs', groupPlayersForRank)}</span></span></div>
-        <div><strong>每局击杀:</strong> <span>${playerAverages.k_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_map', groupPlayersForRank)}</span></span></div>
-        <div><strong>每局死亡:</strong> <span>${playerAverages.d_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_map', groupPlayersForRank, true)}</span></span></div>
-        <div><strong>每局助攻:</strong> <span>${playerAverages.a_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_map', groupPlayersForRank)}</span></span></div>
-        <div><strong>每回合击杀:</strong> <span>${playerAverages.k_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_round', groupPlayersForRank)}</span></span></div>
-        <div><strong>每回合死亡:</strong> <span>${playerAverages.d_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_round', groupPlayersForRank, true)}</span></span></div>
-        <div><strong>每回合助攻:</strong> <span>${playerAverages.a_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_round', groupPlayersForRank)}</span></span></div>
-    `;
+            };
 
-    const tableBody = document.getElementById('character-stats-body');
-    tableBody.innerHTML = '';
-    Object.entries(playerData.by_character).sort(([,a],[,b]) => b.matchCount - a.matchCount).forEach(([charName, stats]) => {
-        const charPlayersForRank = [];
-         for (const key in allPlayerData) {
-            const p = allPlayerData[key];
-            if (p.group === groupName && p.by_character[charName]) {
-                const c_stats = p.by_character[charName];
-                charPlayersForRank.push({
-                    id: p.id,
-                    acs: c_stats.matchCount > 0 ? c_stats.acs / c_stats.matchCount : 0,
-                    k_map: c_stats.matchCount > 0 ? c_stats.kills / c_stats.matchCount : 0,
-                    d_map: c_stats.matchCount > 0 ? c_stats.deaths / c_stats.matchCount : 0,
-                    a_map: c_stats.matchCount > 0 ? c_stats.assists / c_stats.matchCount : 0,
-                    k_round: c_stats.totalRounds > 0 ? c_stats.kills / c_stats.totalRounds : 0,
-                    d_round: c_stats.totalRounds > 0 ? c_stats.deaths / c_stats.totalRounds : 0,
-                    a_round: c_stats.totalRounds > 0 ? c_stats.assists / c_stats.totalRounds : 0,
-                });
-            }
-        }
-        
-        const avg = {
-            acs: stats.matchCount > 0 ? stats.acs / stats.matchCount : 0,
-            k_map: stats.matchCount > 0 ? stats.kills / stats.matchCount : 0,
-            d_map: stats.matchCount > 0 ? stats.deaths / stats.matchCount : 0,
-            a_map: stats.matchCount > 0 ? stats.assists / stats.matchCount : 0,
-            k_round: stats.totalRounds > 0 ? stats.kills / stats.totalRounds : 0,
-            d_round: stats.totalRounds > 0 ? stats.deaths / stats.totalRounds : 0,
-            a_round: stats.totalRounds > 0 ? stats.assists / stats.totalRounds : 0,
-        };
-
-        tableBody.innerHTML += `
-            <tr>
-                <td><strong>${charName}</strong></td>
-                <td>${stats.matchCount}</td>
-                <td>${avg.acs.toFixed(2)} <span class="rank-top">${getRank(playerId, 'acs', charPlayersForRank)}</span></td>
-                <td>${avg.k_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_map', charPlayersForRank)}</span></td>
-                <td>${avg.d_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_map', charPlayersForRank, true)}</span></td>
-                <td>${avg.a_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_map', charPlayersForRank)}</span></td>
-                <td>${avg.k_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_round', charPlayersForRank)}</span></td>
-                <td>${avg.d_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_round', charPlayersForRank, true)}</span></td>
-                <td>${avg.a_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_round', charPlayersForRank)}</span></td>
-            </tr>
-        `;
+            tableBody.innerHTML += `
+                <tr>
+                    <td><strong>${charName}</strong></td>
+                    <td>${stats.matchCount}</td>
+                    <td>${avg.acs.toFixed(2)} <span class="rank-top">${getRank(playerId, 'acs', charPlayersForRank)}</span></td>
+                    <td>${avg.k_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_map', charPlayersForRank)}</span></td>
+                    <td>${avg.d_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_map', charPlayersForRank, true)}</span></td>
+                    <td>${avg.a_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_map', charPlayersForRank)}</span></td>
+                    <td>${avg.k_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_round', charPlayersForRank)}</span></td>
+                    <td>${avg.d_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_round', charPlayersForRank, true)}</span></td>
+                    <td>${avg.a_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_round', charPlayersForRank)}</span></td>
+                </tr>
+            `;
+        });
     });
-});
 </script>
 </body>
 </html>
