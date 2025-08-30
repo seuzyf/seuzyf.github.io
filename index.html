@@ -90,7 +90,7 @@
         }
         #matches-view {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(650px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(680px, 1fr)); /* 稍微加宽以容纳新列 */
             gap: 25px;
         }
         .match-card {
@@ -134,8 +134,8 @@
         .player-comparison-table .team-name-header { font-size: 1.4em; font-weight: 700; }
         .player-comparison-table .score-cell { font-size: 1.8em; font-weight: 700; color: var(--primary-color); vertical-align: middle; border-bottom: 1px solid var(--border-color); }
         .player-comparison-table .stat-header th { font-weight: normal; opacity: 0.8; font-size: 0.85em; background-color: rgba(0,0,0,0.03); }
-        .player-comparison-table td.player-id { font-weight: 500; text-align: left; display: flex; align-items: center; white-space: nowrap; }
-        .player-character { font-size: 0.8em; opacity: 0.7; margin-left: 8px; font-style: italic; color: var(--gold-color); }
+        .player-comparison-table td.player-id { font-weight: 500; text-align: left; white-space: nowrap; }
+        .player-comparison-table td.player-character { font-weight: 500; } /* 角色列样式 */
         .player-comparison-table td.player-acs { font-weight: bold; color: var(--primary-color); }
         .player-comparison-table .separator { width: 1px; padding: 0; }
         #standings-table { width: 100%; border-collapse: collapse; background-color: var(--card-bg-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px var(--shadow-color); border: 1px solid var(--border-color); }
@@ -241,7 +241,7 @@
                     const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
                     
                     parseAllSheets(workbook);
-                    processAndStorePlayerData();
+                    processAndStorePlayerData(); // 关键函数已重写
                     
                     const firstGroupButton = groupFilterButtons.querySelector('button');
                     if (firstGroupButton) {
@@ -301,11 +301,15 @@
                 });
             }
             
+            // --- 核心改动：重写数据处理函数 ---
             function processAndStorePlayerData() {
                 const playerData = {};
+                const rankingData = { by_group: {}, by_character: {} };
+
                 for (const groupName in tournamentData) {
+                    if (!rankingData.by_group[groupName]) rankingData.by_group[groupName] = [];
+                    
                     tournamentData[groupName].forEach(match => {
-                        const stageType = (match['赛段'] === '小组赛') ? '小组赛' : '淘汰赛';
                         ['teamA', 'teamB'].forEach(teamKey => {
                             const teamName = match[teamKey];
                             for (let p = 1; p <= 5; p++) {
@@ -319,11 +323,11 @@
                                     
                                     if (!playerData[playerId]) playerData[playerId] = { by_group: {} };
                                     if (!playerData[playerId].by_group[groupName]) {
-                                        playerData[playerId].by_group[groupName] = { total_stats: { kills: 0, deaths: 0, assists: 0, matchCount: 0, acs: 0 }, by_character: {} };
+                                        playerData[playerId].by_group[groupName] = { team: teamName, total_stats: { kills: 0, deaths: 0, assists: 0, matchCount: 0, acs: 0 }, by_character: {} };
                                     }
                                     const playerGroup = playerData[playerId].by_group[groupName];
-
                                     playerGroup.team = teamName;
+
                                     playerGroup.total_stats.acs += stats[0];
                                     playerGroup.total_stats.kills += stats[1];
                                     playerGroup.total_stats.deaths += stats[2];
@@ -341,13 +345,43 @@
                                         charStats.deaths += stats[2];
                                         charStats.assists += stats[3];
                                         charStats.matchCount++;
+
+                                        if(!rankingData.by_character[charName]) rankingData.by_character[charName] = [];
                                     }
                                 }
                             }
                         });
                     });
                 }
+
+                // 第二次遍历，计算平均值并填充排名数据
+                for(const playerId in playerData) {
+                    for(const groupName in playerData[playerId].by_group) {
+                        const pGroup = playerData[playerId].by_group[groupName].total_stats;
+                        if(pGroup.matchCount > 0) {
+                             rankingData.by_group[groupName].push({
+                                id: playerId,
+                                acs: pGroup.acs / pGroup.matchCount,
+                                kda: pGroup.deaths > 0 ? (pGroup.kills + pGroup.assists) / pGroup.deaths : (pGroup.kills + pGroup.assists),
+                             });
+                        }
+                        
+                        for(const charName in playerData[playerId].by_group[groupName].by_character) {
+                             const cStats = playerData[playerId].by_group[groupName].by_character[charName];
+                             if(cStats.matchCount > 0) {
+                                rankingData.by_character[charName].push({
+                                    id: playerId,
+                                    group: groupName,
+                                    acs: cStats.acs / cStats.matchCount,
+                                    kda: cStats.deaths > 0 ? (cStats.kills + cStats.assists) / cStats.deaths : (cStats.kills + cStats.assists),
+                                });
+                             }
+                        }
+                    }
+                }
+
                 localStorage.setItem('valorantPlayerSummary', JSON.stringify(playerData));
+                localStorage.setItem('valorantRankingData', JSON.stringify(rankingData));
             }
             
             function displayMatchCards(matches) {
@@ -395,12 +429,19 @@
                 teamAPlayers.sort((a, b) => b.acs - a.acs);
                 teamBPlayers.sort((a, b) => b.acs - a.acs);
                 let rowsHTML = '';
+                const placeholder = { id: '-', ch: '-', acs: '-', k: '-', d: '-', a: '-' };
                 for (let i = 0; i < 5; i++) {
-                    const pA = teamAPlayers[i] || { id: '-', acs: '-', k: '-', d: '-', a: '-' };
-                    const pB = teamBPlayers[i] || { id: '-', acs: '-', k: '-', d: '-', a: '-' };
-                    const charA = pA.ch ? `<span class="player-character">${pA.ch}</span>` : '';
-                    const charB = pB.ch ? `<span class="player-character">${pB.ch}</span>` : '';
-                    rowsHTML += `<tr><td class="player-id">${pA.id}${charA}</td><td class="player-acs">${pA.acs}</td><td>${pA.k}</td><td>${pA.d}</td><td>${pA.a}</td><td class="separator"></td><td class="player-id">${pB.id}${charB}</td><td class="player-acs">${pB.acs}</td><td>${pB.k}</td><td>${pB.d}</td><td>${pB.a}</td></tr>`;
+                    const pA = teamAPlayers[i] || placeholder;
+                    const pB = teamBPlayers[i] || placeholder;
+                    rowsHTML += `<tr>
+                        <td class="player-id">${pA.id}</td>
+                        <td class="player-character">${pA.ch}</td>
+                        <td class="player-acs">${pA.acs}</td><td>${pA.k}</td><td>${pA.d}</td><td>${pA.a}</td>
+                        <td class="separator"></td>
+                        <td class="player-id">${pB.id}</td>
+                        <td class="player-character">${pB.ch}</td>
+                        <td class="player-acs">${pB.acs}</td><td>${pB.k}</td><td>${pB.d}</td><td>${pB.a}</td>
+                    </tr>`;
                 }
                 const score = String(matchData['比分']).replace(/[/：]/, ' : ');
                 const stageType = (matchData['赛段'] === '小组赛') ? '小组赛' : '淘汰赛';
@@ -410,8 +451,8 @@
                         <div class="match-header"><div class="match-info"><span class="map">${matchData['比赛地图']}</span><span class="date">${matchData['比赛日期']}</span></div></div>
                         <div class="match-body"><table class="player-comparison-table">
                             <thead>
-                                <tr><th colspan="5" class="team-name-header">${matchData['teamA']}</th><th class="score-cell">${score}</th><th colspan="5" class="team-name-header">${matchData['teamB']}</th></tr>
-                                <tr class="stat-header"><th>ID/角色</th><th>ACS</th><th>K</th><th>D</th><th>A</th><th class="separator"></th><th>ID/角色</th><th>ACS</th><th>K</th><th>D</th><th>A</th></tr>
+                                <tr><th colspan="6" class="team-name-header">${matchData['teamA']}</th><th class="score-cell">${score}</th><th colspan="6" class="team-name-header">${matchData['teamB']}</th></tr>
+                                <tr class="stat-header"><th>ID</th><th>角色</th><th>ACS</th><th>K</th><th>D</th><th>A</th><th class="separator"></th><th>ID</th><th>角色</th><th>ACS</th><th>K</th><th>D</th><th>A</th></tr>
                             </thead>
                             <tbody>${rowsHTML}</tbody>
                         </table></div>

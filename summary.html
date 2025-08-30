@@ -159,6 +159,10 @@
 
             function loadAndProcessData() {
                 const rawData = JSON.parse(localStorage.getItem('valorantPlayerSummary') || '{}');
+                if(Object.keys(rawData).length === 0){
+                    alert("请先访问比赛中心主页以加载和处理最新数据！");
+                    return;
+                }
                 allPlayerData = rawData;
                 updateTeamFilter();
                 filterAndDisplayData();
@@ -166,7 +170,7 @@
 
             function updateTeamFilter() {
                 const selectedGroup = groupFilterButtons.querySelector('.active').dataset.group;
-                const teams = new Set(['all']);
+                const teams = new Set();
                 for (const playerId in allPlayerData) {
                     const player = allPlayerData[playerId];
                     const groups = selectedGroup === 'all' ? Object.keys(player.by_group) : [selectedGroup];
@@ -176,13 +180,15 @@
                         }
                     });
                 }
-                teamFilter.innerHTML = '';
+                const currentTeam = teamFilter.value;
+                teamFilter.innerHTML = '<option value="all">所有队伍</option>';
                 Array.from(teams).sort().forEach(team => {
                     const option = document.createElement('option');
                     option.value = team;
-                    option.textContent = team === 'all' ? '所有队伍' : team;
+                    option.textContent = team;
                     teamFilter.appendChild(option);
                 });
+                teamFilter.value = teams.has(currentTeam) ? currentTeam : 'all';
             }
             
             function filterAndDisplayData() {
@@ -267,7 +273,7 @@
             }
 
             groupFilterButtons.addEventListener('click', (e) => {
-                if (e.target.tagName === 'BUTTON') {
+                if (e.target.tagName === 'BUTTON' && !e.target.classList.contains('active')) {
                     groupFilterButtons.querySelector('.active').classList.remove('active');
                     e.target.classList.add('active');
                     updateTeamFilter();

@@ -14,6 +14,7 @@
             --header-bg-color: rgba(26, 40, 54, 0.95);
             --border-color: #2a3a49;
             --shadow-color: rgba(0,0,0,0.3);
+            --winner-color: #4CAF50; /* 绿色字体 */
         }
         body.light-theme {
             --primary-color: #D64550;
@@ -63,6 +64,7 @@
         .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; font-size: 1.2em; }
         .summary-grid div { background-color: var(--bg-color); padding: 15px; border-radius: 8px; }
         .summary-grid strong { color: var(--primary-color); }
+        .rank-top-percent { font-size: 0.9em; color: var(--winner-color); margin-left: 8px; font-weight: bold; }
         .rank { font-size: 0.85em; color: #999; margin-left: 8px; }
         #character-stats-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         #character-stats-table thead { background-color: var(--primary-color); color: white; }
@@ -79,7 +81,7 @@
         <main>
             <section class="data-section" id="summary-card">
                 <h2>总览数据</h2>
-                <div class="summary-grid" id="summary-grid-content"></div>
+                <div class="summary-grid" id="summary-grid-content"><p>正在计算数据...</p></div>
             </section>
             <section class="data-section" id="character-stats-section">
                 <h2>角色数据详情</h2>
@@ -90,8 +92,6 @@
                             <th>出场次数</th>
                             <th>平均ACS</th>
                             <th>KDA</th>
-                            <th>场均击杀</th>
-                            <th>场均死亡</th>
                         </tr>
                     </thead>
                     <tbody id="character-stats-body"></tbody>
@@ -104,14 +104,23 @@
 document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     const playerId = params.get('id');
-    const groupName = params.get('group') === 'all' ? null : params.get('group');
+    const groupName = params.get('group');
 
     if (!playerId) {
         document.body.innerHTML = '<h1>错误：缺少选手ID信息</h1>';
         return;
     }
 
+    document.getElementById('player-id-header').textContent = playerId;
+
     const allPlayerData = JSON.parse(localStorage.getItem('valorantPlayerSummary') || '{}');
+    const allRankingData = JSON.parse(localStorage.getItem('valorantRankingData') || '{}');
+
+    if (Object.keys(allPlayerData).length === 0 || Object.keys(allRankingData).length === 0) {
+        document.getElementById('summary-grid-content').innerHTML = `<p style="color:red;">数据未加载。请先访问比赛中心主页以生成统计数据，然后再访问此页面。</p>`;
+        return;
+    }
+
     const playerData = allPlayerData[playerId];
 
     if (!playerData) {
@@ -121,8 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 核心数据处理与排名计算 ---
     function calculateAveragesAndRanks() {
-        // 1. 聚合选定组别的数据
-        const groupsToProcess = groupName ? [groupName] : Object.keys(playerData.by_group);
+        const groupsToProcess = (groupName && groupName !== 'all') ? [groupName] : Object.keys(playerData.by_group);
         let total = { kills: 0, deaths: 0, assists: 0, matchCount: 0, acs: 0 };
         let aggregatedChars = {};
 
@@ -150,97 +158,50 @@ document.addEventListener('DOMContentLoaded', () => {
         const playerAverages = {
             acs: total.matchCount > 0 ? total.acs / total.matchCount : 0,
             kda: total.deaths > 0 ? (total.kills + total.assists) / total.deaths : total.kills + total.assists,
-            avgK: total.matchCount > 0 ? total.kills / total.matchCount : 0,
-            avgD: total.matchCount > 0 ? total.deaths / total.matchCount : 0,
         };
-
-        // 2. 计算排名
-        const playerRanks = {};
+        
+        // 计算组内排名
         const groupRanks = {};
-
-        // 2.1 组内排名
-        if (groupName) {
-            const groupPlayers = [];
-            for (const pId in allPlayerData) {
-                const pData = allPlayerData[pId].by_group[groupName];
-                if (pData) {
-                    groupPlayers.push({
-                        id: pId,
-                        acs: pData.total_stats.matchCount > 0 ? pData.total_stats.acs / pData.total_stats.matchCount : 0,
-                        kda: pData.total_stats.deaths > 0 ? (pData.total_stats.kills + pData.total_stats.assists) / pData.total_stats.deaths : (pData.total_stats.kills + pData.total_stats.assists),
-                        avgK: pData.total_stats.matchCount > 0 ? pData.total_stats.kills / pData.total_stats.matchCount : 0,
-                        avgD: pData.total_stats.matchCount > 0 ? pData.total_stats.deaths / pData.total_stats.matchCount : 0,
-                    });
-                }
-            }
+        if (groupName && groupName !== 'all' && allRankingData.by_group[groupName]) {
+            const groupPlayers = allRankingData.by_group[groupName];
             groupRanks.total = groupPlayers.length;
-            ['acs', 'kda', 'avgK'].forEach(key => {
-                groupRanks[key] = groupPlayers.sort((a,b) => b[key] - a[key]).findIndex(p => p.id === playerId) + 1;
+            ['acs', 'kda'].forEach(key => {
+                const rank = groupPlayers.sort((a,b) => b[key] - a[key]).findIndex(p => p.id === playerId) + 1;
+                groupRanks[key] = rank > 0 ? Math.ceil((rank / groupRanks.total) * 100) : 100;
             });
-            groupRanks['avgD'] = groupPlayers.sort((a,b) => a[key] - b[key]).findIndex(p => p.id === playerId) + 1; // 死亡越少越好
         }
+        
+        // 渲染总览
+        const summaryGrid = document.getElementById('summary-grid-content');
+        summaryGrid.innerHTML = `
+            <div><strong>平均ACS:</strong> ${playerAverages.acs.toFixed(2)} ${groupRanks.acs ? `<span class="rank-top-percent">(TOP ${groupRanks.acs}%)</span>` : ''}</div>
+            <div><strong>KDA:</strong> ${playerAverages.kda.toFixed(2)} ${groupRanks.kda ? `<span class="rank-top-percent">(TOP ${groupRanks.kda}%)</span>` : ''}</div>
+        `;
 
-        // 2.2 角色排名
-        for (const charName in aggregatedChars) {
-            const charPlayers = [];
-            for (const pId in allPlayerData) {
-                Object.values(allPlayerData[pId].by_group).forEach(g => {
-                    if (g.by_character[charName]) {
-                        const charData = g.by_character[charName];
-                        charPlayers.push({
-                            id: pId,
-                            acs: charData.matchCount > 0 ? charData.acs / charData.matchCount : 0,
-                            kda: charData.deaths > 0 ? (charData.kills + charData.assists) / charData.deaths : charData.kills + charData.assists,
-                            avgK: charData.matchCount > 0 ? charData.kills / charData.matchCount : 0,
-                            avgD: charData.matchCount > 0 ? charData.deaths / charData.matchCount : 0,
-                        });
-                    }
-                });
-            }
-            
-            playerRanks[charName] = { total: charPlayers.length };
-            ['acs', 'kda', 'avgK'].forEach(key => {
-                playerRanks[charName][key] = [...new Set(charPlayers.map(p => p.id))].length; // 去重计算总人数
-                playerRanks[charName][key+'_rank'] = charPlayers.sort((a,b) => b[key] - a[key]).findIndex(p => p.id === playerId) + 1;
-            });
-            playerRanks[charName]['avgD_rank'] = charPlayers.sort((a,b) => a['avgD'] - b['avgD']).findIndex(p => p.id === playerId) + 1;
-        }
+        // 渲染角色表格
+        const tableBody = document.getElementById('character-stats-body');
+        tableBody.innerHTML = '';
+        Object.entries(aggregatedChars).sort(([,a],[,b]) => b.matchCount - a.matchCount).forEach(([charName, stats]) => {
+            const avgAcs = stats.matchCount > 0 ? stats.acs / stats.matchCount : 0;
+            const kda = stats.deaths > 0 ? (stats.kills + stats.assists) / stats.deaths : stats.kills + stats.assists;
 
-        return { averages: playerAverages, groupRanks, charRanks: playerRanks, chars: aggregatedChars };
+            const charRankingList = allRankingData.by_character[charName] || [];
+            const totalOnChar = charRankingList.length;
+            const acsRank = totalOnChar > 0 ? charRankingList.sort((a,b) => b.acs - a.acs).findIndex(p => p.id === playerId && p.group === groupName) + 1 : 0;
+            const kdaRank = totalOnChar > 0 ? charRankingList.sort((a,b) => b.kda - a.kda).findIndex(p => p.id === playerId && p.group === groupName) + 1 : 0;
+
+            tableBody.innerHTML += `
+                <tr>
+                    <td><strong>${charName}</strong></td>
+                    <td>${stats.matchCount}</td>
+                    <td>${avgAcs.toFixed(2)} ${acsRank > 0 ? `<span class="rank">(${acsRank}/${totalOnChar})</span>` : ''}</td>
+                    <td>${kda.toFixed(2)} ${kdaRank > 0 ? `<span class="rank">(${kdaRank}/${totalOnChar})</span>` : ''}</td>
+                </tr>
+            `;
+        });
     }
 
-    const { averages, groupRanks, charRanks, chars } = calculateAveragesAndRanks();
-
-    // --- 渲染 ---
-    document.getElementById('player-id-header').textContent = playerId;
-    
-    const summaryGrid = document.getElementById('summary-grid-content');
-    summaryGrid.innerHTML = `
-        <div><strong>平均ACS:</strong> ${averages.acs.toFixed(2)} ${groupName ? `<span class="rank">(排名: ${groupRanks.acs}/${groupRanks.total})</span>` : ''}</div>
-        <div><strong>KDA:</strong> ${averages.kda.toFixed(2)} ${groupName ? `<span class="rank">(排名: ${groupRanks.kda}/${groupRanks.total})</span>` : ''}</div>
-        <div><strong>场均击杀:</strong> ${averages.avgK.toFixed(2)} ${groupName ? `<span class="rank">(排名: ${groupRanks.avgK}/${groupRanks.total})</span>` : ''}</div>
-        <div><strong>场均死亡:</strong> ${averages.avgD.toFixed(2)} ${groupName ? `<span class="rank">(排名: ${groupRanks.avgD}/${groupRanks.total})</span>` : ''}</div>
-    `;
-
-    const tableBody = document.getElementById('character-stats-body');
-    Object.entries(chars).sort(([,a],[,b]) => b.matchCount - a.matchCount).forEach(([charName, stats]) => {
-        const ranks = charRanks[charName];
-        const avgAcs = stats.matchCount > 0 ? stats.acs / stats.matchCount : 0;
-        const kda = stats.deaths > 0 ? (stats.kills + stats.assists) / stats.deaths : stats.kills + stats.assists;
-        const avgK = stats.matchCount > 0 ? stats.kills / stats.matchCount : 0;
-        const avgD = stats.matchCount > 0 ? stats.deaths / stats.matchCount : 0;
-        
-        tableBody.innerHTML += `
-            <tr>
-                <td><strong>${charName}</strong></td>
-                <td>${stats.matchCount}</td>
-                <td>${avgAcs.toFixed(2)} <span class="rank">(${ranks.acs_rank}/${ranks.acs})</span></td>
-                <td>${kda.toFixed(2)} <span class="rank">(${ranks.kda_rank}/${ranks.kda})</span></td>
-                <td>${avgK.toFixed(2)} <span class="rank">(${ranks.avgK_rank}/${ranks.avgK})</span></td>
-                <td>${avgD.toFixed(2)} <span class="rank">(${ranks.avgD_rank}/${ranks.avgK})</span></td>
-            </tr>
-        `;
-    });
+    calculateAveragesAndRanks();
 });
 </script>
 </body>
