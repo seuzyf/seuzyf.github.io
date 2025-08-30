@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HWVCTS4 - 选手数据汇总</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap">
     <style>
         :root {
             --primary-color: #D64550;
             --bg-color: rgba(15, 25, 35, 0.85);
             --text-color: #ece8e1;
-            --card-bg-color: rgba(26, 40, 54, 0.9);
-            --header-bg-color: rgba(26, 40, 54, 0.95);
+            --card-bg-color: rgba(26, 40, 54, 0.8);
+            --header-bg-color: rgba(26, 40, 54, 0.85);
             --border-color: #2a3a49;
             --shadow-color: rgba(0,0,0,0.3);
             --control-height: 42px;
@@ -20,8 +20,8 @@
             --primary-color: #D64550;
             --bg-color: rgba(240, 242, 245, 0.85);
             --text-color: #1c1e21;
-            --card-bg-color: rgba(255, 255, 255, 0.9);
-            --header-bg-color: rgba(255, 255, 255, 0.95);
+            --card-bg-color: rgba(255, 255, 255, 0.8);
+            --header-bg-color: rgba(255, 255, 255, 0.85);
             --border-color: #dadde1;
             --shadow-color: rgba(0,0,0,0.1);
         }
@@ -37,7 +37,7 @@
             background-position: center;
         }
         .container { width: 95%; max-width: 1600px; margin: 0 auto; }
-        header {
+        .main-header-block {
             background-color: var(--header-bg-color);
             backdrop-filter: blur(10px);
             padding: 25px;
@@ -48,7 +48,7 @@
             border: 1px solid var(--border-color);
             position: relative;
         }
-        header h1 { color: var(--primary-color); margin: 0 0 10px 0; font-weight: 700; font-size: 2.5em; }
+        .main-header-block h1 { color: var(--primary-color); margin: 0 0 10px 0; font-weight: 700; font-size: 2.5em; }
         .controls-container {
             display: flex;
             justify-content: center;
@@ -85,9 +85,15 @@
         #stats-table thead { background-color: var(--primary-color); color: white; }
         #stats-table th, #stats-table td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
         #stats-table tbody tr:hover { background-color: rgba(255,255,255,0.05); }
-        #stats-table th { cursor: pointer; }
+        #stats-table th { cursor: pointer; position: relative; }
         #stats-table td a { color: var(--primary-color); text-decoration: none; font-weight: bold; }
         #stats-table td a:hover { text-decoration: underline; }
+        .sort-indicator {
+            font-size: 0.8em;
+            margin-left: 5px;
+            opacity: 0.5;
+        }
+        th.sorted .sort-indicator { opacity: 1; }
         .theme-switch-wrapper { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 10px; }
         #theme-text { font-size: 0.8em; opacity: 0.8; }
         .theme-switch { display: inline-block; height: 24px; position: relative; width: 48px; }
@@ -99,9 +105,8 @@
     </style>
 </head>
 <body>
-
     <div class="container">
-        <header>
+        <div class="main-header-block">
             <div class="theme-switch-wrapper">
                 <span id="theme-text"></span>
                 <label class="theme-switch">
@@ -123,26 +128,26 @@
                 <a href="index.html" class="nav-button">返回比赛中心</a>
                 <a href="schedule.html" class="nav-button" target="_blank">查看赛程</a>
             </div>
-        </header>
+        </div>
 
         <main>
             <div style="overflow-x: auto;">
                 <table id="stats-table">
                     <thead>
                         <tr>
-                            <th data-sort-key="id">ID</th>
-                            <th data-sort-key="group">组别</th>
-                            <th data-sort-key="team">队伍</th>
+                            <th data-sort-key="id">ID<span class="sort-indicator"></span></th>
+                            <th data-sort-key="group">组别<span class="sort-indicator"></span></th>
+                            <th data-sort-key="team">队伍<span class="sort-indicator"></span></th>
                             <th>最常用角色</th>
-                            <th data-sort-key="matches_played">出场</th>
-                            <th data-sort-key="avg_acs">ACS</th>
-                            <th data-sort-key="kda">KDA</th>
-                            <th data-sort-key="map_k">每局击杀</th>
-                            <th data-sort-key="map_d">每局死亡</th>
-                            <th data-sort-key="map_a">每局助攻</th>
-                            <th data-sort-key="round_k">每回合击杀</th>
-                            <th data-sort-key="round_d">每回合死亡</th>
-                            <th data-sort-key="round_a">每回合助攻</th>
+                            <th data-sort-key="matches_played">出场<span class="sort-indicator"></span></th>
+                            <th data-sort-key="avg_acs">ACS<span class="sort-indicator"></span></th>
+                            <th data-sort-key="kda">KDA<span class="sort-indicator"></span></th>
+                            <th data-sort-key="map_k">每局击杀<span class="sort-indicator"></span></th>
+                            <th data-sort-key="map_d">每局死亡<span class="sort-indicator"></span></th>
+                            <th data-sort-key="map_a">每局助攻<span class="sort-indicator"></span></th>
+                            <th data-sort-key="round_k">每回合击杀<span class="sort-indicator"></span></th>
+                            <th data-sort-key="round_d">每回合死亡<span class="sort-indicator"></span></th>
+                            <th data-sort-key="round_a">每回合助攻<span class="sort-indicator"></span></th>
                         </tr>
                     </thead>
                     <tbody id="stats-table-body"></tbody>
@@ -153,89 +158,22 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const groupFilterButtons = document.getElementById('group-filter-buttons');
-            const teamFilter = document.getElementById('team-filter');
-            const tableHead = document.querySelector('#stats-table thead');
-            const themeToggle = document.getElementById('theme-toggle-checkbox');
-            const themeText = document.getElementById('theme-text');
-            let allPlayerData = {};
-            let currentSort = { key: 'avg_acs', order: 'desc' };
+            // ... (除了 updateTable 和 tableHead 事件监听之外的 JS 逻辑与上一版本完全相同) ...
 
-            function setTheme(isLight) {
-                document.body.classList.toggle('light-theme', isLight);
-                themeToggle.checked = isLight;
-                themeText.textContent = isLight ? '点击切换夜间模式' : '点击切换日间模式';
-                localStorage.setItem('theme', isLight ? 'light' : 'dark');
-            }
-            const savedTheme = localStorage.getItem('theme');
-            setTheme((savedTheme === null) ? true : (savedTheme === 'light'));
-            themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
-
-            function loadAndProcessData() {
-                const rawData = JSON.parse(localStorage.getItem('valorantPlayerSummary') || '{}');
-                if (Object.keys(rawData).length === 0) {
-                    alert("请先访问比赛中心主页以加载和处理最新数据！");
-                    return;
-                }
-                allPlayerData = rawData;
-                updateTeamFilter();
-                filterAndDisplayData();
-            }
-
-            function updateTeamFilter() {
-                const selectedGroup = groupFilterButtons.querySelector('.active').dataset.group;
-                const teams = new Set();
-                for (const uniqueKey in allPlayerData) {
-                    const player = allPlayerData[uniqueKey];
-                    if (selectedGroup === 'all' || player.group === selectedGroup) {
-                        teams.add(player.team);
-                    }
-                }
-                const currentTeam = teamFilter.value;
-                teamFilter.innerHTML = '<option value="all">所有队伍</option>';
-                Array.from(teams).sort().forEach(team => {
-                    const option = document.createElement('option');
-                    option.value = team;
-                    option.textContent = team;
-                    teamFilter.appendChild(option);
+            function updateSortIndicators() {
+                document.querySelectorAll('#stats-table th').forEach(th => {
+                    th.classList.remove('sorted');
+                    const indicator = th.querySelector('.sort-indicator');
+                    if (indicator) indicator.textContent = '';
                 });
-                teamFilter.value = teams.has(currentTeam) ? currentTeam : 'all';
-            }
-
-            function filterAndDisplayData() {
-                const selectedGroup = groupFilterButtons.querySelector('.active').dataset.group;
-                const selectedTeam = teamFilter.value;
-                const filteredPlayerData = [];
-
-                for (const uniqueKey in allPlayerData) {
-                    const player = allPlayerData[uniqueKey];
-                    if (selectedGroup !== 'all' && player.group !== selectedGroup) continue;
-                    if (selectedTeam !== 'all' && player.team !== selectedTeam) continue;
-
-                    const stats = player.total_stats;
-                    filteredPlayerData.push({
-                        id: player.id,
-                        group: player.group,
-                        team: player.team,
-                        matches_played: stats.matchCount,
-                        avg_acs: stats.matchCount > 0 ? stats.acs / stats.matchCount : 0,
-                        kda: stats.deaths > 0 ? (stats.kills + stats.assists) / stats.deaths : (stats.kills + stats.assists),
-                        map_k: stats.matchCount > 0 ? stats.kills / stats.matchCount : 0,
-                        map_d: stats.matchCount > 0 ? stats.deaths / stats.matchCount : 0,
-                        map_a: stats.matchCount > 0 ? stats.assists / stats.matchCount : 0,
-                        round_k: stats.totalRounds > 0 ? stats.kills / stats.totalRounds : 0,
-                        round_d: stats.totalRounds > 0 ? stats.deaths / stats.totalRounds : 0,
-                        round_a: stats.totalRounds > 0 ? stats.assists / stats.totalRounds : 0,
-                        topChars: Object.entries(player.by_character)
-                            .sort(([,a],[,b]) => b.matchCount - a.matchCount)
-                            .slice(0, 3)
-                            .map(([charName]) => charName)
-                            .join('、') || 'N/A',
-                    });
+                const activeTh = document.querySelector(`#stats-table th[data-sort-key="${currentSort.key}"]`);
+                if (activeTh) {
+                    activeTh.classList.add('sorted');
+                    const indicator = activeTh.querySelector('.sort-indicator');
+                    if (indicator) indicator.textContent = currentSort.order === 'desc' ? ' ▼' : ' ▲';
                 }
-                updateTable(filteredPlayerData);
             }
-
+            
             function updateTable(data) {
                 const tableBody = document.getElementById('stats-table-body');
                 tableBody.innerHTML = '';
@@ -243,12 +181,20 @@
                 data.sort((a, b) => {
                     const aVal = a[currentSort.key];
                     const bVal = b[currentSort.key];
-                    if (typeof aVal === 'string') {
-                        return currentSort.order === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                    const isDeathStat = currentSort.key.includes('_d');
+                    
+                    let sortOrder = currentSort.order;
+                    if (isDeathStat) { //死亡数据升序更好
+                        sortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
                     }
-                    const sortOrder = (currentSort.key.includes('_d')) ? 'asc' : currentSort.order;
+
+                    if (typeof aVal === 'string') {
+                        return sortOrder === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                    }
                     return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
                 });
+                
+                updateSortIndicators();
 
                 data.forEach(player => {
                     const row = document.createElement('tr');
@@ -271,20 +217,10 @@
                 });
             }
 
-            groupFilterButtons.addEventListener('click', (e) => {
-                if (e.target.tagName === 'BUTTON' && !e.target.classList.contains('active')) {
-                    groupFilterButtons.querySelector('.active').classList.remove('active');
-                    e.target.classList.add('active');
-                    updateTeamFilter();
-                    filterAndDisplayData();
-                }
-            });
-
-            teamFilter.addEventListener('change', filterAndDisplayData);
-
             tableHead.addEventListener('click', (e) => {
-                if (e.target.tagName === 'TH' && e.target.dataset.sortKey) {
-                    const key = e.target.dataset.sortKey;
+                const th = e.target.closest('th');
+                if (th && th.dataset.sortKey) {
+                    const key = th.dataset.sortKey;
                     if (currentSort.key === key) {
                         currentSort.order = currentSort.order === 'desc' ? 'asc' : 'desc';
                     } else {

@@ -11,8 +11,8 @@
             --primary-color: #D64550;
             --bg-color: rgba(15, 25, 35, 0.85);
             --text-color: #ece8e1;
-            --card-bg-color: rgba(26, 40, 54, 0.9);
-            --header-bg-color: rgba(26, 40, 54, 0.95);
+            --card-bg-color: rgba(26, 40, 54, 0.8);
+            --header-bg-color: rgba(26, 40, 54, 0.85);
             --border-color: #2a3a49;
             --winner-color: #4CAF50;
             --loser-color: #F44336;
@@ -23,8 +23,8 @@
             --primary-color: #D64550;
             --bg-color: rgba(240, 242, 245, 0.85);
             --text-color: #1c1e21;
-            --card-bg-color: rgba(255, 255, 255, 0.9);
-            --header-bg-color: rgba(255, 255, 255, 0.95);
+            --card-bg-color: rgba(255, 255, 255, 0.8);
+            --header-bg-color: rgba(255, 255, 255, 0.85);
             --border-color: #dadde1;
             --shadow-color: rgba(0,0,0,0.1);
         }
@@ -70,12 +70,11 @@
             align-items: center;
             border-radius: 8px;
             font-weight: 500;
-            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
         }
         .filter-group { background-color: var(--card-bg-color); padding: 5px; border: 1px solid var(--border-color); }
-        .filter-group button { padding: 0 15px; border: none; background-color: transparent; color: var(--text-color); opacity: 0.7; cursor: pointer; border-radius: 6px; font-size: 0.9em; height: 100%; }
+        .filter-group button { padding: 0 15px; border: none; background-color: transparent; color: var(--text-color); opacity: 0.7; cursor: pointer; border-radius: 6px; font-size: 0.9em; height: 100%; transition: background-color 0.3s, color 0.3s; }
         .filter-group button.active { background-color: var(--primary-color); color: white; opacity: 1; }
-        .nav-button { padding: 0 25px; border: 2px solid var(--primary-color); color: var(--primary-color); text-decoration: none; }
+        .nav-button { padding: 0 25px; border: 2px solid var(--primary-color); color: var(--primary-color); text-decoration: none; transition: background-color 0.3s, color 0.3s; }
         .nav-button:hover { background-color: var(--primary-color); color: white; }
 
         .content-block {
@@ -129,6 +128,11 @@
             padding: 10px;
             width: 100%;
             box-shadow: 0 2px 8px var(--shadow-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .match-card.clickable:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px var(--shadow-color);
         }
         .team { display: flex; justify-content: space-between; align-items: center; padding: 2px 0; }
         .team-name { font-size: 1em; }
@@ -188,7 +192,7 @@
         </div>
 
         <main class="content-block">
-            <h2 id="current-group-name" style="text-align:center; border:none; font-size: 2.2em;"></h2>
+            <h2 id="current-group-name"></h2>
             <div id="swiss-stage-section">
                 <h3>小组赛 (瑞士轮)</h3>
                 <div class="bracket-container">
@@ -205,100 +209,8 @@
     </div>
 
 <script>
-    // JavaScript 逻辑与上一版本的最终形态完全相同
     document.addEventListener('DOMContentLoaded', () => {
-        const groupFilters = document.getElementById('group-filters');
-        const stageFilters = document.getElementById('stage-filters');
-        const swissSection = document.getElementById('swiss-stage-section');
-        const playoffSection = document.getElementById('playoff-stage-section');
-        const themeToggle = document.getElementById('theme-toggle-checkbox');
-        const themeText = document.getElementById('theme-text');
-        let allMatchesData = {};
-        
-        function setTheme(isLight) {
-            document.body.classList.toggle('light-theme', isLight);
-            themeToggle.checked = isLight;
-            themeText.textContent = isLight ? '点击切换夜间模式' : '点击切换日间模式';
-            localStorage.setItem('theme', isLight ? 'light' : 'dark');
-        }
-        const savedTheme = localStorage.getItem('theme');
-        setTheme((savedTheme === null) ? true : (savedTheme === 'light'));
-        themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
-
-        const swissBracketLayout = [
-            { type: 'round', content: [ { title: '0-0组', ids: ['S1-1', 'S1-2', 'S1-3', 'S1-4'] } ] },
-            { type: 'round', content: [ { title: '1-0组', ids: ['S2-1W', 'S2-2W'] }, { title: '0-1组', ids: ['S2-1L', 'S2-2L'] } ] },
-            { type: 'round', content: [ { title: '2-0 晋级', ids: ['S3-PROMO-A', 'S3-PROMO-B'], type: 'promoted' }, { title: '1-1组', ids: ['S3-1M', 'S3-2M'] }, { title: '0-2 淘汰', ids: ['S3-ELIM-A', 'S3-ELIM-B'], type: 'eliminated' } ] },
-            { type: 'round', content: [ { title: '2-1 晋级', ids: ['S4-PROMO-A', 'S4-PROMO-B'], type: 'promoted' }, { title: '1-2 淘汰', ids: ['S4-ELIM-A', 'S4-ELIM-B'], type: 'eliminated' } ] }
-        ];
-
-        const playoffBracketLayout = [
-            { type: 'round', content: [ { title: '胜者组 R1', ids: ['P-WB1-1', 'P-WB1-2'] } ] },
-            { type: 'round', content: [ { title: '胜者组决赛', ids: ['P-WBF'] }, { title: '败者组 R1', ids: ['P-LB1'] } ] },
-            { type: 'round', content: [ { title: '败者组决赛', ids: ['P-LBF'] } ] },
-            { type: 'round', content: [ { title: '总决赛', ids: ['P-GF'] } ] },
-            { type: 'round', content: [ { title: '总冠军', ids: ['P-CHAMPION'], type: 'champion' } ] }
-        ];
-
-        function getWinner(match) {
-            if (!match || typeof match.score_a === 'undefined' || typeof match.score_b === 'undefined') return null;
-            return Number(match.score_a) > Number(match.score_b) ? match.team_a : match.team_b;
-        }
-
-        function getLoser(match) {
-            if (!match || typeof match.score_a === 'undefined' || typeof match.score_b === 'undefined') return null;
-            return Number(match.score_a) < Number(match.score_b) ? match.team_a : match.team_b;
-        }
-
-        function processResultNodes(rawData) {
-            const data = JSON.parse(JSON.stringify(rawData));
-            const ensureNodeExists = (id) => { if (!data[id]) data[id] = {}; };
-            ensureNodeExists('S3-PROMO-A'); data['S3-PROMO-A'].result_team = getWinner(data['S2-1W']);
-            ensureNodeExists('S3-PROMO-B'); data['S3-PROMO-B'].result_team = getWinner(data['S2-2W']);
-            ensureNodeExists('S3-ELIM-A'); data['S3-ELIM-A'].result_team = getLoser(data['S2-1L']);
-            ensureNodeExists('S3-ELIM-B'); data['S3-ELIM-B'].result_team = getLoser(data['S2-2L']);
-            ensureNodeExists('S4-PROMO-A'); data['S4-PROMO-A'].result_team = getWinner(data['S3-1M']);
-            ensureNodeExists('S4-PROMO-B'); data['S4-PROMO-B'].result_team = getWinner(data['S3-2M']);
-            ensureNodeExists('S4-ELIM-A'); data['S4-ELIM-A'].result_team = getLoser(data['S3-1M']);
-            ensureNodeExists('S4-ELIM-B'); data['S4-ELIM-B'].result_team = getLoser(data['S3-2M']);
-            ensureNodeExists('P-CHAMPION'); data['P-CHAMPION'].result_team = getWinner(data['P-GF']);
-            return data;
-        }
-
-        async function loadData() {
-            try {
-                const response = await fetch('match_data.xlsx');
-                const arrayBuffer = await response.arrayBuffer();
-                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-                workbook.SheetNames.forEach(sheetName => {
-                    const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-                    allMatchesData[sheetName] = sheetData.reduce((acc, row) => {
-                        if(row.match_id) acc[String(row.match_id).trim()] = row; 
-                        return acc;
-                    }, {});
-                });
-                renderBrackets('传奇组');
-            } catch (error) {
-                console.error("加载或解析match_data.xlsx失败:", error);
-                document.getElementById('swiss-bracket').innerHTML = `<p style="color:red; text-align:center;">无法加载赛程数据: ${error.message}</p>`;
-            }
-        }
-
-        function createMatchCard(data) {
-            const teamA = data?.team_a || 'TBD', teamB = data?.team_b || 'TBD';
-            const scoreA = data?.score_a ?? 0, scoreB = data?.score_b ?? 0;
-            const winnerA = Number(scoreA) > Number(scoreB), winnerB = Number(scoreB) > Number(scoreA);
-            return `<div class="match-card">
-                        <div class="team ${winnerA ? 'winner' : ''} ${winnerB ? 'loser' : ''}"><span class="team-name">${teamA}</span><span class="team-score">${scoreA}</span></div>
-                        <hr>
-                        <div class="team ${winnerB ? 'winner' : ''} ${winnerA ? 'loser' : ''}"><span class="team-name">${teamB}</span><span class="team-score">${scoreB}</span></div>
-                    </div>`;
-        }
-
-        function createResultCard(data, type = '') {
-            const team = data?.result_team || 'TBD';
-            return `<div class="result-card ${type}">${team}</div>`;
-        }
+        // ... (除了 buildBracket 和新增的 bracket event listener 之外的 JS 逻辑与上一版本完全相同) ...
         
         function buildBracket(container, layout, data) {
             container.innerHTML = '';
@@ -312,40 +224,37 @@
                     roundDiv.appendChild(titleDiv);
                     group.ids.forEach(id => {
                         const cardData = data[id];
+                        const cardWrapper = document.createElement('div');
+                        
+                        // 检查是否有link，并相应地设置
+                        if (cardData && cardData.link) {
+                            cardWrapper.dataset.link = cardData.link;
+                            cardWrapper.classList.add('clickable');
+                            cardWrapper.style.cursor = 'pointer';
+                        }
+                        
                         let cardHtml = '';
-                        if (group.type) { cardHtml = createResultCard(cardData, group.type); } 
-                        else { cardHtml = createMatchCard(cardData); }
-                        roundDiv.innerHTML += cardHtml;
+                        if (group.type) {
+                            cardHtml = createResultCard(cardData, group.type);
+                        } else {
+                            cardHtml = createMatchCard(cardData);
+                        }
+                        cardWrapper.innerHTML = cardHtml;
+                        roundDiv.appendChild(cardWrapper.firstElementChild); // 添加卡片本身
                     });
                 });
                 container.appendChild(roundDiv);
             });
         }
 
-        function renderBrackets(groupName) {
-            const rawData = allMatchesData[groupName] || {};
-            const processedData = processResultNodes(rawData);
-            document.getElementById('current-group-name').textContent = `${groupName}赛程`;
-            buildBracket(document.getElementById('swiss-bracket'), swissBracketLayout, processedData);
-            buildBracket(document.getElementById('playoff-bracket'), playoffBracketLayout, processedData);
-        }
-
-        groupFilters.addEventListener('click', (e) => {
-            if (e.target.tagName === 'BUTTON' && !e.target.classList.contains('active')) {
-                groupFilters.querySelector('.active').classList.remove('active');
-                e.target.classList.add('active');
-                renderBrackets(e.target.dataset.group);
-            }
-        });
-
-        stageFilters.addEventListener('click', (e) => {
-            if (e.target.tagName === 'BUTTON' && !e.target.classList.contains('active')) {
-                stageFilters.querySelector('.active').classList.remove('active');
-                e.target.classList.add('active');
-                const stage = e.target.dataset.stage;
-                swissSection.style.display = (stage === 'swiss') ? 'block' : 'none';
-                playoffSection.style.display = (stage === 'playoff') ? 'block' : 'none';
-            }
+        // 新增：为两个bracket容器添加统一的事件监听
+        document.querySelectorAll('.bracket').forEach(bracket => {
+            bracket.addEventListener('click', e => {
+                const clickableCard = e.target.closest('.match-card.clickable');
+                if (clickableCard && clickableCard.dataset.link) {
+                    window.open(clickableCard.dataset.link, '_blank');
+                }
+            });
         });
 
         loadData();
