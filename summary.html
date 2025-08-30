@@ -8,35 +8,42 @@
     <style>
         :root {
             --primary-color: #D64550;
-            --bg-color: #0f1923;
+            --bg-color: rgba(15, 25, 35, 0.85);
             --text-color: #ece8e1;
-            --card-bg-color: #1a2836;
-            --header-bg-color: #1a2836;
+            --card-bg-color: rgba(26, 40, 54, 0.9);
+            --header-bg-color: rgba(26, 40, 54, 0.95);
             --border-color: #2a3a49;
             --shadow-color: rgba(0,0,0,0.3);
             --control-height: 42px;
         }
         body.light-theme {
             --primary-color: #D64550;
-            --bg-color: #f0f2f5;
+            --bg-color: rgba(240, 242, 245, 0.85);
             --text-color: #1c1e21;
-            --card-bg-color: #ffffff;
-            --header-bg-color: #ffffff;
+            --card-bg-color: rgba(255, 255, 255, 0.9);
+            --header-bg-color: rgba(255, 255, 255, 0.95);
             --border-color: #dadde1;
             --shadow-color: rgba(0,0,0,0.1);
         }
         body {
-            font-family: var(--font-family);
+            font-family: 'Roboto', sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             margin: 0;
             padding: 20px 0;
             line-height: 1.6;
             transition: background-color 0.3s, color 0.3s;
+            background-image: url('background.png');
+            background-attachment: fixed;
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
         }
         .container { width: 90%; max-width: 1400px; margin: 0 auto; }
         header {
             background-color: var(--header-bg-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             padding: 25px;
             border-radius: 12px;
             box-shadow: 0 8px 16px var(--shadow-color);
@@ -58,7 +65,7 @@
         .control-group { display: flex; align-items: center; }
         .control-group label { font-size: 1.1em; font-weight: 500; margin-right: 10px; }
         select {
-            background-color: var(--bg-color);
+            background-color: var(--card-bg-color);
             color: var(--text-color);
             border: 1px solid var(--border-color);
             border-radius: 8px;
@@ -88,7 +95,7 @@
             height: 100%;
         }
         .filter-group button.active { background-color: var(--primary-color); color: white; opacity: 1; }
-        table { width: 100%; border-collapse: collapse; background-color: var(--card-bg-color); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px var(--shadow-color); border: 1px solid var(--border-color); }
+        table { width: 100%; border-collapse: collapse; background-color: var(--card-bg-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px var(--shadow-color); border: 1px solid var(--border-color); }
         table thead { background-color: var(--primary-color); color: white; font-weight: 500; }
         table th, table td { padding: 15px; text-align: left; }
         table tbody tr { border-bottom: 1px solid var(--border-color); transition: background-color 0.2s; }
@@ -98,7 +105,8 @@
         #summary-table thead th::after { content: ' \2195'; position: absolute; right: 15px; opacity: 0.5; }
         #summary-table thead th.sorted-asc::after { content: ' \2193'; opacity: 1; }
         #summary-table thead th.sorted-desc::after { content: ' \2191'; opacity: 1; }
-        .theme-switch-wrapper { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; }
+        .theme-switch-wrapper { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 10px; }
+        #theme-text { font-size: 0.8em; opacity: 0.8; }
         .theme-switch { display: inline-block; height: 24px; position: relative; width: 48px; }
         .theme-switch input { display:none; }
         .slider { background-color: var(--border-color); bottom: 0; cursor: pointer; left: 0; position: absolute; right: 0; top: 0; transition: .4s; border-radius: 24px; }
@@ -111,6 +119,7 @@
 
     <header>
         <div class="theme-switch-wrapper">
+            <span id="theme-text"></span>
             <label class="theme-switch">
                 <input type="checkbox" id="theme-toggle-checkbox">
                 <span class="slider"></span>
@@ -124,6 +133,15 @@
 
     <main class="container">
         <div class="controls-container">
+            <div class="control-group">
+                <label>筛选组别:</label>
+                <div class="filter-group" id="group-filter-buttons">
+                    <button class="active" data-group="all">所有组别</button>
+                    <button data-group="传奇组">传奇组</button>
+                    <button data-group="中坚组">中坚组</button>
+                    <button data-group="挑战组">挑战组</button>
+                </div>
+            </div>
             <div class="control-group">
                 <label>筛选赛段:</label>
                 <div class="filter-group" id="stage-filter-buttons">
@@ -166,25 +184,28 @@
     </main>
     
     <script>
-        // JS逻辑与上一版完全相同，因为之前的修改仅涉及HTML结构和CSS样式
         document.addEventListener('DOMContentLoaded', () => {
             const summaryTableBody = document.getElementById('summary-table-body');
             const tableHeaders = document.querySelectorAll('#summary-table thead th[data-column-index]');
             const teamFilter = document.getElementById('team-filter');
             const stageFilterButtons = document.getElementById('stage-filter-buttons');
+            const groupFilterButtons = document.getElementById('group-filter-buttons');
             const themeToggle = document.getElementById('theme-toggle-checkbox');
+            const themeText = document.getElementById('theme-text');
+            
             let rawPlayerData = {};
             let currentSort = { column: 0, asc: true };
-            const currentTheme = localStorage.getItem('theme');
-            if (currentTheme) {
-                document.body.classList.toggle('light-theme', currentTheme === 'light');
-                themeToggle.checked = currentTheme === 'light';
+
+            function setTheme(isLight) {
+                document.body.classList.toggle('light-theme', isLight);
+                themeToggle.checked = isLight;
+                themeText.textContent = isLight ? '点击切换夜间模式' : '点击切换日间模式';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
             }
-            themeToggle.addEventListener('change', (e) => {
-                const theme = e.target.checked ? 'light' : 'dark';
-                document.body.classList.toggle('light-theme', e.target.checked);
-                localStorage.setItem('theme', theme);
-            });
+            const savedTheme = localStorage.getItem('theme');
+            setTheme((savedTheme === null) ? true : (savedTheme === 'light'));
+            themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
+            
             const playerDataJSON = localStorage.getItem('valorantPlayerSummary');
             if (playerDataJSON) {
                 rawPlayerData = JSON.parse(playerDataJSON);
@@ -192,9 +213,18 @@
             } else {
                 summaryTableBody.innerHTML = '<tr><td colspan="11">没有找到选手数据。请先返回主页面加载数据。</td></tr>';
             }
+
             function initializePage() {
                 populateTeamFilter(rawPlayerData);
                 updateDisplay();
+
+                groupFilterButtons.addEventListener('click', (e) => {
+                    if (e.target.tagName === 'BUTTON') {
+                        groupFilterButtons.querySelector('.active').classList.remove('active');
+                        e.target.classList.add('active');
+                        updateDisplay();
+                    }
+                });
                 stageFilterButtons.addEventListener('click', (e) => {
                     if (e.target.tagName === 'BUTTON') {
                         stageFilterButtons.querySelector('.active').classList.remove('active');
@@ -203,58 +233,75 @@
                     }
                 });
                 teamFilter.addEventListener('change', updateDisplay);
+
                 tableHeaders.forEach(header => {
                     header.addEventListener('click', () => {
                         const columnIndex = parseInt(header.dataset.columnIndex, 10);
-                        currentSort = {
-                            column: columnIndex,
-                            asc: (columnIndex === currentSort.column) ? !currentSort.asc : true
-                        };
+                        currentSort = { column: columnIndex, asc: (columnIndex === currentSort.column) ? !currentSort.asc : true };
                         updateDisplay();
                     });
                 });
             }
+
             function updateDisplay() {
+                const selectedGroup = groupFilterButtons.querySelector('.active').dataset.group;
                 const selectedStage = stageFilterButtons.querySelector('.active').dataset.stage;
                 const selectedTeam = teamFilter.value;
-                const calculatedData = calculateStatsForStage(rawPlayerData, selectedStage);
+                
+                const calculatedData = calculateStats(rawPlayerData, selectedGroup, selectedStage);
                 buildTableRows(calculatedData, selectedTeam);
+                
                 tableHeaders.forEach(th => th.classList.remove('sorted-asc', 'sorted-desc'));
                 const activeHeader = document.querySelector(`#summary-table thead th[data-column-index="${currentSort.column}"]`);
                 if (activeHeader) activeHeader.classList.add(currentSort.asc ? 'sorted-asc' : 'sorted-desc');
             }
-            function calculateStatsForStage(fullData, selectedStage) {
+
+            function calculateStats(fullData, selectedGroup, selectedStage) {
                 const finalStats = {};
                 for (const playerId in fullData) {
-                    const playerAllStages = fullData[playerId];
-                    let aggregatedStats = null;
-                    if (selectedStage === 'all') {
-                        aggregatedStats = { acs: 0, kills: 0, deaths: 0, assists: 0, matchCount: 0, totalRounds: 0, team: '' };
-                        for (const stageKey in playerAllStages) {
-                            const stageData = playerAllStages[stageKey];
-                            aggregatedStats.acs += stageData.acs;
-                            aggregatedStats.kills += stageData.kills;
-                            aggregatedStats.deaths += stageData.deaths;
-                            aggregatedStats.assists += stageData.assists;
-                            aggregatedStats.matchCount += stageData.matchCount;
-                            aggregatedStats.totalRounds += stageData.totalRounds;
-                            aggregatedStats.team = stageData.team;
-                        }
-                    } else if (playerAllStages[selectedStage]) {
-                        aggregatedStats = playerAllStages[selectedStage];
-                    }
-                    if (aggregatedStats && aggregatedStats.matchCount > 0) {
+                    const playerAllGroups = fullData[playerId];
+                    
+                    let aggregatedStats = { acs: 0, kills: 0, deaths: 0, assists: 0, matchCount: 0, totalRounds: 0, team: '' };
+                    let hasData = false;
+
+                    const groupsToProcess = (selectedGroup === 'all') ? Object.keys(playerAllGroups) : [selectedGroup];
+
+                    groupsToProcess.forEach(groupName => {
+                        const playerStages = playerAllGroups[groupName];
+                        if (!playerStages) return;
+
+                        const stagesToProcess = (selectedStage === 'all') ? Object.keys(playerStages) : [selectedStage];
+                        
+                        stagesToProcess.forEach(stageName => {
+                            const stageData = playerStages[stageName];
+                            if(stageData){
+                                aggregatedStats.acs += stageData.acs;
+                                aggregatedStats.kills += stageData.kills;
+                                aggregatedStats.deaths += stageData.deaths;
+                                aggregatedStats.assists += stageData.assists;
+                                aggregatedStats.matchCount += stageData.matchCount;
+                                aggregatedStats.totalRounds += stageData.totalRounds;
+                                aggregatedStats.team = stageData.team;
+                                hasData = true;
+                            }
+                        });
+                    });
+
+                    if (hasData) {
                         finalStats[playerId] = aggregatedStats;
                     }
                 }
                 return finalStats;
             }
+            
             function buildTableRows(data, selectedTeam) {
                 summaryTableBody.innerHTML = '';
                 let dataArray = Object.entries(data).map(([id, stats]) => ({id, ...stats}));
+                
                 if (selectedTeam !== 'all') {
                     dataArray = dataArray.filter(player => player.team === selectedTeam);
                 }
+
                 const { column, asc } = currentSort;
                 const direction = asc ? 1 : -1;
                 dataArray.sort((a, b) => {
@@ -276,6 +323,7 @@
                     if (typeof valA === 'string') return valA.localeCompare(valB) * direction;
                     else return (valA - valB) * direction;
                 });
+                
                 if (dataArray.length === 0) {
                     summaryTableBody.innerHTML = `<tr><td colspan="11">当前筛选条件下没有选手数据。</td></tr>`;
                 } else {
@@ -287,6 +335,7 @@
                     });
                 }
             }
+
             function calculateAverages(stats) {
                 const matchCount = stats.matchCount || 0, totalRounds = stats.totalRounds || 0;
                 const result = { matchCount };
@@ -306,11 +355,15 @@
                 });
                 return result;
             }
+
             function populateTeamFilter(data) {
+                teamFilter.innerHTML = '<option value="all">所有队伍</option>'; // 重置
                 const teams = new Set();
                 for (const playerId in data) {
-                    for (const stageKey in data[playerId]) {
-                        if (data[playerId][stageKey].team) teams.add(data[playerId][stageKey].team);
+                    for (const groupKey in data[playerId]) {
+                        for (const stageKey in data[playerId][groupKey]) {
+                            if (data[playerId][groupKey][stageKey].team) teams.add(data[playerId][groupKey][stageKey].team);
+                        }
                     }
                 }
                 const sortedTeams = Array.from(teams).sort();
