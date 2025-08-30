@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HWVCTS4 - 赛程中心</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+    <style>
+        :root {
+            --primary-color: #D64550;
+            --bg-color: rgba(15, 25, 35, 0.85);
+            --text-color: #ece8e1;
+            --card-bg-color: rgba(26, 40, 54, 0.9);
+            --header-bg-color: rgba(26, 40, 54, 0.95);
+            --border-color: #2a3a49;
+            --winner-color: #4CAF50;
+            --loser-color: #F44336;
+            --shadow-color: rgba(0,0,0,0.3);
+            --control-height: 42px;
+        }
+        body.light-theme {
+            --primary-color: #D64550;
+            --bg-color: rgba(240, 242, 245, 0.85);
+            --text-color: #1c1e21;
+            --card-bg-color: rgba(255, 255, 255, 0.9);
+            --header-bg-color: rgba(255, 255, 255, 0.95);
+            --border-color: #dadde1;
+            --shadow-color: rgba(0,0,0,0.1);
+        }
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px 0;
+            line-height: 1.6;
+            transition: background-color 0.3s, color 0.3s;
+            background-image: url('https://cdnb.artstation.com/p/assets/images/images/090/820/719/large/envar-studio-valorantact4kv3-render-17-fd-ot-gis-jett-2.jpg?1755007158');
+            background-attachment: fixed;
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+        }
+        .container { width: 90%; max-width: 1400px; margin: 0 auto; }
+        header {
+            background-color: var(--header-bg-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px var(--shadow-color);
+            text-align: center;
+            margin-bottom: 40px;
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+        header h1 { color: var(--primary-color); margin: 0 0 10px 0; font-weight: 700; font-size: 2.5em; }
+        .controls-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 25px;
+        }
+        .filter-group, .nav-button {
+            height: var(--control-height);
+            display: inline-flex;
+            align-items: center;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+        }
+        .filter-group { background-color: var(--card-bg-color); padding: 5px; border: 1px solid var(--border-color); }
+        .filter-group button { padding: 0 15px; border: none; background-color: transparent; color: var(--text-color); opacity: 0.7; cursor: pointer; border-radius: 6px; font-size: 0.9em; height: 100%; }
+        .filter-group button.active { background-color: var(--primary-color); color: white; opacity: 1; }
+        .nav-button { padding: 0 25px; border: 2px solid var(--primary-color); color: var(--primary-color); text-decoration: none; }
+        .nav-button:hover { background-color: var(--primary-color); color: white; }
+
+        main section { margin-bottom: 40px; }
+        main h2 {
+            font-size: 2em;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+            background-color: var(--header-bg-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 10px 15px;
+            border-radius: 8px;
+        }
+        .bracket-display {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        .group-section {
+            background-color: var(--card-bg-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+        }
+        .group-name {
+            font-size: 1.8em;
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+        .bracket-container {
+            width: 100%;
+            overflow-x: auto;
+            padding-bottom: 15px;
+        }
+        .bracket {
+            display: flex;
+            gap: 40px;
+            min-width: max-content;
+            padding: 20px 0;
+            position: relative;
+        }
+        .round {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            gap: 30px;
+        }
+        .round-title {
+            text-align: center;
+            color: var(--primary-color);
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            width: 180px;
+            flex-shrink: 0;
+        }
+        .match-card {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            width: 180px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px var(--shadow-color);
+            position: relative;
+        }
+        .team {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 2px 0;
+        }
+        .team-name { font-size: 1em; }
+        .team-score { font-weight: bold; }
+        .team.winner .team-name { color: var(--winner-color); }
+        .team.loser .team-name { opacity: 0.6; }
+        hr { border-color: var(--border-color); margin: 5px 0; }
+
+        .result-card {
+            background-color: var(--bg-color);
+            border: 2px solid var(--primary-color);
+            border-radius: 8px;
+            padding: 10px;
+            width: 180px;
+            flex-shrink: 0;
+            text-align: center;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 50px;
+            box-shadow: 0 2px 8px var(--shadow-color);
+        }
+        .champion-card {
+            border-color: var(--winner-color);
+            font-size: 1.5em;
+            background-color: rgba(76, 175, 80, 0.1);
+        }
+        .eliminated-card {
+            border-color: var(--loser-color);
+            font-size: 1.1em;
+            opacity: 0.7;
+            background-color: rgba(244, 67, 54, 0.1);
+        }
+        .align-top { justify-content: flex-start; }
+        .align-center { justify-content: center; }
+        .align-bottom { justify-content: flex-end; }
+        
+        /* 日夜模式切换按钮样式 */
+        .theme-switch-wrapper { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 10px; }
+        #theme-text { font-size: 0.8em; opacity: 0.8; }
+        .theme-switch { display: inline-block; height: 24px; position: relative; width: 48px; }
+        .theme-switch input { display:none; }
+        .slider { background-color: var(--border-color); bottom: 0; cursor: pointer; left: 0; position: absolute; right: 0; top: 0; transition: .4s; border-radius: 24px; }
+        .slider:before { background-color: var(--text-color); bottom: 4px; content: ""; height: 16px; left: 4px; position: absolute; transition: .4s; width: 16px; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary-color); }
+        input:checked + .slider:before { transform: translateX(24px); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="theme-switch-wrapper">
+            <span id="theme-text"></span>
+            <label class="theme-switch">
+                <input type="checkbox" id="theme-toggle-checkbox">
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div class="container">
+            <h1>HWVCTS4 赛程中心</h1>
+            <div class="controls-container">
+                <a href="index.html" class="nav-button">返回比赛中心</a>
+                <a href="summary.html" class="nav-button" target="_blank">查看选手数据</a>
+            </div>
+            <div class="controls-container" style="margin-top: 20px;">
+                <div class="filter-group" id="group-filters">
+                    <button class="active" data-group="挑战组">挑战组</button>
+                    <button data-group="中坚组">中坚组</button>
+                    <button data-group="传奇组">传奇组</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="group-section">
+            <h2 id="current-group-name"></h2>
+            
+            <h3>小组赛 (瑞士轮)</h3>
+            <div class="bracket-container">
+                <div id="swiss-bracket" class="bracket"></div>
+            </div>
+            
+            <h3>淘汰赛 (双败)</h3>
+            <div class="bracket-container">
+                <div id="playoff-bracket" class="bracket"></div>
+            </div>
+        </section>
+    </main>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    let allMatchesData = {};
+    const themeToggle = document.getElementById('theme-toggle-checkbox');
+    const themeText = document.getElementById('theme-text');
+
+    // --- 主题切换逻辑 ---
+    function setTheme(isLight) {
+        document.body.classList.toggle('light-theme', isLight);
+        if(themeToggle) themeToggle.checked = isLight;
+        if(themeText) themeText.textContent = isLight ? '点击切换夜间模式' : '点击切换日间模式';
+        localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    }
+
+    const savedTheme = localStorage.getItem('theme');
+    setTheme(savedTheme === 'light'); // 默认夜间，除非保存了日间
+    if(themeToggle) {
+        themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
+    }
+
+    // --- 赛程渲染逻辑 ---
+    const swissBracketStructure = [
+        { roundTitle: '0-0组', matches: ['S1-1', 'S1-2', 'S1-3', 'S1-4'], align: 'align-top' },
+        { roundTitle: '1-0组 / 0-1组', matches: ['S2-1W', 'S2-2W', 'spacer', 'S2-1L', 'S2-2L'], align: 'align-center' },
+        { roundTitle: '1-1组', matches: ['S3-1M', 'S3-2M'], align: 'align-center' },
+        { roundTitle: '晋级 / 淘汰', matches: ['S4-PROMO1', 'S4-ELIM1', 'S4-PROMO2', 'S4-ELIM2'], align: 'align-center' },
+    ];
+
+    const playoffBracketStructure = [
+        { roundTitle: '胜者组 R1', matches: ['P-WB1-1', 'P-WB1-2'], align: 'align-top' },
+        { roundTitle: '胜者组决赛 / 败者组 R1', matches: ['P-WBF', 'spacer', 'P-LB1'], align: 'align-center' },
+        { roundTitle: '败者组决赛', matches: ['P-LBF'], align: 'align-center' },
+        { roundTitle: '总决赛', matches: ['P-GF'], align: 'align-center' },
+        { roundTitle: '总冠军', matches: ['P-CHAMPION'], align: 'align-center' }
+    ];
+
+    async function loadData() {
+        try {
+            const response = await fetch('match_data.xlsx');
+            const arrayBuffer = await response.arrayBuffer();
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+            workbook.SheetNames.forEach(sheetName => {
+                const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+                allMatchesData[sheetName] = sheetData.reduce((acc, row) => {
+                    acc[String(row.match_id).trim()] = row; 
+                    return acc;
+                }, {});
+            });
+            
+            renderBrackets('挑战组');
+        } catch (error) {
+            console.error("加载或解析match_data.xlsx失败:", error);
+            document.getElementById('swiss-bracket').innerHTML = `<p style="color:red; text-align:center;">无法加载赛程数据: ${error.message}</p>`;
+        }
+    }
+
+    function createMatchCardElement(matchData, matchId) {
+        const teamA = matchData?.team_a || 'TBD';
+        const teamB = matchData?.team_b || 'TBD';
+        const scoreA = matchData?.score_a ?? 0;
+        const scoreB = matchData?.score_b ?? 0;
+        
+        const winnerA = Number(scoreA) > Number(scoreB);
+        const winnerB = Number(scoreB) > Number(scoreA);
+
+        return `
+            <div class="match-card" id="${matchId}">
+                <div class="team ${winnerA ? 'winner' : ''} ${winnerB ? 'loser' : ''}">
+                    <span class="team-name">${teamA}</span>
+                    <span class="team-score">${scoreA}</span>
+                </div>
+                <hr>
+                <div class="team ${winnerB ? 'winner' : ''} ${winnerA ? 'loser' : ''}">
+                    <span class="team-name">${teamB}</span>
+                    <span class="team-score">${scoreB}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    function createResultCardElement(resultTeam, type, matchId) {
+        if (!resultTeam || String(resultTeam).trim() === '') {
+            resultTeam = 'TBD';
+        }
+        let className = 'result-card';
+        if (type === 'champion') className += ' champion-card';
+        if (type === 'eliminated') className += ' eliminated-card';
+
+        return `<div class="${className}" id="${matchId}">${resultTeam}</div>`;
+    }
+
+    function renderBrackets(groupName) {
+        const groupData = allMatchesData[groupName] || {};
+        const swissContainer = document.getElementById('swiss-bracket');
+        const playoffContainer = document.getElementById('playoff-bracket');
+        const currentGroupNameElement = document.getElementById('current-group-name');
+
+        currentGroupNameElement.textContent = groupName;
+        swissContainer.innerHTML = '';
+        playoffContainer.innerHTML = '';
+
+        swissBracketStructure.forEach(round => {
+            let roundHtml = `<div class="round ${round.align || ''}">`;
+            roundHtml += `<div class="round-title">${round.roundTitle}</div>`;
+            round.matches.forEach(matchId => {
+                if (matchId === 'spacer') {
+                    roundHtml += `<div style="height: 50px; width: 180px; flex-shrink: 0;"></div>`;
+                } else if (matchId.startsWith('S4-PROMO')) {
+                     const team = groupData[matchId] ? groupData[matchId].result_team : '';
+                     roundHtml += createResultCardElement(team, 'promoted', matchId);
+                } else if (matchId.startsWith('S4-ELIM')) {
+                     const team = groupData[matchId] ? groupData[matchId].result_team : '';
+                     roundHtml += createResultCardElement(team, 'eliminated', matchId);
+                } else {
+                    roundHtml += createMatchCardElement(groupData[matchId], matchId);
+                }
+            });
+            roundHtml += `</div>`;
+            swissContainer.innerHTML += roundHtml;
+        });
+
+        playoffBracketStructure.forEach(round => {
+            let roundHtml = `<div class="round ${round.align || ''}">`;
+            roundHtml += `<div class="round-title">${round.roundTitle}</div>`;
+            round.matches.forEach(matchId => {
+                if (matchId === 'spacer') {
+                    roundHtml += `<div style="height: 50px; width: 180px; flex-shrink: 0;"></div>`;
+                } else if (matchId === 'P-CHAMPION') {
+                     const team = groupData[matchId] ? groupData[matchId].result_team : '';
+                     roundHtml += createResultCardElement(team, 'champion', matchId);
+                } else {
+                    roundHtml += createMatchCardElement(groupData[matchId], matchId);
+                }
+            });
+            roundHtml += `</div>`;
+            playoffContainer.innerHTML += roundHtml;
+        });
+    }
+
+    const groupFilters = document.getElementById('group-filters');
+    groupFilters.addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') {
+            groupFilters.querySelector('.active').classList.remove('active');
+            e.target.classList.add('active');
+            renderBrackets(e.target.dataset.group);
+        }
+    });
+
+    loadData();
+});
+</script>
+
+</body>
+</html>
