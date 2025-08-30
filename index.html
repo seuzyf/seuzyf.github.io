@@ -76,55 +76,40 @@
         .nav-button { padding: 0 25px; border: 2px solid var(--primary-color); color: var(--primary-color); text-decoration: none; }
         .nav-button:hover { background-color: var(--primary-color); color: white; }
         
-        .functional-area {
-            position: relative;
-            padding-top: 50px; /* 为背景标题留出空间 */
-            margin-bottom: 50px;
+        .content-block {
+            background-color: var(--card-bg-color);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 16px var(--shadow-color);
+            margin-bottom: 40px;
         }
-        .background-title {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: clamp(60px, 12vw, 200px); /* 响应式字体大小 */
-            font-weight: 900;
-            color: var(--text-color);
-            opacity: 0.05;
-            z-index: 1;
-            text-transform: uppercase;
-            white-space: nowrap;
-            user-select: none;
-        }
-        .content-overlay {
-            position: relative;
-            z-index: 2;
+        .content-block h2 {
+            font-size: 2em;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-top: 0;
+            margin-bottom: 25px;
         }
 
         #matches-view {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 25px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
         }
         .match-card {
-            background-color: var(--card-bg-color);
-            backdrop-filter: blur(10px);
+            background-color: var(--bg-color);
             border-radius: 12px;
             box-shadow: 0 4px 12px var(--shadow-color);
             border: 1px solid var(--border-color);
             overflow: hidden;
-            transition: all 0.3s ease-in-out;
+            transition: transform 0.3s, box-shadow 0.3s;
             cursor: pointer;
-            flex: 1 1 500px; 
-            max-width: 650px;
         }
         .match-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px var(--shadow-color); }
-        .match-card.expanded {
-            flex-basis: 100%; 
-            max-width: 100%;
-            cursor: default;
-        }
-        .match-header { display: flex; flex-direction: column; padding: 15px 20px; position: relative; }
+        .match-header { display: flex; flex-direction: column; padding: 15px; position: relative; }
         .match-card::after {
             content: attr(data-stage-name);
             position: absolute; top: -1px; right: -1px; padding: 4px 12px;
@@ -136,31 +121,67 @@
         .stage-is-final.stage-淘汰赛 { border-color: var(--gold-color); }
         .stage-is-final::after { background-image: linear-gradient(135deg, #e4c400, #b48600); color: #0f1923; }
         .match-meta { display: flex; justify-content: space-between; align-items: baseline; width: 100%; margin-bottom: 10px; }
-        .match-meta .map { font-weight: 500; font-size: 1.3em; }
-        .match-meta .date { font-size: 0.9em; opacity: 0.8; }
-        .match-teams { display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 1.5em; font-weight: bold; }
+        .match-meta .map { font-weight: 500; font-size: 1.2em; }
+        .match-meta .date { font-size: 0.8em; opacity: 0.8; }
+        .match-teams { display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 1.3em; font-weight: bold; }
         .team-name { flex: 1; text-align: center; }
-        .score { color: var(--primary-color); padding: 0 20px; }
-        .match-body {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.5s ease-in-out;
+        .score { color: var(--primary-color); padding: 0 15px; }
+        
+        #standings-table { width: 100%; border-collapse: collapse; }
+        #standings-table thead { background-color: var(--primary-color); color: white; }
+        #standings-table th, #standings-table td { padding: 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        #standings-table tbody tr:last-child td { border-bottom: none; }
+        #standings-table tbody tr:hover { background-color: rgba(255, 255, 255, 0.05); }
+        #standings-table td:first-child, #standings-table th:first-child { text-align: center; }
+
+        /* Modal (弹窗) 样式 */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
         }
-        .match-card.expanded .match-body { max-height: 500px; }
-        .player-comparison-table { width: 100%; border-collapse: collapse; font-size: 0.9em; border-top: 1px solid var(--border-color); }
+        .modal-backdrop.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: var(--card-bg-color);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s;
+        }
+        .modal-backdrop.visible .modal-content {
+            transform: scale(1);
+        }
+        .player-comparison-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
         .player-comparison-table th, .player-comparison-table td { padding: 8px; text-align: center; border-bottom: 1px solid var(--border-color); }
+        .player-comparison-table thead th { padding: 10px; }
         .player-comparison-table tbody tr:last-child td { border-bottom: none; }
+        .player-comparison-table .team-name-header { font-size: 1.4em; font-weight: 700; }
+        .player-comparison-table .score-cell { font-size: 1.8em; font-weight: 700; color: var(--primary-color); vertical-align: middle; border-bottom: 1px solid var(--border-color); }
         .player-comparison-table .stat-header th { font-weight: normal; opacity: 0.8; font-size: 0.85em; background-color: rgba(0,0,0,0.03); }
         .player-comparison-table td.player-id, .player-comparison-table td.player-character { font-weight: 500; text-align: left; white-space: nowrap; }
         .player-comparison-table td.player-acs { font-weight: bold; color: var(--primary-color); }
         .player-comparison-table .separator { width: 1px; padding: 0; }
-        #standings-table { width: 100%; border-collapse: collapse; background-color: var(--card-bg-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px var(--shadow-color); border: 1px solid var(--border-color); }
-        #standings-table thead { background-color: var(--primary-color); color: white; font-weight: 500; }
-        #standings-table th, #standings-table td { padding: 15px; text-align: left; }
-        #standings-table tbody tr { border-bottom: 1px solid var(--border-color); transition: background-color 0.2s; }
-        #standings-table tbody tr:last-child { border-bottom: none; }
-        #standings-table tbody tr:hover { background-color: rgba(0, 0, 0, 0.05); }
-        #standings-table td:first-child, #standings-table th:first-child { text-align: center; }
+        
         .theme-switch-wrapper { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 10px; }
         #theme-text { font-size: 0.8em; opacity: 0.8; }
         .theme-switch { display: inline-block; height: 24px; position: relative; width: 48px; }
@@ -204,15 +225,9 @@
     </header>
 
     <main class="container">
-        <section class="functional-area">
-            <div id="matches-title" class="background-title">比赛结果</div>
-            <div class="content-overlay">
-                <div id="matches-view"></div>
-            </div>
-        </section>
-        <section class="functional-area">
-            <div id="standings-title" class="background-title">积分榜</div>
-            <div class="content-overlay">
+        <section class="content-block">
+            <h2 id="standings-title">战队积分榜 - 传奇组</h2>
+            <div style="overflow-x: auto;">
                 <table id="standings-table">
                     <thead>
                         <tr><th>排名</th><th>队伍</th><th>胜场</th><th>负场</th><th>净胜分</th></tr>
@@ -221,18 +236,32 @@
                 </table>
             </div>
         </section>
+        <section class="content-block">
+            <h2 id="matches-title">比赛结果 - 传奇组</h2>
+            <div id="matches-view"></div>
+        </section>
     </main>
+
+    <div id="match-modal" class="modal-backdrop">
+        <div class="modal-content" id="modal-content-body">
+            </div>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const matchesView = document.getElementById('matches-view');
+            const modal = document.getElementById('match-modal');
+            const modalContent = document.getElementById('modal-content-body');
             const standingsTableBody = document.getElementById('standings-table-body');
             const themeToggle = document.getElementById('theme-toggle-checkbox');
             const themeText = document.getElementById('theme-text');
             const groupFilterButtons = document.getElementById('group-filter-buttons');
             const stageFilterButtons = document.getElementById('stage-filter-buttons');
+            const matchesTitle = document.getElementById('matches-title');
+            const standingsTitle = document.getElementById('standings-title');
             let tournamentData = { '传奇组': [], '中坚组': [], '挑战组': [] };
+            let currentFilteredMatches = [];
 
             function setTheme(isLight) {
                 document.body.classList.toggle('light-theme', isLight);
@@ -280,9 +309,11 @@
             function updateDisplay() {
                 const activeGroup = groupFilterButtons.querySelector('.active').dataset.group;
                 const selectedStage = stageFilterButtons.querySelector('.active').dataset.stage;
-                const filteredMatches = (tournamentData[activeGroup] || []).filter(match => selectedStage === 'all' || ((match['赛段'] === '小组赛' ? '小组赛' : '淘汰赛') === selectedStage));
-                displayMatchCards(filteredMatches);
-                calculateAndDisplayStandings(filteredMatches);
+                matchesTitle.textContent = `比赛结果 - ${activeGroup}`;
+                standingsTitle.textContent = `战队积分榜 - ${activeGroup}`;
+                currentFilteredMatches = (tournamentData[activeGroup] || []).filter(match => selectedStage === 'all' || ((match['赛段'] === '小组赛' ? '小组赛' : '淘汰赛') === selectedStage));
+                displayMatchCards(currentFilteredMatches);
+                calculateAndDisplayStandings(currentFilteredMatches);
             }
 
             function parseAllSheets(workbook) {
@@ -339,7 +370,7 @@
 
             function displayMatchCards(matches) {
                 matchesView.innerHTML = matches.length === 0 ? '<p>当前筛选条件下没有比赛。</p>' : '';
-                matches.forEach(match => createMatchCard(match));
+                matches.forEach((match, index) => createMatchCard(match, index));
             }
 
             function calculateAndDisplayStandings(matches) {
@@ -363,7 +394,29 @@
                 }).join('');
             }
 
-            function createMatchCard(matchData) {
+            function createMatchCard(matchData, index) {
+                const card = document.createElement('div');
+                card.className = `match-card stage-${(matchData['赛段'] === '小组赛' ? '小组赛' : '淘汰赛')} ${matchData['赛段'] === '决赛' ? 'stage-is-final' : ''}`;
+                card.dataset.stageName = matchData['赛段'];
+                card.dataset.matchIndex = index;
+                const score = String(matchData['比分']).replace(/[/：]/, ' : ');
+                card.innerHTML = `
+                    <div class="match-header">
+                        <div class="match-meta">
+                            <span class="map">${matchData['比赛地图']}</span>
+                            <span class="date">${matchData['比赛日期']}</span>
+                        </div>
+                        <div class="match-teams">
+                            <span class="team-name">${matchData['teamA']}</span>
+                            <span class="score">${score}</span>
+                            <span class="team-name">${matchData['teamB']}</span>
+                        </div>
+                    </div>
+                `;
+                matchesView.appendChild(card);
+            }
+
+            function showModalWithMatchData(matchData) {
                 const teamAPlayers = [], teamBPlayers = [];
                 const placeholder = { id: '-', ch: '-', acs: '-', k: '-', d: '-', a: '-' };
                 for (let i = 1; i <= 5; i++) {
@@ -391,40 +444,31 @@
                     </tr>`;
                 }
                 const score = String(matchData['比分']).replace(/[/：]/, ' : ');
-                const stageType = (matchData['赛段'] === '小组赛') ? '小组赛' : '淘汰赛';
-                const stageClass = `stage-${stageType} ${matchData['赛段'] === '决赛' ? 'stage-is-final' : ''}`;
-                const card = document.createElement('div');
-                card.className = `match-card ${stageClass}`;
-                card.dataset.stageName = matchData['赛段'];
-                card.innerHTML = `
-                    <div class="match-header">
-                        <div class="match-meta">
-                            <span class="map">${matchData['比赛地图']}</span><span class="date">${matchData['比赛日期']}</span>
-                        </div>
-                        <div class="match-teams">
-                            <span class="team-name">${matchData['teamA']}</span><span class="score">${score}</span><span class="team-name">${matchData['teamB']}</span>
-                        </div>
-                    </div>
-                    <div class="match-body">
-                        <table class="player-comparison-table">
-                            <thead>
-                                <tr class="stat-header"><th>ID</th><th>角色</th><th>ACS</th><th>K</th><th>D</th><th>A</th><th class="separator"></th><th>ID</th><th>角色</th><th>ACS</th><th>K</th><th>D</th><th>A</th></tr>
-                            </thead>
-                            <tbody>${rowsHTML}</tbody>
-                        </table>
-                    </div>`;
-                matchesView.appendChild(card);
+                modalContent.innerHTML = `
+                    <table class="player-comparison-table">
+                        <thead>
+                            <tr><th colspan="6" class="team-name-header">${matchData['teamA']}</th><th class="score-cell">${score}</th><th colspan="6" class="team-name-header">${matchData['teamB']}</th></tr>
+                            <tr class="stat-header"><th>ID</th><th>角色</th><th>ACS</th><th>K</th><th>D</th><th>A</th><th class="separator"></th><th>ID</th><th>角色</th><th>ACS</th><th>K</th><th>D</th><th>A</th></tr>
+                        </thead>
+                        <tbody>${rowsHTML}</tbody>
+                    </table>`;
+                modal.classList.add('visible');
             }
 
             matchesView.addEventListener('click', (e) => {
                 const clickedCard = e.target.closest('.match-card');
                 if (!clickedCard) return;
-                if (e.target.tagName === 'A') return;
-                const isExpanded = clickedCard.classList.contains('expanded');
-                document.querySelectorAll('.match-card.expanded').forEach(card => {
-                    if (card !== clickedCard) card.classList.remove('expanded');
-                });
-                clickedCard.classList.toggle('expanded');
+                const matchIndex = parseInt(clickedCard.dataset.matchIndex, 10);
+                const matchData = currentFilteredMatches[matchIndex];
+                if (matchData) {
+                    showModalWithMatchData(matchData);
+                }
+            });
+
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('visible');
+                }
             });
         });
     </script>
