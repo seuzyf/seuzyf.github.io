@@ -15,6 +15,9 @@
             --border-color: #2a3a49;
             --shadow-color: rgba(0,0,0,0.3);
             --winner-color: #4CAF50;
+            --gold-color: #FFD700;
+            --silver-color: #C0C0C0;
+            --bronze-color: #CD7F32;
         }
         body.light-theme {
             --primary-color: #D64550;
@@ -36,21 +39,33 @@
             background-size: cover;
             background-position: center;
         }
-        .container {
-            width: 90%;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        header { text-align: center; margin-bottom: 20px; }
-        header h1 {
-            color: var(--primary-color);
-            font-size: 3em;
+        .container { width: 90%; max-width: 1400px; margin: 0 auto; }
+        header {
             background-color: var(--header-bg-color);
             backdrop-filter: blur(10px);
-            padding: 20px;
+            padding: 25px;
             border-radius: 12px;
+            box-shadow: 0 8px 16px var(--shadow-color);
+            text-align: center;
+            margin-bottom: 40px;
             border: 1px solid var(--border-color);
+            position: relative;
         }
+        header h1 { color: var(--primary-color); margin: 0; font-weight: 700; font-size: 2.5em; }
+        .group-badge {
+            position: absolute; top: -1px; right: -1px; padding: 6px 15px;
+            border-bottom-left-radius: 12px; border-top-right-radius: 12px;
+            font-size: 0.9em; font-weight: 500; color: #0f1923; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .group-badge.legend { background-image: linear-gradient(135deg, #FFD700, #B8860B); }
+        .group-badge.contender { background-image: linear-gradient(135deg, #e0e0e0, #a0a0a0); }
+        .group-badge.challenger { background-image: linear-gradient(135deg, #CD7F32, #A0522D); }
+
+        .main-layout { display: flex; gap: 30px; align-items: flex-start; }
+        #career-stats-card { flex: 1; min-width: 320px; position: sticky; top: 20px; }
+        #character-stats-section { flex: 2.5; }
+
         .data-section {
             background-color: var(--card-bg-color);
             backdrop-filter: blur(10px);
@@ -58,29 +73,43 @@
             border-radius: 12px;
             padding: 25px;
             box-shadow: 0 8px 16px var(--shadow-color);
-            margin-bottom: 30px;
         }
         .data-section h2 { margin-top: 0; color: var(--primary-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
-        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; font-size: 1.1em; }
-        .summary-grid div { background-color: var(--bg-color); padding: 15px; border-radius: 8px; }
-        .summary-grid strong { color: var(--primary-color); }
-        .rank-top { font-size: 0.9em; color: var(--winner-color); margin-left: 8px; font-weight: bold; }
+        .summary-list { display: flex; flex-direction: column; gap: 15px; font-size: 1.1em; }
+        .summary-list div { background-color: var(--bg-color); padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: baseline; }
+        .summary-list strong { color: var(--primary-color); }
+        .rank-top { font-size: 0.9em; color: var(--winner-color); font-weight: bold; }
         #character-stats-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
         #character-stats-table thead { background-color: var(--primary-color); color: white; }
-        #character-stats-table th, #character-stats-table td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        #character-stats-table th, #character-stats-table td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
         #character-stats-table tbody tr:hover { background-color: rgba(255,255,255,0.05); }
+        .theme-switch-wrapper { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 10px; }
+        #theme-text { font-size: 0.8em; opacity: 0.8; }
+        .theme-switch { display: inline-block; height: 24px; position: relative; width: 48px; }
+        .theme-switch input { display:none; }
+        .slider { background-color: var(--border-color); bottom: 0; cursor: pointer; left: 0; position: absolute; right: 0; top: 0; transition: .4s; border-radius: 24px; }
+        .slider:before { background-color: var(--text-color); bottom: 4px; content: ""; height: 16px; left: 4px; position: absolute; transition: .4s; width: 16px; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary-color); }
+        input:checked + .slider:before { transform: translateX(24px); }
     </style>
 </head>
 <body>
-
     <div class="container">
         <header>
+            <div id="group-badge-container"></div>
+            <div class="theme-switch-wrapper">
+                <span id="theme-text"></span>
+                <label class="theme-switch">
+                    <input type="checkbox" id="theme-toggle-checkbox">
+                    <span class="slider"></span>
+                </label>
+            </div>
             <h1 id="player-id-header">Loading...</h1>
         </header>
-        <main>
-            <section class="data-section" id="summary-card">
-                <h2>生涯平均数据 (本组别)</h2>
-                <div class="summary-grid" id="summary-grid-content"><p>正在计算数据...</p></div>
+        <main class="main-layout">
+            <section class="data-section" id="career-stats-card">
+                <h2>生涯平均数据</h2>
+                <div class="summary-list" id="summary-list-content"><p>正在计算数据...</p></div>
             </section>
             <section class="data-section" id="character-stats-section">
                 <h2>各角色平均数据</h2>
@@ -91,12 +120,12 @@
                                 <th>角色</th>
                                 <th>出场</th>
                                 <th>ACS</th>
-                                <th>每局K</th>
-                                <th>每局D</th>
-                                <th>每局A</th>
-                                <th>每回合K</th>
-                                <th>每回合D</th>
-                                <th>每回合A</th>
+                                <th>每局击杀</th>
+                                <th>每局死亡</th>
+                                <th>每局助攻</th>
+                                <th>每回合击杀</th>
+                                <th>每回合死亡</th>
+                                <th>每回合助攻</th>
                             </tr>
                         </thead>
                         <tbody id="character-stats-body"></tbody>
@@ -105,7 +134,6 @@
             </section>
         </main>
     </div>
-
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
@@ -117,11 +145,29 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    document.getElementById('player-id-header').textContent = `${playerId} (${groupName})`;
+    const themeToggle = document.getElementById('theme-toggle-checkbox');
+    const themeText = document.getElementById('theme-text');
+    function setTheme(isLight) {
+        document.body.classList.toggle('light-theme', isLight);
+        themeToggle.checked = isLight;
+        themeText.textContent = isLight ? '点击切换夜间模式' : '点击切换日间模式';
+        localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    }
+    const savedTheme = localStorage.getItem('theme');
+    setTheme((savedTheme === null) ? true : (savedTheme === 'light'));
+    themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
+
+    document.getElementById('player-id-header').textContent = playerId;
+    const groupBadgeContainer = document.getElementById('group-badge-container');
+    let groupClass = '';
+    if (groupName === '传奇组') groupClass = 'legend';
+    else if (groupName === '中坚组') groupClass = 'contender';
+    else if (groupName === '挑战组') groupClass = 'challenger';
+    groupBadgeContainer.innerHTML = `<div class="group-badge ${groupClass}">${groupName}</div>`;
     
     const allPlayerData = JSON.parse(localStorage.getItem('valorantPlayerSummary') || '{}');
     if (Object.keys(allPlayerData).length === 0) {
-        document.getElementById('summary-grid-content').innerHTML = `<p style="color:red;">数据未加载。请先访问比赛中心主页以生成统计数据。</p>`;
+        document.getElementById('summary-list-content').innerHTML = `<p style="color:red;">数据未加载。请先访问比赛中心主页以生成统计数据。</p>`;
         return;
     }
 
@@ -139,7 +185,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return rank > 0 ? `(TOP ${rank})` : '';
     }
     
-    // 1. 准备总览排名数据
     const groupPlayersForRank = [];
     for (const key in allPlayerData) {
         const p = allPlayerData[key];
@@ -168,17 +213,16 @@ document.addEventListener('DOMContentLoaded', () => {
         a_round: playerTotals.totalRounds > 0 ? playerTotals.assists / playerTotals.totalRounds : 0,
     };
     
-    document.getElementById('summary-grid-content').innerHTML = `
-        <div><strong>平均ACS:</strong> ${playerAverages.acs.toFixed(2)} <span class="rank-top">${getRank(playerId, 'acs', groupPlayersForRank)}</span></div>
-        <div><strong>每局K:</strong> ${playerAverages.k_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_map', groupPlayersForRank)}</span></div>
-        <div><strong>每局D:</strong> ${playerAverages.d_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_map', groupPlayersForRank, true)}</span></div>
-        <div><strong>每局A:</strong> ${playerAverages.a_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_map', groupPlayersForRank)}</span></div>
-        <div><strong>每回合K:</strong> ${playerAverages.k_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_round', groupPlayersForRank)}</span></div>
-        <div><strong>每回合D:</strong> ${playerAverages.d_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_round', groupPlayersForRank, true)}</span></div>
-        <div><strong>每回合A:</strong> ${playerAverages.a_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_round', groupPlayersForRank)}</span></div>
+    document.getElementById('summary-list-content').innerHTML = `
+        <div><strong>平均ACS:</strong> <span>${playerAverages.acs.toFixed(2)} <span class="rank-top">${getRank(playerId, 'acs', groupPlayersForRank)}</span></span></div>
+        <div><strong>每局击杀:</strong> <span>${playerAverages.k_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_map', groupPlayersForRank)}</span></span></div>
+        <div><strong>每局死亡:</strong> <span>${playerAverages.d_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_map', groupPlayersForRank, true)}</span></span></div>
+        <div><strong>每局助攻:</strong> <span>${playerAverages.a_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_map', groupPlayersForRank)}</span></span></div>
+        <div><strong>每回合击杀:</strong> <span>${playerAverages.k_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_round', groupPlayersForRank)}</span></span></div>
+        <div><strong>每回合死亡:</strong> <span>${playerAverages.d_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_round', groupPlayersForRank, true)}</span></span></div>
+        <div><strong>每回合助攻:</strong> <span>${playerAverages.a_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_round', groupPlayersForRank)}</span></span></div>
     `;
 
-    // 2. 准备并渲染角色数据
     const tableBody = document.getElementById('character-stats-body');
     tableBody.innerHTML = '';
     Object.entries(playerData.by_character).sort(([,a],[,b]) => b.matchCount - a.matchCount).forEach(([charName, stats]) => {

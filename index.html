@@ -62,7 +62,7 @@
             flex-wrap: wrap;
             margin-top: 25px;
         }
-        .control-button, .filter-group, .nav-button {
+        .filter-group, .nav-button {
             height: var(--control-height);
             display: inline-flex;
             align-items: center;
@@ -84,58 +84,54 @@
             margin-bottom: 25px;
             background-color: var(--header-bg-color);
             backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
             padding: 10px 15px;
             border-radius: 8px;
         }
         #matches-view {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(680px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 25px;
         }
         .match-card {
             background-color: var(--card-bg-color);
             backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
             border-radius: 12px;
             box-shadow: 0 4px 12px var(--shadow-color);
             border: 1px solid var(--border-color);
             overflow: hidden;
-            transition: transform 0.3s, box-shadow 0.3s, background-color 0.3s;
-            position: relative;
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
         }
-        .match-card:hover { transform: translateY(-8px); box-shadow: 0 12px 24px var(--shadow-color); }
+        .match-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px var(--shadow-color); }
+        .match-card.expanded { grid-column: 1 / -1; cursor: default; transform: translateY(0); }
+        .match-header { display: flex; flex-direction: column; padding: 15px 20px; position: relative; }
         .match-card::after {
             content: attr(data-stage-name);
-            position: absolute;
-            top: -1px;
-            right: -1px;
-            padding: 4px 12px;
-            border-bottom-left-radius: 12px;
-            border-top-right-radius: 12px;
-            font-size: 0.8em;
-            font-weight: 500;
-            color: #fff;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            position: absolute; top: -1px; right: -1px; padding: 4px 12px;
+            border-bottom-left-radius: 12px; border-top-right-radius: 12px;
+            font-size: 0.8em; font-weight: 500; color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
         .stage-小组赛::after { background-color: #53687E; }
         .stage-淘汰赛::after { background-color: #4A90E2; }
         .stage-is-final.stage-淘汰赛 { border-color: var(--gold-color); }
         .stage-is-final::after { background-image: linear-gradient(135deg, #e4c400, #b48600); color: #0f1923; }
-        .match-header { display: flex; align-items: center; padding: 15px 20px; background-color: rgba(0,0,0,0.03); border-bottom: 1px solid var(--border-color); }
-        .match-info { display: flex; align-items: baseline; gap: 15px; }
-        .match-header .map { font-weight: 500; font-size: 1.3em; }
-        .match-header .date { font-size: 0.9em; opacity: 0.8; }
-        .match-body { padding: 15px 20px 20px; }
-        .player-comparison-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        .match-meta { display: flex; justify-content: space-between; align-items: baseline; width: 100%; margin-bottom: 10px; }
+        .match-meta .map { font-weight: 500; font-size: 1.3em; }
+        .match-meta .date { font-size: 0.9em; opacity: 0.8; }
+        .match-teams { display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 1.5em; font-weight: bold; }
+        .team-name { flex: 1; text-align: center; }
+        .score { color: var(--primary-color); padding: 0 20px; }
+        .match-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+        .match-card.expanded .match-body { max-height: 500px; }
+        .player-comparison-table { width: 100%; border-collapse: collapse; font-size: 0.9em; border-top: 1px solid var(--border-color); }
         .player-comparison-table th, .player-comparison-table td { padding: 8px; text-align: center; border-bottom: 1px solid var(--border-color); }
-        .player-comparison-table thead th { padding: 10px; }
         .player-comparison-table tbody tr:last-child td { border-bottom: none; }
-        .player-comparison-table .team-name-header { font-size: 1.4em; font-weight: 700; }
-        .player-comparison-table .score-cell { font-size: 1.8em; font-weight: 700; color: var(--primary-color); vertical-align: middle; border-bottom: 1px solid var(--border-color); }
         .player-comparison-table .stat-header th { font-weight: normal; opacity: 0.8; font-size: 0.85em; background-color: rgba(0,0,0,0.03); }
-        .player-comparison-table td.player-id { font-weight: 500; text-align: left; white-space: nowrap; }
-        .player-comparison-table td.player-character { font-weight: 500; }
+        .player-comparison-table td.player-id, .player-comparison-table td.player-character { font-weight: 500; text-align: left; white-space: nowrap; }
         .player-comparison-table td.player-acs { font-weight: bold; color: var(--primary-color); }
         .player-comparison-table .separator { width: 1px; padding: 0; }
         #standings-table { width: 100%; border-collapse: collapse; background-color: var(--card-bg-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px var(--shadow-color); border: 1px solid var(--border-color); }
@@ -175,7 +171,6 @@
                         <button data-group="挑战组">挑战组</button>
                     </div>
                 </div>
-
                 <div class="control-group">
                      <div class="filter-group" id="stage-filter-buttons">
                         <button class="active" data-stage="all">所有赛段</button>
@@ -183,7 +178,6 @@
                         <button data-stage="淘汰赛">淘汰赛</button>
                     </div>
                 </div>
-
                 <a href="summary.html" class="nav-button">查看选手数据</a>
                 <a href="schedule.html" class="nav-button" target="_blank">查看赛程</a>
             </div>
@@ -193,9 +187,7 @@
     <main class="container">
         <section id="matches-section">
             <h2 id="matches-title">比赛结果 - 传奇组</h2>
-            <div id="matches-view">
-                <p class="placeholder-text">正在加载数据，请稍候...</p>
-            </div>
+            <div id="matches-view"></div>
         </section>
         <section id="standings-section">
             <h2 id="standings-title">战队积分榜 - 传奇组</h2>
@@ -219,7 +211,6 @@
             const stageFilterButtons = document.getElementById('stage-filter-buttons');
             const matchesTitle = document.getElementById('matches-title');
             const standingsTitle = document.getElementById('standings-title');
-
             let tournamentData = { '传奇组': [], '中坚组': [], '挑战组': [] };
 
             function setTheme(isLight) {
@@ -233,41 +224,32 @@
             themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
 
             async function loadDataFromRepo() {
-                matchesView.innerHTML = '<p class="placeholder-text">正在从GitHub加载数据，请稍候...</p>';
+                matchesView.innerHTML = '<p>正在加载数据...</p>';
                 try {
                     const response = await fetch('data.xlsx');
                     if (!response.ok) throw new Error(`错误: data.xlsx 文件未找到。`);
                     const arrayBuffer = await response.arrayBuffer();
                     const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
-                    
                     parseAllSheets(workbook);
-                    processAndStorePlayerData(); // 关键函数已重写
-                    
-                    const firstGroupButton = groupFilterButtons.querySelector('button');
-                    if (firstGroupButton) {
-                        groupFilterButtons.querySelector('.active')?.classList.remove('active');
-                        firstGroupButton.classList.add('active');
-                    }
-                    stageFilterButtons.querySelector('[data-stage="all"]')?.classList.add('active');
-                   
+                    processAndStorePlayerData();
+                    document.querySelector('#group-filter-buttons button.active')?.classList.remove('active');
+                    document.querySelector('#group-filter-buttons button[data-group="传奇组"]')?.classList.add('active');
                     updateDisplay();
                 } catch (error) {
-                    matchesView.innerHTML = `<p class="placeholder-text" style="color:red;">数据加载失败: ${error.message}</p>`;
-                    console.error("加载Excel文件时出错:", error);
+                    matchesView.innerHTML = `<p style="color:red;">数据加载失败: ${error.message}</p>`;
                 }
             }
-            
             loadDataFromRepo();
 
             groupFilterButtons.addEventListener('click', (e) => {
-                if (e.target.tagName === 'BUTTON') {
+                if (e.target.tagName === 'BUTTON' && !e.target.classList.contains('active')) {
                     groupFilterButtons.querySelector('.active').classList.remove('active');
                     e.target.classList.add('active');
                     updateDisplay();
                 }
             });
             stageFilterButtons.addEventListener('click', (e) => {
-                if (e.target.tagName === 'BUTTON') {
+                if (e.target.tagName === 'BUTTON' && !e.target.classList.contains('active')) {
                     stageFilterButtons.querySelector('.active').classList.remove('active');
                     e.target.classList.add('active');
                     updateDisplay();
@@ -277,84 +259,57 @@
             function updateDisplay() {
                 const activeGroup = groupFilterButtons.querySelector('.active').dataset.group;
                 const selectedStage = stageFilterButtons.querySelector('.active').dataset.stage;
-
                 matchesTitle.textContent = `比赛结果 - ${activeGroup}`;
                 standingsTitle.textContent = `战队积分榜 - ${activeGroup}`;
-
-                const currentGroupMatches = tournamentData[activeGroup] || [];
-                const filteredMatches = currentGroupMatches.filter(match => {
-                    if (selectedStage === 'all') return true;
-                    return ((match['赛段'] === '小组赛' ? '小组赛' : '淘汰赛') === selectedStage);
-                });
-
+                const filteredMatches = (tournamentData[activeGroup] || []).filter(match => selectedStage === 'all' || ((match['赛段'] === '小组赛' ? '小组赛' : '淘汰赛') === selectedStage));
                 displayMatchCards(filteredMatches);
                 calculateAndDisplayStandings(filteredMatches);
             }
 
             function parseAllSheets(workbook) {
-                tournamentData = { '传奇组': [], '中坚组': [], '挑战组': [] };
                 workbook.SheetNames.forEach(sheetName => {
                     if (tournamentData.hasOwnProperty(sheetName)) {
-                        const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-                        tournamentData[sheetName] = jsonData.filter(row => row['比赛日期'] && String(row['比赛日期']).trim());
+                        tournamentData[sheetName] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]).filter(row => row['比赛日期']);
                     }
                 });
             }
-            
+
             function processAndStorePlayerData() {
-                const playerData = {}; 
-                
+                const playerData = {};
                 for (const groupName in tournamentData) {
                     tournamentData[groupName].forEach(match => {
                         const score = String(match['比分']).split(/[/:：]/).map(Number);
                         const totalRounds = (score.length === 2 && !isNaN(score[0]) && !isNaN(score[1])) ? (score[0] + score[1]) : 0;
-
                         ['teamA', 'teamB'].forEach(teamKey => {
                             const teamName = match[teamKey];
                             for (let p = 1; p <= 5; p++) {
                                 const playerId = match[`${teamKey}_player${p}ID`];
                                 const playerDataStr = match[`${teamKey}_player${p}数据`];
                                 const playerCh = match[`${teamKey}_player${p}Ch`];
-
-                                if (!playerId || !String(playerId).trim() || !playerDataStr || !String(playerDataStr).trim()) continue;
-                                
+                                if (!playerId || !playerDataStr) continue;
                                 const stats = String(playerDataStr).split('/').map(Number);
                                 if (stats.length !== 4 || stats.some(isNaN)) continue;
-                                
                                 const uniquePlayerKey = `${playerId}::${groupName}`;
-
                                 if (!playerData[uniquePlayerKey]) {
                                     playerData[uniquePlayerKey] = {
-                                        id: playerId,
-                                        group: groupName,
-                                        team: teamName,
+                                        id: playerId, group: groupName, team: teamName,
                                         total_stats: { kills: 0, deaths: 0, assists: 0, acs: 0, matchCount: 0, totalRounds: 0 },
                                         by_character: {}
                                     };
                                 }
-                                
                                 const playerEntry = playerData[uniquePlayerKey];
-                                playerEntry.team = teamName; 
-
-                                playerEntry.total_stats.acs += stats[0];
-                                playerEntry.total_stats.kills += stats[1];
-                                playerEntry.total_stats.deaths += stats[2];
-                                playerEntry.total_stats.assists += stats[3];
-                                playerEntry.total_stats.matchCount++;
-                                playerEntry.total_stats.totalRounds += totalRounds;
-
-                                if (playerCh && String(playerCh).trim()) {
+                                playerEntry.team = teamName;
+                                const p_stats = playerEntry.total_stats;
+                                p_stats.acs += stats[0]; p_stats.kills += stats[1]; p_stats.deaths += stats[2]; p_stats.assists += stats[3];
+                                p_stats.matchCount++; p_stats.totalRounds += totalRounds;
+                                if (playerCh) {
                                     const charName = String(playerCh).trim();
                                     if (!playerEntry.by_character[charName]) {
                                         playerEntry.by_character[charName] = { kills: 0, deaths: 0, assists: 0, acs: 0, matchCount: 0, totalRounds: 0 };
                                     }
                                     const charStats = playerEntry.by_character[charName];
-                                    charStats.acs += stats[0];
-                                    charStats.kills += stats[1];
-                                    charStats.deaths += stats[2];
-                                    charStats.assists += stats[3];
-                                    charStats.matchCount++;
-                                    charStats.totalRounds += totalRounds;
+                                    charStats.acs += stats[0]; charStats.kills += stats[1]; charStats.deaths += stats[2]; charStats.assists += stats[3];
+                                    charStats.matchCount++; charStats.totalRounds += totalRounds;
                                 }
                             }
                         });
@@ -362,27 +317,25 @@
                 }
                 localStorage.setItem('valorantPlayerSummary', JSON.stringify(playerData));
             }
-            
+
             function displayMatchCards(matches) {
-                matchesView.innerHTML = matches.length === 0 ? '<p class="placeholder-text">当前筛选条件下没有比赛。</p>' : '';
+                matchesView.innerHTML = matches.length === 0 ? '<p>当前筛选条件下没有比赛。</p>' : '';
                 matches.forEach(match => createMatchCard(match));
             }
-            
+
             function calculateAndDisplayStandings(matches) {
                 const teamStandings = {};
                 matches.forEach(match => {
-                    const teamA = match['teamA'], teamB = match['teamB'];
+                    const [teamA, teamB] = [match['teamA'], match['teamB']];
                     if (!match['比分']) return;
-                    const scoreParts = String(match['比分']).split(/[/:：]/).map(Number);
-                    if (scoreParts.length !== 2 || scoreParts.some(isNaN)) return;
-                    
+                    const [scoreA, scoreB] = String(match['比分']).split(/[/:：]/).map(Number);
+                    if (isNaN(scoreA) || isNaN(scoreB)) return;
                     if (!teamStandings[teamA]) teamStandings[teamA] = { wins: 0, losses: 0, roundDiff: 0 };
                     if (!teamStandings[teamB]) teamStandings[teamB] = { wins: 0, losses: 0, roundDiff: 0 };
-                    
-                    if (scoreParts[0] > scoreParts[1]) { teamStandings[teamA].wins++; teamStandings[teamB].losses++; } 
+                    if (scoreA > scoreB) { teamStandings[teamA].wins++; teamStandings[teamB].losses++; }
                     else { teamStandings[teamB].wins++; teamStandings[teamA].losses++; }
-                    teamStandings[teamA].roundDiff += (scoreParts[0] - scoreParts[1]);
-                    teamStandings[teamB].roundDiff += (scoreParts[1] - scoreParts[0]);
+                    teamStandings[teamA].roundDiff += (scoreA - scoreB);
+                    teamStandings[teamB].roundDiff += (scoreB - scoreA);
                 });
                 const sortedTeams = Object.keys(teamStandings).sort((a, b) => teamStandings[b].wins - teamStandings[a].wins || teamStandings[b].roundDiff - teamStandings[a].roundDiff);
                 standingsTableBody.innerHTML = sortedTeams.map((teamName, index) => {
@@ -393,50 +346,65 @@
 
             function createMatchCard(matchData) {
                 const teamAPlayers = [], teamBPlayers = [];
+                const placeholder = { id: '-', ch: '-', acs: '-', k: '-', d: '-', a: '-' };
                 for (let i = 1; i <= 5; i++) {
-                    const pida = matchData[`teamA_player${i}ID`], pdataa = matchData[`teamA_player${i}数据`], pcha = matchData[`teamA_player${i}Ch`];
+                    const [pida, pdataa, pcha] = [matchData[`teamA_player${i}ID`], matchData[`teamA_player${i}数据`], matchData[`teamA_player${i}Ch`]];
                     if (pida && pdataa) {
                         const stats = String(pdataa).split('/').map(Number);
                         if (stats.length === 4 && !stats.some(isNaN)) teamAPlayers.push({ id: pida, acs: stats[0], k: stats[1], d: stats[2], a: stats[3], ch: pcha });
                     }
-                    const pidb = matchData[`teamB_player${i}ID`], pdatab = matchData[`teamB_player${i}数据`], pchb = matchData[`teamB_player${i}Ch`];
+                    const [pidb, pdatab, pchb] = [matchData[`teamB_player${i}ID`], matchData[`teamB_player${i}数据`], matchData[`teamB_player${i}Ch`]];
                     if (pidb && pdatab) {
                         const stats = String(pdatab).split('/').map(Number);
                         if (stats.length === 4 && !stats.some(isNaN)) teamBPlayers.push({ id: pidb, acs: stats[0], k: stats[1], d: stats[2], a: stats[3], ch: pchb });
                     }
                 }
-                teamAPlayers.sort((a, b) => b.acs - a.acs);
-                teamBPlayers.sort((a, b) => b.acs - a.acs);
+                teamAPlayers.sort((a, b) => b.acs - a.acs); teamBPlayers.sort((a, b) => b.acs - a.acs);
                 let rowsHTML = '';
-                const placeholder = { id: '-', ch: '-', acs: '-', k: '-', d: '-', a: '-' };
                 for (let i = 0; i < 5; i++) {
-                    const pA = teamAPlayers[i] || placeholder;
-                    const pB = teamBPlayers[i] || placeholder;
+                    const pA = teamAPlayers[i] || placeholder, pB = teamBPlayers[i] || placeholder;
                     rowsHTML += `<tr>
-                        <td class="player-id">${pA.id}</td>
-                        <td class="player-character">${pA.ch}</td>
+                        <td class="player-id">${pA.id}</td><td class="player-character">${pA.ch}</td>
                         <td class="player-acs">${pA.acs}</td><td>${pA.k}</td><td>${pA.d}</td><td>${pA.a}</td>
                         <td class="separator"></td>
-                        <td class="player-id">${pB.id}</td>
-                        <td class="player-character">${pB.ch}</td>
+                        <td class="player-id">${pB.id}</td><td class="player-character">${pB.ch}</td>
                         <td class="player-acs">${pB.acs}</td><td>${pB.k}</td><td>${pB.d}</td><td>${pB.a}</td>
                     </tr>`;
                 }
                 const score = String(matchData['比分']).replace(/[/：]/, ' : ');
                 const stageType = (matchData['赛段'] === '小组赛') ? '小组赛' : '淘汰赛';
-                let stageClass = `stage-${stageType} ${matchData['赛段'] === '决赛' ? 'stage-is-final' : ''}`;
-                matchesView.innerHTML += `
-                    <div class="match-card ${stageClass}" data-stage-type="${stageType}" data-stage-name="${matchData['赛段']}">
-                        <div class="match-header"><div class="match-info"><span class="map">${matchData['比赛地图']}</span><span class="date">${matchData['比赛日期']}</span></div></div>
-                        <div class="match-body"><table class="player-comparison-table">
+                const stageClass = `stage-${stageType} ${matchData['赛段'] === '决赛' ? 'stage-is-final' : ''}`;
+                const card = document.createElement('div');
+                card.className = `match-card ${stageClass}`;
+                card.dataset.stageName = matchData['赛段'];
+                card.innerHTML = `
+                    <div class="match-header">
+                        <div class="match-meta">
+                            <span class="map">${matchData['比赛地图']}</span><span class="date">${matchData['比赛日期']}</span>
+                        </div>
+                        <div class="match-teams">
+                            <span class="team-name">${matchData['teamA']}</span><span class="score">${score}</span><span class="team-name">${matchData['teamB']}</span>
+                        </div>
+                    </div>
+                    <div class="match-body">
+                        <table class="player-comparison-table">
                             <thead>
-                                <tr><th colspan="6" class="team-name-header">${matchData['teamA']}</th><th class="score-cell">${score}</th><th colspan="6" class="team-name-header">${matchData['teamB']}</th></tr>
                                 <tr class="stat-header"><th>ID</th><th>角色</th><th>ACS</th><th>K</th><th>D</th><th>A</th><th class="separator"></th><th>ID</th><th>角色</th><th>ACS</th><th>K</th><th>D</th><th>A</th></tr>
                             </thead>
                             <tbody>${rowsHTML}</tbody>
-                        </table></div>
+                        </table>
                     </div>`;
+                matchesView.appendChild(card);
             }
+
+            matchesView.addEventListener('click', (e) => {
+                const clickedCard = e.target.closest('.match-card');
+                if (!clickedCard) return;
+                if (e.target.tagName === 'A') return;
+                const isExpanded = clickedCard.classList.contains('expanded');
+                document.querySelectorAll('.match-card.expanded').forEach(card => card.classList.remove('expanded'));
+                if (!isExpanded) clickedCard.classList.add('expanded');
+            });
         });
     </script>
 </body>
