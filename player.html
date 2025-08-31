@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>选手主页</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary-color: #D64550;
@@ -108,6 +109,11 @@
         .summary-list div { background-color: var(--bg-color); padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: baseline; }
         .summary-list strong { color: var(--primary-color); }
         .rank-top { font-size: 0.9em; color: var(--winner-color); font-weight: bold; }
+        #radar-chart-container {
+            position: relative;
+            margin: 20px auto;
+            max-width: 300px;
+        }
         #character-stats-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
         #character-stats-table thead { background-color: var(--primary-color); color: white; }
         #character-stats-table th, #character-stats-table td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
@@ -251,6 +257,9 @@
         <main class="main-layout">
             <section class="data-section" id="career-stats-card">
                 <h2>生涯平均数据</h2>
+                <div id="radar-chart-container">
+                    <canvas id="player-radar-chart"></canvas>
+                </div>
                 <div class="summary-list" id="summary-list-content"><p>正在计算数据...</p></div>
             </section>
             <div style="flex: 2.5; min-width: 600px;">
@@ -313,7 +322,7 @@
             return { comments: [] };
         }
         const data = await response.json();
-        return data.record || { comments: [] }; // 确保即使bin为空也返回正确结构
+        return data.record || { comments: [] }; 
     }
 
     function processAndDisplayComments(allComments, playerId) {
@@ -383,8 +392,8 @@
         if (response.ok) {
             alert('评论提交成功！');
             document.getElementById('comment-form').reset();
-            ratingInput.value = ''; // 清空隐藏的评分值
-            setupStarRating(); // 重置星星状态
+            ratingInput.value = '';
+            setupStarRating(); 
             processAndDisplayComments(currentData, playerId);
         } else {
             alert('评论提交失败，请稍后再试。');
@@ -405,7 +414,7 @@
     function setupStarRating() {
         const starContainer = document.getElementById('star-rating');
         const ratingInput = document.getElementById('rating-input');
-        starContainer.innerHTML = ''; // 清空
+        starContainer.innerHTML = '';
         const stars = [];
 
         for (let i = 1; i <= 10; i++) {
@@ -443,8 +452,66 @@
             }
         });
 
-        // 初始化
         updateStars(parseInt(ratingInput.value) || 0);
+    }
+
+    // --- 新增：雷达图绘制 ---
+    let radarChartInstance = null;
+    function drawRadarChart(percentileData) {
+        const ctx = document.getElementById('player-radar-chart').getContext('2d');
+        const isLightTheme = document.body.classList.contains('light-theme');
+        const gridColor = isLightTheme ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.2)';
+        const angleLinesColor = isLightTheme ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.2)';
+        const pointLabelsColor = isLightTheme ? '#333' : '#eee';
+
+        if (radarChartInstance) {
+            radarChartInstance.destroy(); // 销毁旧图表实例
+        }
+
+        radarChartInstance = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: ['进攻', '枪法', '支援', '生存', '效率'],
+                datasets: [{
+                    label: '选手能力 (百分位)',
+                    data: percentileData,
+                    backgroundColor: 'rgba(214, 69, 80, 0.4)',
+                    borderColor: 'rgba(214, 69, 80, 1)',
+                    borderWidth: 2,
+                    pointBackgroundColor: 'rgba(214, 69, 80, 1)',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgba(214, 69, 80, 1)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    r: {
+                        min: 0,
+                        max: 100,
+                        backgroundColor: 'rgba(26, 40, 54, 0.6)',
+                        grid: { color: gridColor },
+                        angleLines: { color: angleLinesColor },
+                        pointLabels: {
+                            color: pointLabelsColor,
+                            font: { size: 14 }
+                        },
+                        ticks: {
+                            color: pointLabelsColor,
+                            backdropColor: 'transparent',
+                            stepSize: 25
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
     }
 
     // --- 原有页面逻辑 ---
@@ -458,13 +525,11 @@
             return;
         }
 
-        // --- 评论系统初始化 ---
         setupStarRating();
         loadComments(playerId);
         const commentForm = document.getElementById('comment-form');
         commentForm.addEventListener('submit', (event) => handleCommentSubmit(event, playerId));
         
-        // --- 主题切换 ---
         const themeToggle = document.getElementById('theme-toggle-checkbox');
         const themeText = document.getElementById('theme-text');
         function setTheme(isLight) {
@@ -472,12 +537,15 @@
             themeToggle.checked = isLight;
             themeText.textContent = isLight ? '点击切换夜间模式' : '点击切换日间模式';
             localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            // 主题切换时重绘图表以更新颜色
+            if (window.playerRadarPercentiles) {
+                drawRadarChart(window.playerRadarPercentiles);
+            }
         }
         const savedTheme = localStorage.getItem('theme');
         setTheme((savedTheme === null) ? true : (savedTheme === 'light'));
         themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
         
-        // --- 选手数据加载 ---
         const allPlayerData = JSON.parse(localStorage.getItem('valorantPlayerSummary') || '{}');
         const idNameMap = JSON.parse(localStorage.getItem('valorantIdNameMap') || '{}');
 
@@ -504,40 +572,76 @@
             return;
         }
 
-        function getRank(id, key, rankList, invert = false) {
-            const sortedList = [...rankList].sort((a, b) => invert ? a[key] - b[key] : b[key] - a[key]);
-            const rank = sortedList.findIndex(p => p.id === id) + 1;
-            return rank > 0 ? `(TOP ${rank})` : '';
-        }
-        
+        // --- 雷达图和排名数据计算 ---
         const groupPlayersForRank = [];
         for (const key in allPlayerData) {
             const p = allPlayerData[key];
             if (p.group === groupName) {
                 const stats = p.total_stats;
+                if (stats.matchCount === 0) continue;
+                
+                const kda = stats.deaths > 0 ? (stats.kills + stats.assists) / stats.deaths : (stats.kills + stats.assists);
+                
                 groupPlayersForRank.push({
                     id: p.id,
-                    acs: stats.matchCount > 0 ? stats.acs / stats.matchCount : 0,
-                    k_map: stats.matchCount > 0 ? stats.kills / stats.matchCount : 0,
-                    d_map: stats.matchCount > 0 ? stats.deaths / stats.matchCount : 0,
-                    a_map: stats.matchCount > 0 ? stats.assists / stats.matchCount : 0,
+                    // 用于排名的原始数据
+                    acs: stats.acs / stats.matchCount,
+                    k_map: stats.kills / stats.matchCount,
+                    d_map: stats.deaths / stats.matchCount,
+                    a_map: stats.assists / stats.matchCount,
                     k_round: stats.totalRounds > 0 ? stats.kills / stats.totalRounds : 0,
                     d_round: stats.totalRounds > 0 ? stats.deaths / stats.totalRounds : 0,
                     a_round: stats.totalRounds > 0 ? stats.assists / stats.totalRounds : 0,
+                    // 用于雷达图的计算数据
+                    radar_gun_skill: stats.totalRounds > 0 ? stats.kills / stats.totalRounds : 0,
+                    radar_support: stats.totalRounds > 0 ? stats.assists / stats.totalRounds : 0,
+                    radar_survivability: stats.totalRounds > 0 ? 1 - (stats.deaths / stats.totalRounds) : 0,
+                    radar_efficiency: kda
                 });
             }
         }
-        const playerTotals = playerData.total_stats;
-        const playerAverages = {
-            acs: playerTotals.matchCount > 0 ? playerTotals.acs / playerTotals.matchCount : 0,
-            k_map: playerTotals.matchCount > 0 ? playerTotals.kills / playerTotals.matchCount : 0,
-            d_map: playerTotals.matchCount > 0 ? playerTotals.deaths / playerTotals.matchCount : 0,
-            a_map: playerTotals.matchCount > 0 ? playerTotals.assists / playerTotals.matchCount : 0,
-            k_round: playerTotals.totalRounds > 0 ? playerTotals.kills / playerTotals.totalRounds : 0,
-            d_round: playerTotals.totalRounds > 0 ? playerTotals.deaths / playerTotals.totalRounds : 0,
-            a_round: playerTotals.totalRounds > 0 ? playerTotals.assists / playerTotals.totalRounds : 0,
-        };
         
+        function calculatePercentile(playerValue, allValues) {
+            const sortedValues = [...allValues].sort((a, b) => a - b);
+            const rank = sortedValues.indexOf(playerValue);
+            return (rank / (sortedValues.length - 1)) * 100;
+        }
+
+        const currentPlayerStats = groupPlayersForRank.find(p => p.id === playerId);
+        if (currentPlayerStats) {
+            const percentile_offense = calculatePercentile(currentPlayerStats.acs, groupPlayersForRank.map(p => p.acs));
+            const percentile_gun_skill = calculatePercentile(currentPlayerStats.radar_gun_skill, groupPlayersForRank.map(p => p.radar_gun_skill));
+            const percentile_support = calculatePercentile(currentPlayerStats.radar_support, groupPlayersForRank.map(p => p.radar_support));
+            const percentile_survivability = calculatePercentile(currentPlayerStats.radar_survivability, groupPlayersForRank.map(p => p.radar_survivability));
+            const percentile_efficiency = calculatePercentile(currentPlayerStats.radar_efficiency, groupPlayersForRank.map(p => p.radar_efficiency));
+            
+            window.playerRadarPercentiles = [
+                percentile_offense,
+                percentile_gun_skill,
+                percentile_support,
+                percentile_survivability,
+                percentile_efficiency
+            ];
+            drawRadarChart(window.playerRadarPercentiles);
+        }
+        
+        // --- 列表数据展示 ---
+        const playerAverages = {
+            acs: currentPlayerStats ? currentPlayerStats.acs : 0,
+            k_map: currentPlayerStats ? currentPlayerStats.k_map : 0,
+            d_map: currentPlayerStats ? currentPlayerStats.d_map : 0,
+            a_map: currentPlayerStats ? currentPlayerStats.a_map : 0,
+            k_round: currentPlayerStats ? currentPlayerStats.k_round : 0,
+            d_round: currentPlayerStats ? currentPlayerStats.d_round : 0,
+            a_round: currentPlayerStats ? currentPlayerStats.a_round : 0,
+        };
+
+        function getRank(id, key, rankList, invert = false) {
+            const sortedList = [...rankList].sort((a, b) => invert ? a[key] - b[key] : b[key] - a[key]);
+            const rank = sortedList.findIndex(p => p.id === id) + 1;
+            return rank > 0 ? `(TOP ${rank})` : '';
+        }
+
         document.getElementById('summary-list-content').innerHTML = `
             <div><strong>平均ACS:</strong> <span>${playerAverages.acs.toFixed(2)} <span class="rank-top">${getRank(playerId, 'acs', groupPlayersForRank)}</span></span></div>
             <div><strong>每局击杀:</strong> <span>${playerAverages.k_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_map', groupPlayersForRank)}</span></span></div>
@@ -547,28 +651,11 @@
             <div><strong>每回合死亡:</strong> <span>${playerAverages.d_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_round', groupPlayersForRank, true)}</span></span></div>
             <div><strong>每回合助攻:</strong> <span>${playerAverages.a_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_round', groupPlayersForRank)}</span></span></div>
         `;
-
+        
+        // --- 角色数据表格 ---
         const tableBody = document.getElementById('character-stats-body');
         tableBody.innerHTML = '';
         Object.entries(playerData.by_character).sort(([,a],[,b]) => b.matchCount - a.matchCount).forEach(([charName, stats]) => {
-            const charPlayersForRank = [];
-            for (const key in allPlayerData) {
-                const p = allPlayerData[key];
-                if (p.group === groupName && p.by_character[charName]) {
-                    const c_stats = p.by_character[charName];
-                    charPlayersForRank.push({
-                        id: p.id,
-                        acs: c_stats.matchCount > 0 ? c_stats.acs / c_stats.matchCount : 0,
-                        k_map: c_stats.matchCount > 0 ? c_stats.kills / c_stats.matchCount : 0,
-                        d_map: c_stats.matchCount > 0 ? c_stats.deaths / c_stats.matchCount : 0,
-                        a_map: c_stats.matchCount > 0 ? c_stats.assists / c_stats.matchCount : 0,
-                        k_round: c_stats.totalRounds > 0 ? c_stats.kills / c_stats.totalRounds : 0,
-                        d_round: c_stats.totalRounds > 0 ? c_stats.deaths / c_stats.totalRounds : 0,
-                        a_round: c_stats.totalRounds > 0 ? c_stats.assists / c_stats.totalRounds : 0,
-                    });
-                }
-            }
-            
             const avg = {
                 acs: stats.matchCount > 0 ? stats.acs / stats.matchCount : 0,
                 k_map: stats.matchCount > 0 ? stats.kills / stats.matchCount : 0,
@@ -583,13 +670,13 @@
                 <tr>
                     <td><strong>${charName}</strong></td>
                     <td>${stats.matchCount}</td>
-                    <td>${avg.acs.toFixed(2)} <span class="rank-top">${getRank(playerId, 'acs', charPlayersForRank)}</span></td>
-                    <td>${avg.k_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_map', charPlayersForRank)}</span></td>
-                    <td>${avg.d_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_map', charPlayersForRank, true)}</span></td>
-                    <td>${avg.a_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_map', charPlayersForRank)}</span></td>
-                    <td>${avg.k_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_round', charPlayersForRank)}</span></td>
-                    <td>${avg.d_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_round', charPlayersForRank, true)}</span></td>
-                    <td>${avg.a_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_round', charPlayersForRank)}</span></td>
+                    <td>${avg.acs.toFixed(2)}</td>
+                    <td>${avg.k_map.toFixed(2)}</td>
+                    <td>${avg.d_map.toFixed(2)}</td>
+                    <td>${avg.a_map.toFixed(2)}</td>
+                    <td>${avg.k_round.toFixed(2)}</td>
+                    <td>${avg.d_round.toFixed(2)}</td>
+                    <td>${avg.a_round.toFixed(2)}</td>
                 </tr>
             `;
         });
