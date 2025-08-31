@@ -338,12 +338,13 @@
         return record;
     }
 
-    function processAndDisplayComments(allComments, playerId) {
+    // *** 修改：使用 uniquePlayerKey 过滤评论 ***
+    function processAndDisplayComments(allComments, uniquePlayerKey) {
         const commentsList = document.getElementById('comments-list');
         const avgScoreEl = document.getElementById('player-average-score');
         
         const playerComments = allComments.comments
-            .filter(c => c.player_id === playerId)
+            .filter(c => c.player_key === uniquePlayerKey) // 使用 player_key 过滤
             .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
         if (playerComments.length > 0) {
@@ -370,7 +371,8 @@
         `).join('');
     }
 
-    async function handleCommentSubmit(event, playerId) {
+    // *** 修改：提交时使用 uniquePlayerKey ***
+    async function handleCommentSubmit(event, uniquePlayerKey) {
         event.preventDefault();
         const ratingInput = document.getElementById('rating-input');
         if (!ratingInput.value) {
@@ -385,7 +387,7 @@
         const currentData = await fetchAllComments();
         
         const newComment = {
-            player_id: playerId,
+            player_key: uniquePlayerKey, // 使用 player_key 存储
             nickname: document.getElementById('nickname-input').value,
             rating: parseInt(ratingInput.value),
             content: document.getElementById('comment-input').value,
@@ -412,7 +414,7 @@
             document.getElementById('comment-form').reset();
             ratingInput.value = '';
             setupStarRating(); 
-            processAndDisplayComments(currentData, playerId);
+            processAndDisplayComments(currentData, uniquePlayerKey);
         } else {
             alert('评论提交失败，请稍后再试。');
         }
@@ -424,9 +426,10 @@
         return str ? str.replace(/[&<>"']/g, match => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[match]) : '';
     }
 
-    async function loadComments(playerId) {
+    // *** 修改：加载时使用 uniquePlayerKey ***
+    async function loadComments(uniquePlayerKey) {
         const allComments = await fetchAllComments();
-        processAndDisplayComments(allComments, playerId);
+        processAndDisplayComments(allComments, uniquePlayerKey);
     }
 
     function setupStarRating() {
@@ -509,7 +512,7 @@
                     r: {
                         min: 0,
                         max: 100,
-                        backgroundColor: 'transparent', // *** 修改：雷达图透明背景 ***
+                        backgroundColor: 'transparent',
                         grid: { color: gridColor },
                         angleLines: { color: angleLinesColor },
                         pointLabels: {
@@ -517,7 +520,7 @@
                             font: { size: 12 }
                         },
                         ticks: {
-                            display: false, // *** 修改：隐藏刻度标签 (百分比) ***
+                            display: false, 
                             stepSize: 25
                         }
                     }
@@ -542,10 +545,13 @@
             return;
         }
 
+        // *** 修改：创建唯一的选手标识符 ***
+        const uniquePlayerKeyForComments = `${playerId}::${groupName}`;
+
         setupStarRating();
-        loadComments(playerId);
+        loadComments(uniquePlayerKeyForComments);
         const commentForm = document.getElementById('comment-form');
-        commentForm.addEventListener('submit', (event) => handleCommentSubmit(event, playerId));
+        commentForm.addEventListener('submit', (event) => handleCommentSubmit(event, uniquePlayerKeyForComments));
         
         const themeToggle = document.getElementById('theme-toggle-checkbox');
         const themeText = document.getElementById('theme-text');
@@ -588,9 +594,8 @@
             return;
         }
 
-        // --- 数据排名计算 (包含角色数据) ---
         const groupPlayersForRank = [];
-        const statsByCharacter = {}; // *** 新增：用于存储按角色分类的数据 ***
+        const statsByCharacter = {}; 
 
         for (const key in allPlayerData) {
             const p = allPlayerData[key];
@@ -611,7 +616,6 @@
                     kda: stats.deaths > 0 ? (stats.kills + stats.assists) / stats.deaths : (stats.kills + stats.assists),
                 });
 
-                // *** 新增：处理角色数据用于排名 ***
                 for (const charName in p.by_character) {
                     const charStats = p.by_character[charName];
                     if (charStats.matchCount === 0) continue;
@@ -678,7 +682,6 @@
             <div><strong>每回合助攻:</strong> <span>${playerAverages.a_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_round', groupPlayersForRank)}</span></span></div>
         `;
         
-        // --- 角色数据表格 (带排名) ---
         const tableBody = document.getElementById('character-stats-body');
         tableBody.innerHTML = '';
         Object.entries(playerData.by_character).sort(([,a],[,b]) => b.matchCount - a.matchCount).forEach(([charName, stats]) => {
