@@ -509,7 +509,7 @@
                     r: {
                         min: 0,
                         max: 100,
-                        backgroundColor: 'rgba(26, 40, 54, 0.6)',
+                        backgroundColor: 'transparent', // *** 修改：雷达图透明背景 ***
                         grid: { color: gridColor },
                         angleLines: { color: angleLinesColor },
                         pointLabels: {
@@ -517,12 +517,8 @@
                             font: { size: 12 }
                         },
                         ticks: {
-                            color: pointLabelsColor,
-                            backdropColor: 'transparent',
-                            stepSize: 25,
-                            callback: function(value) {
-                                return value + '%'
-                            }
+                            display: false, // *** 修改：隐藏刻度标签 (百分比) ***
+                            stepSize: 25
                         }
                     }
                 },
@@ -592,8 +588,10 @@
             return;
         }
 
-        // --- 数据排名计算 ---
+        // --- 数据排名计算 (包含角色数据) ---
         const groupPlayersForRank = [];
+        const statsByCharacter = {}; // *** 新增：用于存储按角色分类的数据 ***
+
         for (const key in allPlayerData) {
             const p = allPlayerData[key];
             if (p.group === groupName) {
@@ -612,6 +610,25 @@
                     survival_rate: 1 - (stats.deaths / stats.totalRounds),
                     kda: stats.deaths > 0 ? (stats.kills + stats.assists) / stats.deaths : (stats.kills + stats.assists),
                 });
+
+                // *** 新增：处理角色数据用于排名 ***
+                for (const charName in p.by_character) {
+                    const charStats = p.by_character[charName];
+                    if (charStats.matchCount === 0) continue;
+                    if (!statsByCharacter[charName]) {
+                        statsByCharacter[charName] = [];
+                    }
+                    statsByCharacter[charName].push({
+                        id: p.id,
+                        acs: charStats.acs / charStats.matchCount,
+                        k_map: charStats.kills / charStats.matchCount,
+                        d_map: charStats.deaths / charStats.matchCount,
+                        a_map: charStats.assists / charStats.matchCount,
+                        k_round: charStats.totalRounds > 0 ? charStats.kills / charStats.totalRounds : 0,
+                        d_round: charStats.totalRounds > 0 ? charStats.deaths / charStats.totalRounds : 0,
+                        a_round: charStats.totalRounds > 0 ? charStats.assists / charStats.totalRounds : 0,
+                    });
+                }
             }
         }
         
@@ -621,7 +638,7 @@
             const rank = sortedValues.findIndex(v => v === playerValue);
             return (rank / (sortedValues.length - 1)) * 100;
         }
-
+        
         const currentPlayerStats = groupPlayersForRank.find(p => p.id === playerId);
         if (currentPlayerStats) {
             window.playerRadarPercentiles = [
@@ -634,14 +651,13 @@
             drawRadarChart(window.playerRadarPercentiles);
         }
         
-        // 恢复 getRank 函数
         function getRank(id, key, rankList, invert = false) {
+            if (!rankList || rankList.length === 0) return '';
             const sortedList = [...rankList].sort((a, b) => invert ? a[key] - b[key] : b[key] - a[key]);
             const rank = sortedList.findIndex(p => p.id === id) + 1;
             return rank > 0 ? `(TOP ${rank})` : '';
         }
 
-        // --- 列表数据展示 (带排名) ---
         const playerAverages = {
              acs: playerData.total_stats.matchCount > 0 ? playerData.total_stats.acs / playerData.total_stats.matchCount : 0,
              k_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.kills / playerData.total_stats.matchCount : 0,
@@ -662,7 +678,7 @@
             <div><strong>每回合助攻:</strong> <span>${playerAverages.a_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_round', groupPlayersForRank)}</span></span></div>
         `;
         
-        // --- 角色数据表格 ---
+        // --- 角色数据表格 (带排名) ---
         const tableBody = document.getElementById('character-stats-body');
         tableBody.innerHTML = '';
         Object.entries(playerData.by_character).sort(([,a],[,b]) => b.matchCount - a.matchCount).forEach(([charName, stats]) => {
@@ -675,18 +691,19 @@
                 d_round: stats.totalRounds > 0 ? stats.deaths / stats.totalRounds : 0,
                 a_round: stats.totalRounds > 0 ? stats.assists / stats.totalRounds : 0,
             };
+            const characterRankList = statsByCharacter[charName] || [];
 
             tableBody.innerHTML += `
                 <tr>
                     <td><strong>${charName}</strong></td>
                     <td>${stats.matchCount}</td>
-                    <td>${avg.acs.toFixed(2)}</td>
-                    <td>${avg.k_map.toFixed(2)}</td>
-                    <td>${avg.d_map.toFixed(2)}</td>
-                    <td>${avg.a_map.toFixed(2)}</td>
-                    <td>${avg.k_round.toFixed(2)}</td>
-                    <td>${avg.d_round.toFixed(2)}</td>
-                    <td>${avg.a_round.toFixed(2)}</td>
+                    <td>${avg.acs.toFixed(2)} <span class="rank-top">${getRank(playerId, 'acs', characterRankList)}</span></td>
+                    <td>${avg.k_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_map', characterRankList)}</span></td>
+                    <td>${avg.d_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_map', characterRankList, true)}</span></td>
+                    <td>${avg.a_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_map', characterRankList)}</span></td>
+                    <td>${avg.k_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_round', characterRankList)}</span></td>
+                    <td>${avg.d_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_round', characterRankList, true)}</span></td>
+                    <td>${avg.a_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_round', characterRankList)}</span></td>
                 </tr>
             `;
         });
