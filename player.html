@@ -308,93 +308,43 @@
         </main>
     </div>
 <script>
-    // --- 评论系统配置 (动态创建Bin版) ---
-    const JSONBIN_URL = 'https://api.jsonbin.io/v3';
-    const MASTER_KEY = '$2a$10$BfFgHMusbQpjq0IwprPps.4OT0sXBOYcUnVqvawJldPYFF68o7wWW';
-    const MASTER_INDEX_BIN_ID = '68b466a343b1c97be9323233'; // *** 请务必替换成您的主索引Bin ID ***
+    // --- 评论系统配置 (会话缓存 + 单文件稳定版) ---
+    const JSONBIN_URL = 'https://api.jsonbin.io/v3/b/';
+    const BIN_ID = '68b42d09d0ea81f406ce164'; // *** 您的正确 Bin ID ***
+    const MASTER_KEY = '$2a$10$BfFgHMusbQpjq0IwprPps.4OT0sXBOYcUnVqvawJldPYFF68o7wWW'; // 您的 API Key
 
-    // 读取主索引文件
-    async function getMasterIndex() {
-        const response = await fetch(`${JSONBIN_URL}/b/${MASTER_INDEX_BIN_ID}/latest`, {
+    // 带有会话缓存的读取函数
+    async function fetchAllComments() {
+        const cachedData = sessionStorage.getItem('commentsCache');
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
+
+        const response = await fetch(`${JSONBIN_URL}${BIN_ID}/latest`, {
             headers: { 'X-Master-Key': MASTER_KEY, 'X-Bin-Meta': 'false' }
         });
-        if (response.status === 404) return { players: {} }; // 如果找不到，返回空结构
+
+        if (response.status === 404) {
+            return { comments: [] };
+        }
         if (!response.ok) {
-            console.error("无法读取主索引文件");
-            return null; // 返回null表示出错
+            console.error('Failed to fetch comments');
+            return { comments: [] };
         }
-        return await response.json();
-    }
-
-    // 为选手创建新的评论Bin
-    async function createNewPlayerBin(uniquePlayerKey) {
-        const response = await fetch(`${JSONBIN_URL}/b`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Master-Key': MASTER_KEY,
-                'X-Bin-Name': `comments_${uniquePlayerKey}` // 在创建时命名
-            },
-            body: JSON.stringify({ comments: [] })
-        });
-        if (!response.ok) return null;
+        
         const data = await response.json();
-        return data.metadata.id;
+        const commentsData = (data && typeof data === 'object') ? data : { comments: [] };
+        sessionStorage.setItem('commentsCache', JSON.stringify(commentsData)); // 存入会话缓存
+        return commentsData;
     }
 
-    // 更新主索引文件
-    async function updateMasterIndex(uniquePlayerKey, newBinId) {
-        const patch = [{
-            op: 'add',
-            path: `/players/${uniquePlayerKey}`,
-            value: newBinId
-        }];
-        await fetch(`${JSONBIN_URL}/b/${MASTER_INDEX_BIN_ID}`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Master-Key': MASTER_KEY
-            },
-            body: JSON.stringify(patch)
-        });
-    }
-
-    let playerBinIdCache = {};
-    async function getPlayerBinId(uniquePlayerKey) {
-        if (playerBinIdCache[uniquePlayerKey]) {
-            return playerBinIdCache[uniquePlayerKey];
-        }
-
-        const index = await getMasterIndex();
-        if (index && index.players && index.players[uniquePlayerKey]) {
-            playerBinIdCache[uniquePlayerKey] = index.players[uniquePlayerKey];
-            return index.players[uniquePlayerKey];
-        } else if (index) { // 确保主索引读取成功
-            const newBinId = await createNewPlayerBin(uniquePlayerKey);
-            if (newBinId) {
-                await updateMasterIndex(uniquePlayerKey, newBinId);
-                playerBinIdCache[uniquePlayerKey] = newBinId;
-                return newBinId;
-            }
-        }
-        return null; // 如果所有步骤都失败了
-    }
-
-    // 读取指定Bin的评论
-    async function fetchPlayerComments(playerBinId) {
-        if (!playerBinId) return { comments: [] };
-        const response = await fetch(`${JSONBIN_URL}/b/${playerBinId}/latest`, {
-            headers: { 'X-Master-Key': MASTER_KEY, 'X-Bin-Meta': 'false' }
-        });
-        if (!response.ok) return { comments: [] };
-        return await response.json();
-    }
-    
-    function displayComments(commentData) {
+    function displayComments(allComments, uniquePlayerKey) {
         const commentsList = document.getElementById('comments-list');
         const avgScoreEl = document.getElementById('player-average-score');
         
-        const playerComments = (commentData.comments || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        const playerComments = (allComments.comments || [])
+            .filter(c => c.player_key === uniquePlayerKey)
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
         if (playerComments.length > 0) {
             const totalScore = playerComments.reduce((sum, comment) => sum + comment.rating, 0);
@@ -420,7 +370,7 @@
         }
     }
 
-    async function handleCommentSubmit(event, playerBinId) {
+    async function handleCommentSubmit(event, uniquePlayerKey) {
         event.preventDefault();
         const ratingInput = document.getElementById('rating-input');
         if (!ratingInput.value) { alert('请选择一个评分！'); return; }
@@ -430,28 +380,28 @@
         submitButton.textContent = '提交中...';
 
         const newComment = {
+            player_key: uniquePlayerKey,
             nickname: document.getElementById('nickname-input').value,
             rating: parseInt(ratingInput.value),
             content: document.getElementById('comment-input').value,
             created_at: new Date().toISOString()
         };
 
-        const patch = [{ op: 'add', path: '/comments/-', value: newComment }];
-        const response = await fetch(`${JSONBIN_URL}/b/${playerBinId}`, {
+        const patchOperation = [{ "op": "add", "path": "/comments/-", "value": newComment }];
+
+        const response = await fetch(`${JSONBIN_URL}${BIN_ID}`, {
             method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Master-Key': MASTER_KEY
-            },
-            body: JSON.stringify(patch)
+            headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
+            body: JSON.stringify(patchOperation)
         });
 
         if (response.ok) {
             alert('评论提交成功！');
+            sessionStorage.removeItem('commentsCache'); // 清空缓存，以便下次加载时获取最新数据
             document.getElementById('comment-form').reset();
             ratingInput.value = '';
             setupStarRating(); 
-            loadComments(playerBinId);
+            loadComments(uniquePlayerKey);
         } else {
             console.error('提交失败:', await response.text());
             alert('评论提交失败，请稍后再试。');
@@ -464,9 +414,9 @@
         return str ? str.replace(/[&<>"']/g, match => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[match]) : '';
     }
 
-    async function loadComments(playerBinId) {
-        const commentData = await fetchPlayerComments(playerBinId);
-        displayComments(commentData);
+    async function loadComments(uniquePlayerKey) {
+        const allComments = await fetchAllComments();
+        displayComments(allComments, uniquePlayerKey);
     }
     
     function setupStarRating() {
@@ -572,7 +522,7 @@
     }
 
     // --- 原有页面逻辑 ---
-    document.addEventListener('DOMContentLoaded', async () => {
+    document.addEventListener('DOMContentLoaded', () => {
         const params = new URLSearchParams(window.location.search);
         const playerId = params.get('id');
         const groupName = params.get('group');
@@ -582,18 +532,12 @@
             return;
         }
 
-        const uniquePlayerKey = `${playerId}::${groupName}`;
-        
-        const playerBinId = await getPlayerBinId(uniquePlayerKey);
-        
+        const uniquePlayerKeyForComments = `${playerId}::${groupName}`;
+
         setupStarRating();
-        if (playerBinId) {
-            loadComments(playerBinId);
-            const commentForm = document.getElementById('comment-form');
-            commentForm.addEventListener('submit', (event) => handleCommentSubmit(event, playerBinId));
-        } else {
-            document.getElementById('comments-list').innerHTML = '<p style="color:red;">无法加载或创建评论区，请检查主索引Bin ID是否正确。</p>';
-        }
+        loadComments(uniquePlayerKeyForComments);
+        const commentForm = document.getElementById('comment-form');
+        commentForm.addEventListener('submit', (event) => handleCommentSubmit(event, uniquePlayerKeyForComments));
         
         const themeToggle = document.getElementById('theme-toggle-checkbox');
         const themeText = document.getElementById('theme-text');
@@ -627,7 +571,8 @@
         else if (groupName === '中坚组') groupClass = 'contender';
         else if (groupName === '挑战组') groupClass = 'challenger';
         groupBadgeContainer.innerHTML = `<div class="group-badge ${groupClass}">${groupName}</div>`;
-        
+
+        const uniquePlayerKey = `${playerId}::${groupName}`;
         const playerData = allPlayerData[uniquePlayerKey];
 
         if (!playerData) {
