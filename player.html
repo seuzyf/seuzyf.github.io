@@ -312,42 +312,29 @@
     const JSONBIN_URL = 'https://api.jsonbin.io/v3/b/';
     const BIN_ID = '68b42d09d0ea81f406ce164'; // 您的 Bin ID
     const MASTER_KEY = '$2a$10$BfFgHMusbQpjq0IwprPps.4OT0sXBOYcUnVqvawJldPYFF68o7wWW'; // 您的 API Key
-    const CACHE_DURATION_MS = 2 * 60 * 1000; // 2分钟缓存
+    
+    // *** 使用最稳定可靠的 "读-改-写" 逻辑 ***
 
-    // *** 新增：独立的、不使用缓存的网络请求函数 ***
-    async function fetchLatestCommentsFromServer() {
+    // 1. 读取函数
+    async function fetchAllComments() {
         const response = await fetch(`${JSONBIN_URL}${BIN_ID}/latest`, {
-            headers: { 'X-Master-Key': MASTER_KEY, 'X-Bin-Meta': 'false' } // X-Bin-Meta: false 直接获取内容
+            headers: { 'X-Master-Key': MASTER_KEY, 'X-Bin-Meta': 'false' }
         });
         if (!response.ok) {
-            console.error('Failed to fetch latest comments from server');
-            // 如果请求失败，返回一个带 comments 数组的空对象，防止后续代码出错
+            // 如果读取失败 (比如bin是空的)，返回一个基础结构防止后续代码出错
+            console.error('Failed to fetch comments, maybe the bin is empty.');
             return { comments: [] };
         }
         const data = await response.json();
-        // 确保即使bin为空也返回一个带 comments 数组的对象
-        return data && typeof data === 'object' && !Array.isArray(data) ? data : { comments: [] };
+        return data || { comments: [] }; // 确保返回的是一个对象
     }
 
-    // 带有缓存的读取函数，用于快速加载页面
-    async function fetchAllComments() {
-        const cachedItem = localStorage.getItem('commentsCache');
-        if (cachedItem) {
-            const { timestamp, data } = JSON.parse(cachedItem);
-            if (Date.now() - timestamp < CACHE_DURATION_MS) {
-                return data;
-            }
-        }
-        const freshData = await fetchLatestCommentsFromServer();
-        localStorage.setItem('commentsCache', JSON.stringify({ timestamp: Date.now(), data: freshData }));
-        return freshData;
-    }
-
-    function processAndDisplayComments(allComments, uniquePlayerKey) {
+    // 2. 显示函数
+    function displayComments(allComments, uniquePlayerKey) {
         const commentsList = document.getElementById('comments-list');
         const avgScoreEl = document.getElementById('player-average-score');
         
-        const playerComments = (allComments.comments || []) // 确保 allComments.comments 存在
+        const playerComments = (allComments.comments || [])
             .filter(c => c.player_key === uniquePlayerKey)
             .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -361,20 +348,21 @@
 
         if (playerComments.length === 0) {
             commentsList.innerHTML = '<p>暂无评论，快来抢沙发吧！</p>';
-            return;
-        }
-        commentsList.innerHTML = playerComments.map(comment => `
-            <div class="comment-card">
-                <div class="comment-header">
-                    <span class="comment-author">${escapeHTML(comment.nickname)}</span>
-                    <span class="comment-rating">评分: <span>${comment.rating}</span> / 10</span>
+        } else {
+            commentsList.innerHTML = playerComments.map(comment => `
+                <div class="comment-card">
+                    <div class="comment-header">
+                        <span class="comment-author">${escapeHTML(comment.nickname)}</span>
+                        <span class="comment-rating">评分: <span>${comment.rating}</span> / 10</span>
+                    </div>
+                    <p class="comment-body">${escapeHTML(comment.content)}</p>
+                    <small style="opacity: 0.6;">${new Date(comment.created_at).toLocaleString()}</small>
                 </div>
-                <p class="comment-body">${escapeHTML(comment.content)}</p>
-                <small style="opacity: 0.6;">${new Date(comment.created_at).toLocaleString()}</small>
-            </div>
-        `).join('');
+            `).join('');
+        }
     }
 
+    // 3. 提交函数
     async function handleCommentSubmit(event, uniquePlayerKey) {
         event.preventDefault();
         const ratingInput = document.getElementById('rating-input');
@@ -387,8 +375,8 @@
         submitButton.disabled = true;
         submitButton.textContent = '提交中...';
 
-        // *** 关键修复：提交前总是获取最新数据，防止覆盖 ***
-        const currentData = await fetchLatestCommentsFromServer();
+        //  先读取
+        const currentData = await fetchAllComments();
         
         const newComment = {
             player_key: uniquePlayerKey,
@@ -401,8 +389,10 @@
         if (!currentData.comments || !Array.isArray(currentData.comments)) {
             currentData.comments = [];
         }
+        // 再修改
         currentData.comments.push(newComment);
 
+        // 最后写回
         const response = await fetch(`${JSONBIN_URL}${BIN_ID}`, {
             method: 'PUT',
             headers: {
@@ -414,14 +404,12 @@
 
         if (response.ok) {
             alert('评论提交成功！');
-            localStorage.removeItem('commentsCache'); 
             document.getElementById('comment-form').reset();
             ratingInput.value = '';
             setupStarRating(); 
-            processAndDisplayComments(currentData, uniquePlayerKey);
+            displayComments(currentData, uniquePlayerKey); // 直接用新数据更新视图
         } else {
-            const error = await response.json();
-            console.error('提交失败:', error);
+            console.error('提交失败:', await response.text());
             alert('评论提交失败，请稍后再试。');
         }
         submitButton.disabled = false;
@@ -434,9 +422,9 @@
 
     async function loadComments(uniquePlayerKey) {
         const allComments = await fetchAllComments();
-        processAndDisplayComments(allComments, uniquePlayerKey);
+        displayComments(allComments, uniquePlayerKey);
     }
-
+    
     function setupStarRating() {
         const starContainer = document.getElementById('star-rating');
         const ratingInput = document.getElementById('rating-input');
