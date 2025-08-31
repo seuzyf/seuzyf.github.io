@@ -50,6 +50,12 @@
             position: relative;
         }
         .main-header-block h1 { color: var(--primary-color); margin: 0; font-weight: 700; font-size: 2.5em; }
+        .player-avg-score {
+            color: #ffd700;
+            font-size: 1.5em;
+            font-weight: 500;
+            margin: 10px 0 0 0;
+        }
         .controls-container {
             display: flex;
             justify-content: center;
@@ -92,6 +98,7 @@
             border-radius: 12px;
             padding: 25px;
             box-shadow: 0 8px 16px var(--shadow-color);
+            margin-bottom: 30px; /* 为评论区留出空间 */
         }
         .data-section h2 { margin-top: 0; color: var(--primary-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
         .summary-list { display: flex; flex-direction: column; gap: 15px; font-size: 1.1em; }
@@ -110,6 +117,83 @@
         .slider:before { background-color: var(--text-color); bottom: 4px; content: ""; height: 16px; left: 4px; position: absolute; transition: .4s; width: 16px; border-radius: 50%; }
         input:checked + .slider { background-color: var(--primary-color); }
         input:checked + .slider:before { transform: translateX(24px); }
+        
+        /* --- 评论区样式 --- */
+        .comments-section {
+            background-color: var(--card-bg-color);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 16px var(--shadow-color);
+        }
+        .comments-section h2 {
+            margin-top: 0;
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+        .comment-card {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            flex-wrap: wrap;
+        }
+        .comment-author {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        .comment-rating span {
+            color: #ffd700;
+            font-weight: bold;
+        }
+        .comment-body {
+            font-size: 1em;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+        #comment-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        #comment-form input, #comment-form textarea, #comment-form select {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-size: 1em;
+            box-sizing: border-box;
+        }
+        #comment-form button {
+            height: var(--control-height);
+            border: none;
+            border-radius: 8px;
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #comment-form button:hover {
+            opacity: 0.9;
+        }
+        #comment-form button:disabled {
+            background-color: #888;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -124,6 +208,7 @@
                 </label>
             </div>
             <h1 id="player-id-header">Loading...</h1>
+            <h2 id="player-average-score" class="player-avg-score"></h2>
              <div class="controls-container">
                 <a href="index.html" class="nav-button">返回比赛中心</a>
                 <a href="summary.html" class="nav-button">查看选手数据</a>
@@ -134,30 +219,158 @@
                 <h2>生涯平均数据</h2>
                 <div class="summary-list" id="summary-list-content"><p>正在计算数据...</p></div>
             </section>
-            <section class="data-section" id="character-stats-section">
-                <h2>各角色平均数据</h2>
-                <div style="overflow-x: auto;">
-                    <table id="character-stats-table">
-                         <thead>
-                            <tr>
-                                <th>角色</th>
-                                <th>出场</th>
-                                <th>ACS</th>
-                                <th>每局击杀</th>
-                                <th>每局死亡</th>
-                                <th>每局助攻</th>
-                                <th>每回合击杀</th>
-                                <th>每回合死亡</th>
-                                <th>每回合助攻</th>
-                            </tr>
-                        </thead>
-                        <tbody id="character-stats-body"></tbody>
-                    </table>
-                </div>
-            </section>
+            <div style="flex: 2.5; min-width: 600px;">
+                <section class="data-section" id="character-stats-section">
+                    <h2>各角色平均数据</h2>
+                    <div style="overflow-x: auto;">
+                        <table id="character-stats-table">
+                             <thead>
+                                <tr>
+                                    <th>角色</th>
+                                    <th>出场</th>
+                                    <th>ACS</th>
+                                    <th>每局击杀</th>
+                                    <th>每局死亡</th>
+                                    <th>每局助攻</th>
+                                    <th>每回合击杀</th>
+                                    <th>每回合死亡</th>
+                                    <th>每回合助攻</th>
+                                </tr>
+                            </thead>
+                            <tbody id="character-stats-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+                
+                <section class="comments-section">
+                    <h2>玩家评分与评论</h2>
+                    <div id="comments-list">
+                        <p>正在加载评论...</p>
+                    </div>
+                    <div id="comment-form-container">
+                        <h3>发表您的看法</h3>
+                        <form id="comment-form">
+                            <input type="text" id="nickname-input" placeholder="您的昵称" required>
+                            <select id="rating-input" required>
+                                <option value="">请选择评分 (1-10)</option>
+                                <option value="10">10 - 完美</option>
+                                <option value="9">9 - 极强</option>
+                                <option value="8">8 - 很强</option>
+                                <option value="7">7 - 强</option>
+                                <option value="6">6 - 不错</option>
+                                <option value="5">5 - 一般</option>
+                                <option value="4">4 - 稍弱</option>
+                                <option value="3">3 - 弱</option>
+                                <option value="2">2 - 很弱</option>
+                                <option value="1">1 - 糟糕</option>
+                            </select>
+                            <textarea id="comment-input" placeholder="输入您的评论..." rows="4" required></textarea>
+                            <button type="submit">提交评论</button>
+                        </form>
+                    </div>
+                </section>
+            </div>
         </main>
     </div>
 <script>
+    // --- 评论系统配置 ---
+    const JSONBIN_URL = 'https://api.jsonbin.io/v3/b/';
+    const BIN_ID = '68b42d09d0ea881f406ce164'; // 您的 Bin ID
+    const MASTER_KEY = '$2a$10$BfFgHMusbQpjq0IwprPps.4OT0sXBOYcUnVqvawJldPYFF68o7wWW'; // 您的 API Key
+
+    async function fetchAllComments() {
+        const response = await fetch(`${JSONBIN_URL}${BIN_ID}/latest`, {
+            headers: { 'X-Master-Key': MASTER_KEY }
+        });
+        if (!response.ok) {
+            console.error('Failed to fetch comments');
+            return { comments: [] };
+        }
+        const data = await response.json();
+        return data.record;
+    }
+
+    function processAndDisplayComments(allComments, playerId) {
+        const commentsList = document.getElementById('comments-list');
+        const avgScoreEl = document.getElementById('player-average-score');
+        
+        const playerComments = allComments.comments
+            .filter(c => c.player_id === playerId)
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        // 计算并显示平均分
+        if (playerComments.length > 0) {
+            const totalScore = playerComments.reduce((sum, comment) => sum + comment.rating, 0);
+            const averageScore = (totalScore / playerComments.length).toFixed(2);
+            avgScoreEl.textContent = `玩家平均评分: ${averageScore} / 10`;
+        } else {
+            avgScoreEl.textContent = '暂无玩家评分';
+        }
+
+        // 显示评论列表
+        if (playerComments.length === 0) {
+            commentsList.innerHTML = '<p>暂无评论，快来抢沙发吧！</p>';
+            return;
+        }
+        commentsList.innerHTML = playerComments.map(comment => `
+            <div class="comment-card">
+                <div class="comment-header">
+                    <span class="comment-author">${escapeHTML(comment.nickname)}</span>
+                    <span class="comment-rating">评分: <span>${comment.rating}</span> / 10</span>
+                </div>
+                <p class="comment-body">${escapeHTML(comment.content)}</p>
+                <small style="opacity: 0.6;">${new Date(comment.created_at).toLocaleString()}</small>
+            </div>
+        `).join('');
+    }
+
+    async function handleCommentSubmit(event, playerId) {
+        event.preventDefault();
+        const submitButton = event.target.querySelector('button');
+        submitButton.disabled = true;
+        submitButton.textContent = '提交中...';
+
+        const currentData = await fetchAllComments();
+        
+        const newComment = {
+            player_id: playerId,
+            nickname: document.getElementById('nickname-input').value,
+            rating: parseInt(document.getElementById('rating-input').value),
+            content: document.getElementById('comment-input').value,
+            created_at: new Date().toISOString()
+        };
+        currentData.comments.push(newComment);
+
+        const response = await fetch(`${JSONBIN_URL}${BIN_ID}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Master-Key': MASTER_KEY
+            },
+            body: JSON.stringify(currentData)
+        });
+
+        if (response.ok) {
+            alert('评论提交成功！');
+            document.getElementById('comment-form').reset();
+            processAndDisplayComments(currentData, playerId);
+        } else {
+            alert('评论提交失败，请稍后再试。');
+        }
+        submitButton.disabled = false;
+        submitButton.textContent = '提交评论';
+    }
+
+    function escapeHTML(str) {
+        return str.replace(/[&<>"']/g, match => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[match]);
+    }
+
+    async function loadComments(playerId) {
+        const allComments = await fetchAllComments();
+        processAndDisplayComments(allComments, playerId);
+    }
+
+    // --- 原有页面逻辑 ---
     document.addEventListener('DOMContentLoaded', () => {
         const params = new URLSearchParams(window.location.search);
         const playerId = params.get('id');
@@ -168,6 +381,12 @@
             return;
         }
 
+        // --- 评论系统初始化 ---
+        loadComments(playerId);
+        const commentForm = document.getElementById('comment-form');
+        commentForm.addEventListener('submit', (event) => handleCommentSubmit(event, playerId));
+        
+        // --- 主题切换 ---
         const themeToggle = document.getElementById('theme-toggle-checkbox');
         const themeText = document.getElementById('theme-text');
         function setTheme(isLight) {
@@ -180,6 +399,7 @@
         setTheme((savedTheme === null) ? true : (savedTheme === 'light'));
         themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
         
+        // --- 选手数据加载 ---
         const allPlayerData = JSON.parse(localStorage.getItem('valorantPlayerSummary') || '{}');
         const idNameMap = JSON.parse(localStorage.getItem('valorantIdNameMap') || '{}');
 
