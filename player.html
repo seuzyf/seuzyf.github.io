@@ -16,6 +16,8 @@
             --shadow-color: rgba(0,0,0,0.3);
             --winner-color: #4CAF50;
             --control-height: 42px;
+            --star-color: #ffd700;
+            --star-color-inactive: #555;
         }
         body.light-theme {
             --primary-color: #D64550;
@@ -25,6 +27,7 @@
             --header-bg-color: rgba(255, 255, 255, 0.85);
             --border-color: #dadde1;
             --shadow-color: rgba(0,0,0,0.1);
+            --star-color-inactive: #ccc;
         }
         body {
             font-family: 'Roboto', sans-serif;
@@ -51,7 +54,7 @@
         }
         .main-header-block h1 { color: var(--primary-color); margin: 0; font-weight: 700; font-size: 2.5em; }
         .player-avg-score {
-            color: #ffd700;
+            color: var(--star-color);
             font-size: 1.5em;
             font-weight: 500;
             margin: 10px 0 0 0;
@@ -98,7 +101,7 @@
             border-radius: 12px;
             padding: 25px;
             box-shadow: 0 8px 16px var(--shadow-color);
-            margin-bottom: 30px; /* 为评论区留出空间 */
+            margin-bottom: 30px;
         }
         .data-section h2 { margin-top: 0; color: var(--primary-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
         .summary-list { display: flex; flex-direction: column; gap: 15px; font-size: 1.1em; }
@@ -127,7 +130,7 @@
             padding: 25px;
             box-shadow: 0 8px 16px var(--shadow-color);
         }
-        .comments-section h2 {
+        .comments-section h2, .comments-section h3 {
             margin-top: 0;
             color: var(--primary-color);
             border-bottom: 1px solid var(--border-color);
@@ -153,7 +156,7 @@
             color: var(--primary-color);
         }
         .comment-rating span {
-            color: #ffd700;
+            color: var(--star-color);
             font-weight: bold;
         }
         .comment-body {
@@ -167,7 +170,38 @@
             gap: 15px;
             margin-top: 20px;
         }
-        #comment-form input, #comment-form textarea, #comment-form select {
+        .form-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        #nickname-input {
+            flex: 1;
+            min-width: 150px;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-size: 1em;
+            box-sizing: border-box;
+        }
+        .star-rating-container {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .star {
+            font-size: 2em;
+            color: var(--star-color-inactive);
+            cursor: pointer;
+            transition: color 0.2s, transform 0.2s;
+        }
+        .star:hover {
+            transform: scale(1.2);
+        }
+        #comment-form textarea {
             width: 100%;
             padding: 12px;
             border-radius: 8px;
@@ -250,20 +284,12 @@
                     <div id="comment-form-container">
                         <h3>发表您的看法</h3>
                         <form id="comment-form">
-                            <input type="text" id="nickname-input" placeholder="您的昵称" required>
-                            <select id="rating-input" required>
-                                <option value="">请选择评分 (1-10)</option>
-                                <option value="10">10 - 完美</option>
-                                <option value="9">9 - 极强</option>
-                                <option value="8">8 - 很强</option>
-                                <option value="7">7 - 强</option>
-                                <option value="6">6 - 不错</option>
-                                <option value="5">5 - 一般</option>
-                                <option value="4">4 - 稍弱</option>
-                                <option value="3">3 - 弱</option>
-                                <option value="2">2 - 很弱</option>
-                                <option value="1">1 - 糟糕</option>
-                            </select>
+                            <div class="form-row">
+                                <input type="text" id="nickname-input" placeholder="您的昵称" required>
+                                <div class="star-rating-container" id="star-rating">
+                                    </div>
+                                <input type="hidden" id="rating-input" required>
+                            </div>
                             <textarea id="comment-input" placeholder="输入您的评论..." rows="4" required></textarea>
                             <button type="submit">提交评论</button>
                         </form>
@@ -287,7 +313,7 @@
             return { comments: [] };
         }
         const data = await response.json();
-        return data.record;
+        return data.record || { comments: [] }; // 确保即使bin为空也返回正确结构
     }
 
     function processAndDisplayComments(allComments, playerId) {
@@ -298,7 +324,6 @@
             .filter(c => c.player_id === playerId)
             .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-        // 计算并显示平均分
         if (playerComments.length > 0) {
             const totalScore = playerComments.reduce((sum, comment) => sum + comment.rating, 0);
             const averageScore = (totalScore / playerComments.length).toFixed(2);
@@ -307,7 +332,6 @@
             avgScoreEl.textContent = '暂无玩家评分';
         }
 
-        // 显示评论列表
         if (playerComments.length === 0) {
             commentsList.innerHTML = '<p>暂无评论，快来抢沙发吧！</p>';
             return;
@@ -326,6 +350,12 @@
 
     async function handleCommentSubmit(event, playerId) {
         event.preventDefault();
+        const ratingInput = document.getElementById('rating-input');
+        if (!ratingInput.value) {
+            alert('请选择一个评分！');
+            return;
+        }
+
         const submitButton = event.target.querySelector('button');
         submitButton.disabled = true;
         submitButton.textContent = '提交中...';
@@ -335,7 +365,7 @@
         const newComment = {
             player_id: playerId,
             nickname: document.getElementById('nickname-input').value,
-            rating: parseInt(document.getElementById('rating-input').value),
+            rating: parseInt(ratingInput.value),
             content: document.getElementById('comment-input').value,
             created_at: new Date().toISOString()
         };
@@ -353,6 +383,8 @@
         if (response.ok) {
             alert('评论提交成功！');
             document.getElementById('comment-form').reset();
+            ratingInput.value = ''; // 清空隐藏的评分值
+            setupStarRating(); // 重置星星状态
             processAndDisplayComments(currentData, playerId);
         } else {
             alert('评论提交失败，请稍后再试。');
@@ -362,12 +394,57 @@
     }
 
     function escapeHTML(str) {
-        return str.replace(/[&<>"']/g, match => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[match]);
+        return str ? str.replace(/[&<>"']/g, match => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[match]) : '';
     }
 
     async function loadComments(playerId) {
         const allComments = await fetchAllComments();
         processAndDisplayComments(allComments, playerId);
+    }
+
+    function setupStarRating() {
+        const starContainer = document.getElementById('star-rating');
+        const ratingInput = document.getElementById('rating-input');
+        starContainer.innerHTML = ''; // 清空
+        const stars = [];
+
+        for (let i = 1; i <= 10; i++) {
+            const star = document.createElement('span');
+            star.className = 'star';
+            star.textContent = '★';
+            star.dataset.value = i;
+            starContainer.appendChild(star);
+            stars.push(star);
+        }
+
+        const updateStars = (hoverValue) => {
+            stars.forEach(star => {
+                const starValue = parseInt(star.dataset.value);
+                const isActive = starValue <= hoverValue;
+                star.style.color = isActive ? 'var(--star-color)' : 'var(--star-color-inactive)';
+            });
+        };
+
+        starContainer.addEventListener('mouseover', (e) => {
+            if (e.target.classList.contains('star')) {
+                updateStars(parseInt(e.target.dataset.value));
+            }
+        });
+
+        starContainer.addEventListener('mouseout', () => {
+            updateStars(parseInt(ratingInput.value) || 0);
+        });
+
+        starContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('star')) {
+                const value = parseInt(e.target.dataset.value);
+                ratingInput.value = value;
+                updateStars(value);
+            }
+        });
+
+        // 初始化
+        updateStars(parseInt(ratingInput.value) || 0);
     }
 
     // --- 原有页面逻辑 ---
@@ -382,6 +459,7 @@
         }
 
         // --- 评论系统初始化 ---
+        setupStarRating();
         loadComments(playerId);
         const commentForm = document.getElementById('comment-form');
         commentForm.addEventListener('submit', (event) => handleCommentSubmit(event, playerId));
