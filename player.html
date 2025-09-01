@@ -20,11 +20,8 @@
             --control-height: 42px;
             --star-color: #ffd700;
             --star-color-inactive: #555;
-            
-            /* Gold Effect Colors */
-            --gold: #ffb338;
-            --light-shadow: #77571d;
-            --dark-shadow: #3e2904;
+            --gold-color: #FFD700;
+            --gold-glow: rgba(255, 215, 0, 0.7);
         }
         body.light-theme {
             --primary-color: #D64550;
@@ -70,43 +67,29 @@
         }
         .honor-item .crown-icon {
             font-size: 1.5em; /* 皇冠图标稍大一些 */
-            color: var(--gold);
+            color: var(--gold-color);
             filter: drop-shadow(0 0 5px var(--gold-glow));
             animation: subtle-bob 3s infinite ease-in-out;
         }
-
         .honor-text {
-            position: relative; /* Container for pseudo-elements */
-            font-family: 'Poppins', sans-serif;
-            font-weight: 900;
             font-size: 1.2em;
-            letter-spacing: 1px;
-            
-            /* Foreground (top layer) styles */
-            background-image: repeating-linear-gradient( 5deg, var(--gold) 0% , var(--light-shadow) 23%, var(--gold) 31%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: #1e2127; /* Fallback color */
-            -webkit-text-stroke: 4px transparent;
-        }
-
-        .honor-text::before {
-            content: attr(data-text); /* Use data attribute for text */
-            position: absolute;
-            left: 0;
-            top: 0;
-            z-index: -1; /* Place it behind the main text */
-            
-            /* Background (bottom layer) styles */
-            background-image: repeating-linear-gradient( 105deg, var(--gold) 0% , var(--dark-shadow) 5%, var(--gold) 12%);
-            -webkit-background-clip: text;
-            background-clip: text;
+            font-weight: 300;
+            letter-spacing: 2px;
             color: transparent;
-            filter: drop-shadow(3px 5px 5px rgba(0,0,0,0.5));
-            transform: scaleY(1.05);
-            transform-origin: top;
+            background: linear-gradient(135deg, #FFEF00, #FFD700, #DAA520, #FFD700, #FFEF00);
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-stroke: 3px transparent;
+            -webkit-box-reflect: below -0.6em linear-gradient(transparent, transparent 30%, rgba(255,255,255,.5));
+            animation: rainbow-scroll 5s linear infinite;
         }
 
+        @keyframes rainbow-scroll {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
         @keyframes subtle-bob {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-3px); }
@@ -429,10 +412,10 @@
 
         const honors = idNameMap[playerId]?.honor;
         if (honors) {
-            document.getElementById('player-honors').innerHTML = honors.split('、').map(h => 
+            document.getElementById('player-honors').innerHTML = honors.split('、').map((h, i) => 
                 `<span class="honor-item">
                     <span class="crown-icon">👑</span>
-                    <span class="honor-text" data-text="${escapeHTML(h)}">${escapeHTML(h)}</span>
+                    <span class="honor-text" style="--i: ${i}">${escapeHTML(h)}</span>
                 </span>`
             ).join('');
         }
@@ -558,3 +541,4 @@
 </script>
 </body>
 </html>
+
