@@ -75,28 +75,51 @@
             animation: subtle-bob 3s infinite ease-in-out;
         }
         .honor-text {
-            font-family: "等线 Light", "Microsoft YaHei Light", sans-serif;
-            font-weight: 400;
-            font-size: 2em;
-            letter-spacing: 2px;
+            font-family: "Microsoft YaHei", "SimSun", serif;
+            font-weight: 600; /* 稍重的字重增强庄重感 */
+            font-size: 1.8em;
+            letter-spacing: 3px; /* 增加字间距提升优雅感 */
             color: transparent;
-            background: linear-gradient(135deg, #FFEF00, #FFD700, #DAA520, #FFD700, #FFEF00);
-            background-size: 200% 100%;
+            /* 优化金色渐变，加入深金色和铜色增加层次感 */
+            background: linear-gradient(135deg, 
+                #fff8dc 10%,    /* 极浅的金色作为高光 */
+                #ffd700 30%,    /* 标准金色 */
+                #ffc107 45%,    /* 稍深的金色 */
+                #d4af37 60%,    /* 古铜金色 */
+                #b8860b 75%,    /* 深金色 */
+                #ffd700 90%);   /* 回归明亮金色 */
+            background-size: 300% 100%;
             -webkit-background-clip: text;
             background-clip: text;
-            -webkit-text-stroke: 3px transparent;
-            -webkit-box-reflect: below -0.6em linear-gradient(transparent, transparent 30%, rgba(255, 255, 255, .5));
-            animation: rainbow-scroll 5s linear infinite;
+            /* 更精细的文字描边增强轮廓感 */
+            -webkit-text-stroke: 1px rgba(218, 165, 32, 0.3);
+            /* 更自然的倒影效果 */
+            -webkit-box-reflect: below 2px linear-gradient(transparent, transparent 70%, rgba(255, 215, 0, 0.15));
+            /* 组合动画：颜色滚动+微妙浮动+光泽闪烁 */
+            animation: 
+                rainbow-scroll 8s ease-in-out infinite,
+                subtle-bob 4s ease-in-out infinite,
+                shimmer 3s ease-in-out infinite alternate;
+            transform-origin: bottom center;
+            text-rendering: optimizeLegibility; /* 优化文字渲染 */
+            filter: drop-shadow(0 2px 4px rgba(184, 134, 11, 0.2)); /* 增加柔和阴影 */
         }
 
         @keyframes rainbow-scroll {
             0% { background-position: 0% 50%; }
-            100% { background-position: 200% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
-        
+
         @keyframes subtle-bob {
             0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-3px); }
+            50% { transform: translateY(-5px); }
+        }
+
+        /* 新增光泽闪烁效果 */
+        @keyframes shimmer {
+            0% { opacity: 0.9; }
+            100% { opacity: 1; filter: drop-shadow(0 2px 6px rgba(255, 215, 0, 0.3)); }
         }
 
         .controls-container { display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap; margin-top: 25px; }
