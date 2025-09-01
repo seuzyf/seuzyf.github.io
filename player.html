@@ -25,6 +25,11 @@
             --star-color-inactive: #555;
             --gold-color: #FFD700;
             --gold-glow: rgba(255, 215, 0, 0.7);
+            --gold-light: #fff3cd;
+            --gold-main: #ffd700;
+            --gold-medium: #ffc107;
+            --gold-dark: #b8860b;
+            --gold-glow: rgba(255, 215, 0, 0.6);
         }
         body.light-theme {
             --primary-color: #D64550;
@@ -61,48 +66,78 @@
         }
         .main-header-block h1 { color: var(--primary-color); margin: 0; font-weight: 700; font-size: 2.5em; }
         
-        /* --- 荣誉动效 CSS (新版) --- */
-        #player-honors { margin-top: 15px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 20px; }
+        #player-honors { 
+            margin-top: 15px; 
+            display: flex; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+            gap: 10px 20px; 
+        }
+
         .honor-item {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px; /* 增加间距让元素呼吸 */
+            padding: 5px 12px;
+            position: relative;
         }
+
+        /* 皇冠图标优化 - 与文字风格统一 */
         .honor-item .crown-icon {
-            font-size: 1.5em; /* 皇冠图标稍大一些 */
-            color: var(--gold-color);
-            filter: drop-shadow(0 0 5px var(--gold-glow));
-            animation: subtle-bob 3s infinite ease-in-out;
+            /* 尺寸与文字更协调 */
+            font-size: 1.3em;
+            /* 使用渐变色彩与文字呼应 */
+            background: linear-gradient(135deg, var(--gold-light), var(--gold-main), var(--gold-dark));
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            /* 增强光泽感 */
+            filter: drop-shadow(0 0 6px var(--gold-glow));
+            /* 与文字同步的动画，增强整体性 */
+            animation: 
+                crown-shimmer 3s infinite ease-in-out,
+                subtle-bob 4s infinite ease-in-out 0.2s; /* 轻微延迟，形成错落感 */
+            transform-origin: center;
         }
+
         .honor-text {
             font-family: "Microsoft YaHei", "SimSun", serif;
-            font-weight: 600; /* 稍重的字重增强庄重感 */
+            font-weight: 600;
             font-size: 1.8em;
-            letter-spacing: 3px; /* 增加字间距提升优雅感 */
+            letter-spacing: 3px;
             color: transparent;
-            /* 优化金色渐变，加入深金色和铜色增加层次感 */
             background: linear-gradient(135deg, 
-                #fff8dc 10%,    /* 极浅的金色作为高光 */
-                #ffd700 30%,    /* 标准金色 */
-                #ffc107 45%,    /* 稍深的金色 */
-                #d4af37 60%,    /* 古铜金色 */
-                #b8860b 75%,    /* 深金色 */
-                #ffd700 90%);   /* 回归明亮金色 */
+                var(--gold-light) 10%,
+                var(--gold-main) 30%,
+                var(--gold-medium) 45%,
+                #d4af37 60%,
+                var(--gold-dark) 75%,
+                var(--gold-main) 90%);
             background-size: 300% 100%;
             -webkit-background-clip: text;
             background-clip: text;
-            /* 更精细的文字描边增强轮廓感 */
             -webkit-text-stroke: 1px rgba(218, 165, 32, 0.3);
-            /* 更自然的倒影效果 */
             -webkit-box-reflect: below 2px linear-gradient(transparent, transparent 70%, rgba(255, 215, 0, 0.15));
-            /* 组合动画：颜色滚动+微妙浮动+光泽闪烁 */
             animation: 
                 rainbow-scroll 8s ease-in-out infinite,
                 subtle-bob 4s ease-in-out infinite,
                 shimmer 3s ease-in-out infinite alternate;
             transform-origin: bottom center;
-            text-rendering: optimizeLegibility; /* 优化文字渲染 */
-            filter: drop-shadow(0 2px 4px rgba(184, 134, 11, 0.2)); /* 增加柔和阴影 */
+            text-rendering: optimizeLegibility;
+            filter: drop-shadow(0 2px 4px rgba(184, 134, 11, 0.2));
+        }
+
+        /* 皇冠专属闪烁动画 */
+        @keyframes crown-shimmer {
+            0%, 100% { 
+                background-position: 0% 50%;
+                filter: drop-shadow(0 0 5px var(--gold-glow));
+            }
+            50% { 
+                background-position: 100% 50%;
+                filter: drop-shadow(0 0 8px var(--gold-glow));
+            }
         }
 
         @keyframes rainbow-scroll {
@@ -116,7 +151,6 @@
             50% { transform: translateY(-5px); }
         }
 
-        /* 新增光泽闪烁效果 */
         @keyframes shimmer {
             0% { opacity: 0.9; }
             100% { opacity: 1; filter: drop-shadow(0 2px 6px rgba(255, 215, 0, 0.3)); }
