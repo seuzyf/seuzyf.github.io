@@ -128,6 +128,13 @@
             filter: drop-shadow(0 2px 4px rgba(184, 134, 11, 0.2));
         }
 
+        /* 新增的彩虹样式 */
+        .honor-text.rainbow {
+             background: linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff);
+             background-size: 400% 400%;
+             animation: rainbow-scroll 8s ease-in-out infinite, subtle-bob 4s ease-in-out infinite, shimmer 3s ease-in-out infinite alternate;
+        }
+
         /* 皇冠专属闪烁动画 */
         @keyframes crown-shimmer {
             0%, 100% { 
@@ -471,15 +478,26 @@
         const realName = idNameMap[playerId]?.name || playerId;
         document.getElementById('player-id-header').textContent = `${realName} (${playerId})`;
 
+        // MODIFIED PART
         const honors = idNameMap[playerId]?.honor;
         if (honors) {
-            document.getElementById('player-honors').innerHTML = honors.split('、').map((h, i) => 
-                `<span class="honor-item">
-                    <span class="crown-icon">👑</span>
-                    <span class="honor-text" style="--i: ${i}">${escapeHTML(h)}</span>
-                </span>`
-            ).join('');
+            document.getElementById('player-honors').innerHTML = honors.split('、').map((h, i) => {
+                const honorText = escapeHTML(h);
+                if (honorText.includes('冠军')) {
+                    // Style for champions
+                    return `<span class="honor-item">
+                                <span class="crown-icon">👑</span>
+                                <span class="honor-text" style="--i: ${i}">${honorText}</span>
+                            </span>`;
+                } else {
+                    // Style for other honors
+                    return `<span class="honor-item">
+                                <span class="honor-text rainbow" style="--i: ${i}">${honorText}</span>
+                            </span>`;
+                }
+            }).join('');
         }
+        // END OF MODIFIED PART
 
         let groupClass = '';
         if (groupName === '传奇组') groupClass = 'legend';
