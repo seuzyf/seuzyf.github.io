@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>选手主页</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chocolate+Classical+Sans&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -72,8 +75,9 @@
             animation: subtle-bob 3s infinite ease-in-out;
         }
         .honor-text {
+            font-family: "Chocolate Classical Sans", sans-serif;
+            font-weight: 400;
             font-size: 1.2em;
-            font-weight: 300;
             letter-spacing: 2px;
             color: transparent;
             background: linear-gradient(135deg, #FFEF00, #FFD700, #DAA520, #FFD700, #FFEF00);
@@ -81,13 +85,13 @@
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-stroke: 3px transparent;
-            -webkit-box-reflect: below -0.6em linear-gradient(transparent, transparent 30%, rgba(255,255,255,.5));
+            -webkit-box-reflect: below -0.6em linear-gradient(transparent, transparent 30%, rgba(255, 255, 255, .5));
             animation: rainbow-scroll 5s linear infinite;
         }
 
         @keyframes rainbow-scroll {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
         }
         
         @keyframes subtle-bob {
