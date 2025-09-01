@@ -20,6 +20,8 @@
             --control-height: 42px;
             --star-color: #ffd700;
             --star-color-inactive: #555;
+            --gold-color: #FFD700;
+            --gold-glow: rgba(255, 215, 0, 0.7);
         }
         body.light-theme {
             --primary-color: #D64550;
@@ -56,47 +58,43 @@
         }
         .main-header-block h1 { color: var(--primary-color); margin: 0; font-weight: 700; font-size: 2.5em; }
         
-        /* --- 荣誉动效 CSS --- */
+        /* --- 荣誉动效 CSS (新版) --- */
         #player-honors { margin-top: 15px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 20px; }
         .honor-item {
-            position: relative;
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            font-size: 1.1em;
-            font-weight: 500;
-            color: #fff; /* 在深色背景下用白色更突出 */
-            padding: 5px 10px;
-            border-radius: 6px;
-            background: linear-gradient(45deg, #333, #555);
-            animation: pulse-glow 3s infinite ease-in-out;
         }
-        .honor-item .trophy-icon { color: var(--star-color); font-size: 1.3em; filter: drop-shadow(0 0 4px gold); }
+        .honor-item .crown-icon {
+            font-size: 1.5em; /* 皇冠图标稍大一些 */
+            color: var(--gold-color);
+            filter: drop-shadow(0 0 5px var(--gold-glow));
+            animation: subtle-bob 3s infinite ease-in-out;
+        }
         .honor-text {
-            position: relative;
-            overflow: hidden;
-        }
-        .honor-text::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(to right, transparent 0%, rgba(255, 215, 0, 0.5) 50%, transparent 100%);
-            animation: shimmer 4s infinite linear;
-            transform: rotate(25deg);
+            font-size: 1.2em;
+            font-weight: bold;
+            letter-spacing: 2px;
+            color: transparent;
+            background: linear-gradient(135deg, #0eaf6d, #ff6ac6 25%, #147b96 50%, #e6d205 55%, #2cc4e0 60%, #8b2ce0 80%, #ff6384 95%, #08dfb4);
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-stroke: 3px transparent;
+            -webkit-box-reflect: below -0.6em linear-gradient(transparent, transparent 30%, rgba(255,255,255,.5));
+            animation: rainbow-scroll 5s linear infinite;
         }
 
-        @keyframes shimmer {
-            0% { transform: translateX(-75%) rotate(25deg); }
-            100% { transform: translateX(75%) rotate(25deg); }
-        }
-        @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 5px rgba(255,215,0,0.3), 0 0 10px rgba(255,215,0,0.2); }
-            50% { box-shadow: 0 0 15px rgba(255,215,0,0.6), 0 0 25px rgba(255,215,0,0.4); }
+        @keyframes rainbow-scroll {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
         
+        @keyframes subtle-bob {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+
         .controls-container { display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap; margin-top: 25px; }
         .nav-button { height: var(--control-height); display: inline-flex; align-items: center; border-radius: 8px; font-weight: 500; padding: 0 25px; border: 2px solid var(--primary-color); color: var(--primary-color); text-decoration: none; transition: background-color 0.3s, color 0.3s; }
         .nav-button:hover { background-color: var(--primary-color); color: white; }
@@ -414,10 +412,10 @@
 
         const honors = idNameMap[playerId]?.honor;
         if (honors) {
-            document.getElementById('player-honors').innerHTML = honors.split('、').map(h => 
+            document.getElementById('player-honors').innerHTML = honors.split('、').map((h, i) => 
                 `<span class="honor-item">
-                    <span class="trophy-icon">🏆</span>
-                    <span class="honor-text">${escapeHTML(h)}</span>
+                    <span class="crown-icon">👑</span>
+                    <span class="honor-text" style="--i: ${i}">${escapeHTML(h)}</span>
                 </span>`
             ).join('');
         }
