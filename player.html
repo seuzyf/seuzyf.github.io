@@ -128,7 +128,7 @@
         input:checked + .slider { background-color: var(--primary-color); }
         input:checked + .slider:before { transform: translateX(24px); }
         
-        /* --- 评论区样式 --- */
+        /* --- 评论区样式 (已修改) --- */
         .comments-section {
             background-color: var(--card-bg-color);
             backdrop-filter: blur(10px);
@@ -144,7 +144,7 @@
             padding-bottom: 10px;
         }
         .comment-card {
-            position: relative; /* 为删除按钮定位 */
+            position: relative;
             background-color: var(--bg-color);
             border: 1px solid var(--border-color);
             border-radius: 8px;
@@ -159,19 +159,9 @@
             font-size: 0.9em;
             flex-wrap: wrap;
         }
-        .comment-author {
-            font-weight: bold;
-            color: var(--primary-color);
-        }
-        .comment-rating span {
-            color: var(--star-color);
-            font-weight: bold;
-        }
-        .comment-body {
-            font-size: 1em;
-            line-height: 1.5;
-            word-wrap: break-word;
-        }
+        .comment-author { font-weight: bold; color: var(--primary-color); }
+        .comment-rating span { color: var(--star-color); font-weight: bold; }
+        .comment-body { font-size: 1em; line-height: 1.5; word-wrap: break-word; }
         .delete-comment-btn {
             position: absolute;
             top: 10px;
@@ -186,24 +176,13 @@
             opacity: 0.7;
             transition: opacity 0.2s;
         }
-        .delete-comment-btn:hover {
-            opacity: 1;
-        }
-        #comment-form {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            margin-top: 20px;
-        }
-        .form-row {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
+        .delete-comment-btn:hover { opacity: 1; }
+        #comment-form { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
+        .form-row { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
         #nickname-input {
             flex: 1;
             min-width: 150px;
+            height: var(--control-height);
             padding: 12px;
             border-radius: 8px;
             border: 1px solid var(--border-color);
@@ -212,20 +191,9 @@
             font-size: 1em;
             box-sizing: border-box;
         }
-        .star-rating-container {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .star {
-            font-size: 2em;
-            color: var(--star-color-inactive);
-            cursor: pointer;
-            transition: color 0.2s, transform 0.2s;
-        }
-        .star:hover {
-            transform: scale(1.2);
-        }
+        .star-rating-container { display: flex; align-items: center; gap: 2px; }
+        .star { font-size: 1.8em; color: var(--star-color-inactive); cursor: pointer; transition: color 0.2s, transform 0.2s; }
+        .star:hover { transform: scale(1.2); }
         #comment-form textarea {
             width: 100%;
             padding: 12px;
@@ -246,13 +214,8 @@
             cursor: pointer;
             transition: background-color 0.3s;
         }
-        #comment-form button:hover {
-            opacity: 0.9;
-        }
-        #comment-form button:disabled {
-            background-color: #888;
-            cursor: not-allowed;
-        }
+        #comment-form button:hover { opacity: 0.9; }
+        #comment-form button:disabled { background-color: #888; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -314,8 +277,7 @@
                         <form id="comment-form">
                             <div class="form-row">
                                 <input type="text" id="nickname-input" placeholder="您的昵称" required>
-                                <div class="star-rating-container" id="star-rating">
-                                    </div>
+                                <div class="star-rating-container" id="star-rating"></div>
                                 <input type="hidden" id="rating-input" required>
                             </div>
                             <textarea id="comment-input" placeholder="输入您的评论..." rows="4" required></textarea>
@@ -348,7 +310,6 @@
         }
     }
     
-    // 读取所有评论
     async function fetchAllComments(uniquePlayerKey) {
         const { data, error } = await supabaseClient
             .from('comments')
@@ -363,7 +324,6 @@
         return data;
     }
     
-    // 显示评论
     function displayComments(playerComments, uniquePlayerKey) {
         const commentsList = document.getElementById('comments-list');
         const avgScoreEl = document.getElementById('player-average-score');
@@ -402,7 +362,6 @@
         });
     }
 
-    // 提交新评论
     async function handleCommentSubmit(event, uniquePlayerKey) {
         event.preventDefault();
         const ratingInput = document.getElementById('rating-input');
@@ -439,7 +398,6 @@
         submitButton.textContent = '提交评论';
     }
 
-    // 删除评论
     async function handleDeleteComment(commentId, uniquePlayerKey) {
         const { error } = await supabaseClient
             .from('comments')
@@ -510,7 +468,6 @@
         updateStars(parseInt(ratingInput.value) || 0);
     }
 
-    // --- 雷达图绘制 ---
     let radarChartInstance = null;
     function drawRadarChart(percentileData) {
         const ctx = document.getElementById('player-radar-chart').getContext('2d');
@@ -540,51 +497,33 @@
                 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: true,
+                responsive: true, maintainAspectRatio: true,
                 scales: {
                     r: {
-                        min: 0,
-                        max: 100,
-                        backgroundColor: 'transparent',
-                        grid: { color: gridColor },
-                        angleLines: { color: angleLinesColor },
-                        pointLabels: {
-                            color: pointLabelsColor,
-                            font: { size: 12 }
-                        },
-                        ticks: {
-                            display: false, 
-                            stepSize: 25
-                        }
+                        min: 0, max: 100, backgroundColor: 'transparent',
+                        grid: { color: gridColor }, angleLines: { color: angleLinesColor },
+                        pointLabels: { color: pointLabelsColor, font: { size: 12 } },
+                        ticks: { display: false, stepSize: 25 }
                     }
                 },
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                }
+                plugins: { legend: { display: false } }
             }
         });
     }
 
-    // --- 原有页面逻辑 ---
-    document.addEventListener('DOMContentLoaded', () => {
+    async function main() {
         const params = new URLSearchParams(window.location.search);
         const playerId = params.get('id');
         const groupName = params.get('group');
 
         if (!playerId || !groupName) {
-            document.body.innerHTML = '<h1>错误：缺少选手ID或组别信息</h1>';
-            return;
+            document.body.innerHTML = '<h1>错误：缺少选手ID或组别信息</h1>'; return;
         }
 
         const uniquePlayerKeyForComments = `${playerId}::${groupName}`;
-
         setupStarRating();
         loadComments(uniquePlayerKeyForComments);
-        const commentForm = document.getElementById('comment-form');
-        commentForm.addEventListener('submit', (event) => handleCommentSubmit(event, uniquePlayerKeyForComments));
+        document.getElementById('comment-form').addEventListener('submit', (event) => handleCommentSubmit(event, uniquePlayerKeyForComments));
         
         const themeToggle = document.getElementById('theme-toggle-checkbox');
         const themeText = document.getElementById('theme-text');
@@ -600,15 +539,19 @@
         const savedTheme = localStorage.getItem('theme');
         setTheme((savedTheme === null) ? true : (savedTheme === 'light'));
         themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
-        
-        const allPlayerData = JSON.parse(localStorage.getItem('valorantPlayerSummary') || '{}');
-        const idNameMap = JSON.parse(localStorage.getItem('valorantIdNameMap') || '{}');
 
-        if (Object.keys(allPlayerData).length === 0) {
-            document.getElementById('summary-list-content').innerHTML = `<p style="color:red;">数据未加载。请先访问比赛中心主页以生成统计数据。</p>`;
-            return;
+        // --- 数据独立加载 ---
+        const { data: matches, error: matchesError } = await supabaseClient.from('matches').select('*');
+        const { data: idData, error: idError } = await supabaseClient.from('player_ids').select('*');
+
+        if(matchesError || idError) {
+            document.body.innerHTML = `<h1>错误：加载数据失败</h1><p>${(matchesError || idError).message}</p>`; return;
         }
+
+        const idNameMap = idData.reduce((map, row) => { map[row.id] = row.name; return map; }, {});
+        const allPlayerData = processAllPlayerData(matches);
         
+        // --- 渲染页面 ---
         const realName = idNameMap[playerId] || playerId;
         document.getElementById('player-id-header').textContent = `${realName} (${playerId})`;
 
@@ -623,58 +566,10 @@
         const playerData = allPlayerData[uniquePlayerKey];
 
         if (!playerData) {
-            document.body.innerHTML = `<h1>错误：未找到选手 ${playerId} 在 ${groupName} 组的数据</h1>`;
-            return;
+            document.body.innerHTML = `<h1>错误：未找到选手 ${playerId} 在 ${groupName} 组的数据</h1>`; return;
         }
 
-        const groupPlayersForRank = [];
-        const statsByCharacter = {}; 
-
-        for (const key in allPlayerData) {
-            const p = allPlayerData[key];
-            if (p.group === groupName) {
-                const stats = p.total_stats;
-                if (stats.matchCount === 0 || stats.totalRounds === 0) continue;
-                
-                groupPlayersForRank.push({
-                    id: p.id,
-                    acs: stats.acs / stats.matchCount,
-                    k_map: stats.kills / stats.matchCount,
-                    d_map: stats.deaths / stats.matchCount,
-                    a_map: stats.assists / stats.matchCount,
-                    k_round: stats.kills / stats.totalRounds,
-                    d_round: stats.deaths / stats.totalRounds,
-                    a_round: stats.assists / stats.totalRounds,
-                    survival_rate: 1 - (stats.deaths / stats.totalRounds),
-                    kda: stats.deaths > 0 ? (stats.kills + stats.assists) / stats.deaths : (stats.kills + stats.assists),
-                });
-
-                for (const charName in p.by_character) {
-                    const charStats = p.by_character[charName];
-                    if (charStats.matchCount === 0) continue;
-                    if (!statsByCharacter[charName]) {
-                        statsByCharacter[charName] = [];
-                    }
-                    statsByCharacter[charName].push({
-                        id: p.id,
-                        acs: charStats.acs / charStats.matchCount,
-                        k_map: charStats.kills / charStats.matchCount,
-                        d_map: charStats.deaths / charStats.matchCount,
-                        a_map: charStats.assists / charStats.matchCount,
-                        k_round: charStats.totalRounds > 0 ? charStats.kills / charStats.totalRounds : 0,
-                        d_round: charStats.totalRounds > 0 ? charStats.deaths / charStats.totalRounds : 0,
-                        a_round: charStats.totalRounds > 0 ? charStats.assists / charStats.totalRounds : 0,
-                    });
-                }
-            }
-        }
-        
-        function calculatePercentile(playerValue, allValues) {
-            if (allValues.length <= 1) return 50; 
-            const sortedValues = [...allValues].sort((a, b) => a - b);
-            const rank = sortedValues.findIndex(v => v === playerValue);
-            return (rank / (sortedValues.length - 1)) * 100;
-        }
+        const { groupPlayersForRank, statsByCharacter } = calculateGroupRanks(allPlayerData, groupName);
         
         const currentPlayerStats = groupPlayersForRank.find(p => p.id === playerId);
         if (currentPlayerStats) {
@@ -688,13 +583,106 @@
             drawRadarChart(window.playerRadarPercentiles);
         }
         
-        function getRank(id, key, rankList, invert = false) {
-            if (!rankList || rankList.length === 0) return '';
-            const sortedList = [...rankList].sort((a, b) => invert ? a[key] - b[key] : b[key] - a[key]);
-            const rank = sortedList.findIndex(p => p.id === id) + 1;
-            return rank > 0 ? `(TOP ${rank})` : '';
-        }
+        renderSummaryList(playerData, playerId, groupPlayersForRank);
+        renderCharacterTable(playerData, playerId, statsByCharacter);
+    }
 
+    function processAllPlayerData(matches) {
+        const playerData = {};
+        matches.forEach(match => {
+            const score = String(match['score']).split(/[/:：]/).map(Number);
+            const totalRounds = (score.length === 2 && !isNaN(score[0]) && !isNaN(score[1])) ? (score[0] + score[1]) : 0;
+            ['team_a', 'team_b'].forEach(teamKey => {
+                const teamName = match[teamKey];
+                for (let p = 1; p <= 5; p++) {
+                    const playerId = match[`${teamKey}_player${p}_id`];
+                    const playerDataStr = match[`${teamKey}_player${p}_data`];
+                    const playerCh = match[`${teamKey}_player${p}_ch`];
+                    if (!playerId || !playerDataStr) continue;
+                    const stats = String(playerDataStr).split('/').map(Number);
+                    if (stats.length !== 4 || stats.some(isNaN)) continue;
+                    
+                    const uniquePlayerKey = `${playerId}::${match.group}`;
+                    if (!playerData[uniquePlayerKey]) {
+                        playerData[uniquePlayerKey] = {
+                            id: playerId, group: match.group, team: teamName,
+                            total_stats: { kills: 0, deaths: 0, assists: 0, acs: 0, matchCount: 0, totalRounds: 0 },
+                            by_character: {}
+                        };
+                    }
+                    const playerEntry = playerData[uniquePlayerKey];
+                    playerEntry.team = teamName;
+                    const p_stats = playerEntry.total_stats;
+                    p_stats.acs += stats[0]; p_stats.kills += stats[1]; p_stats.deaths += stats[2]; p_stats.assists += stats[3];
+                    p_stats.matchCount++; p_stats.totalRounds += totalRounds;
+
+                    if (playerCh) {
+                        const charName = String(playerCh).trim();
+                        if (!playerEntry.by_character[charName]) {
+                            playerEntry.by_character[charName] = { kills: 0, deaths: 0, assists: 0, acs: 0, matchCount: 0, totalRounds: 0 };
+                        }
+                        const charStats = playerEntry.by_character[charName];
+                        charStats.acs += stats[0]; charStats.kills += stats[1]; charStats.deaths += stats[2]; charStats.assists += stats[3];
+                        charStats.matchCount++; charStats.totalRounds += totalRounds;
+                    }
+                }
+            });
+        });
+        return playerData;
+    }
+
+    function calculateGroupRanks(allPlayerData, groupName) {
+        const groupPlayersForRank = [];
+        const statsByCharacter = {};
+        for (const key in allPlayerData) {
+            const p = allPlayerData[key];
+            if (p.group === groupName) {
+                const stats = p.total_stats;
+                if (stats.matchCount === 0 || stats.totalRounds === 0) continue;
+                
+                groupPlayersForRank.push({
+                    id: p.id,
+                    acs: stats.acs / stats.matchCount,
+                    k_map: stats.kills / stats.matchCount, d_map: stats.deaths / stats.matchCount, a_map: stats.assists / stats.matchCount,
+                    k_round: stats.kills / stats.totalRounds, d_round: stats.deaths / stats.totalRounds, a_round: stats.assists / stats.totalRounds,
+                    survival_rate: 1 - (stats.deaths / stats.totalRounds),
+                    kda: stats.deaths > 0 ? (stats.kills + stats.assists) / stats.deaths : (stats.kills + stats.assists),
+                });
+
+                for (const charName in p.by_character) {
+                    const charStats = p.by_character[charName];
+                    if (charStats.matchCount === 0) continue;
+                    if (!statsByCharacter[charName]) statsByCharacter[charName] = [];
+                    
+                    statsByCharacter[charName].push({
+                        id: p.id,
+                        acs: charStats.acs / charStats.matchCount,
+                        k_map: charStats.kills / charStats.matchCount, d_map: charStats.deaths / charStats.matchCount, a_map: charStats.assists / charStats.matchCount,
+                        k_round: charStats.totalRounds > 0 ? charStats.kills / charStats.totalRounds : 0,
+                        d_round: charStats.totalRounds > 0 ? charStats.deaths / charStats.totalRounds : 0,
+                        a_round: charStats.totalRounds > 0 ? charStats.assists / charStats.totalRounds : 0,
+                    });
+                }
+            }
+        }
+        return { groupPlayersForRank, statsByCharacter };
+    }
+
+    function calculatePercentile(playerValue, allValues) {
+        if (allValues.length <= 1) return 50;
+        const sortedValues = [...allValues].sort((a, b) => a - b);
+        const rank = sortedValues.findIndex(v => v === playerValue);
+        return (rank / (sortedValues.length - 1)) * 100;
+    }
+
+    function getRank(id, key, rankList, invert = false) {
+        if (!rankList || rankList.length === 0) return '';
+        const sortedList = [...rankList].sort((a, b) => invert ? a[key] - b[key] : b[key] - a[key]);
+        const rank = sortedList.findIndex(p => p.id === id) + 1;
+        return rank > 0 ? `(TOP ${rank})` : '';
+    }
+
+    function renderSummaryList(playerData, playerId, groupPlayersForRank) {
         const playerAverages = {
              acs: playerData.total_stats.matchCount > 0 ? playerData.total_stats.acs / playerData.total_stats.matchCount : 0,
              k_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.kills / playerData.total_stats.matchCount : 0,
@@ -714,7 +702,9 @@
             <div><strong>每回合死亡:</strong> <span>${playerAverages.d_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_round', groupPlayersForRank, true)}</span></span></div>
             <div><strong>每回合助攻:</strong> <span>${playerAverages.a_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_round', groupPlayersForRank)}</span></span></div>
         `;
-        
+    }
+
+    function renderCharacterTable(playerData, playerId, statsByCharacter) {
         const tableBody = document.getElementById('character-stats-body');
         tableBody.innerHTML = '';
         Object.entries(playerData.by_character).sort(([,a],[,b]) => b.matchCount - a.matchCount).forEach(([charName, stats]) => {
@@ -740,10 +730,11 @@
                     <td>${avg.k_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_round', characterRankList)}</span></td>
                     <td>${avg.d_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_round', characterRankList, true)}</span></td>
                     <td>${avg.a_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_round', characterRankList)}</span></td>
-                </tr>
-            `;
+                </tr>`;
         });
-    });
+    }
+
+    document.addEventListener('DOMContentLoaded', main);
 </script>
 </body>
 </html>

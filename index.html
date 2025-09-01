@@ -188,7 +188,7 @@
         .player-comparison-table td.player-acs { font-weight: bold; color: var(--primary-color); }
         .player-comparison-table .separator { width: 1px; padding: 0; }
         
-        .theme-switch-wrapper { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 10px; }
+        .top-right-controls { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 15px; }
         #theme-text { font-size: 0.8em; opacity: 0.8; }
         .theme-switch { display: inline-block; height: 24px; position: relative; width: 48px; }
         .theme-switch input { display:none; }
@@ -196,17 +196,26 @@
         .slider:before { background-color: var(--text-color); bottom: 4px; content: ""; height: 16px; left: 4px; position: absolute; transition: .4s; width: 16px; border-radius: 50%; }
         input:checked + .slider { background-color: var(--primary-color); }
         input:checked + .slider:before { transform: translateX(24px); }
+        #admin-btn {
+            background: none; border: none; cursor: pointer; color: var(--text-color);
+            opacity: 0.7; transition: opacity 0.2s;
+        }
+        #admin-btn:hover { opacity: 1; }
+        #admin-btn svg { width: 24px; height: 24px; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="main-header-block">
-            <div class="theme-switch-wrapper">
+            <div class="top-right-controls">
                 <span id="theme-text"></span>
                 <label class="theme-switch">
                     <input type="checkbox" id="theme-toggle-checkbox">
                     <span class="slider"></span>
                 </label>
+                <a href="admin.html" id="admin-btn" title="管理后台">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19.8298 12.1741C19.9363 11.6963 19.9363 11.1963 19.8298 10.7185L21.6569 9.28148C21.8617 9.1237 21.9213 8.84815 21.8024 8.62222L20.0445 5.37778C19.9256 5.15185 19.6582 5.06667 19.4445 5.17037L17.2223 6.0963C16.6371 5.65185 15.9927 5.2963 15.3038 5.03704L14.9334 2.62222C14.9067 2.41481 14.7334 2.25185 14.526 2.25185H10.4741C10.2667 2.25185 10.0934 2.41481 10.0667 2.62222L9.6963 5.03704C8.99824 5.30519 8.36223 5.65185 7.77788 6.0963L5.55565 5.17037C5.34195 5.06667 5.07454 5.15185 4.95565 5.37778L3.19778 8.62222C3.07889 8.84815 3.13843 9.1237 3.34324 9.28148L5.17048 10.7185C5.06399 11.1963 5.06399 11.6963 5.17048 12.1741L3.34324 13.6111C3.13843 13.7689 3.07889 14.0444 3.19778 14.2704L4.95565 17.5148C5.07454 17.7407 5.34195 17.8259 5.55565 17.7222L7.77788 16.7963C8.36223 17.2407 8.99824 17.587 9.6963 17.8552L10.0667 20.27C10.0934 20.4774 10.2667 20.6404 10.4741 20.6404H14.526C14.7334 20.6404 14.9067 20.4774 14.9334 20.27L15.3038 17.8552C15.9927 17.5959 16.6371 17.25 17.2223 16.7963L19.4445 17.7222C19.6582 17.8259 19.9256 17.7407 20.0445 17.5148L21.8024 14.2704C21.9213 14.0444 21.8617 13.7689 21.6569 13.6111L19.8298 12.1741ZM12.5 14.9404C10.8167 14.9404 9.44454 13.5681 9.44454 11.8848C9.44454 10.2015 10.8167 8.82926 12.5 8.82926C14.1834 8.82926 15.5556 10.2015 15.5556 11.8848C15.5556 13.5681 14.1834 14.9404 12.5 14.9404Z"></path></svg>
+                </a>
             </div>
             <h1>HWVCTS4 比赛中心</h1>
             <div class="controls-container">
