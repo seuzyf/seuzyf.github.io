@@ -9,13 +9,23 @@
     <style>
         :root {
             --primary-color: #D64550;
-            --bg-color: rgba(15, 25, 35, 0.95);
+            --bg-color: rgba(15, 25, 35, 0.85);
             --text-color: #ece8e1;
-            --card-bg-color: rgba(26, 40, 54, 0.9);
+            --card-bg-color: rgba(26, 40, 54, 0.8);
+            --header-bg-color: rgba(26, 40, 54, 0.85);
             --border-color: #2a3a49;
             --success-color: #4CAF50;
             --shadow-color: rgba(0,0,0,0.3);
             --control-height: 42px;
+        }
+        body.light-theme {
+            --primary-color: #D64550;
+            --bg-color: rgba(240, 242, 245, 0.85);
+            --text-color: #1c1e21;
+            --card-bg-color: rgba(255, 255, 255, 0.8);
+            --header-bg-color: rgba(255, 255, 255, 0.85);
+            --border-color: #dadde1;
+            --shadow-color: rgba(0,0,0,0.1);
         }
         body {
             font-family: 'Roboto', sans-serif;
@@ -23,9 +33,53 @@
             color: var(--text-color);
             margin: 0;
             padding: 20px 0;
+            background-image: url('https://cdnb.artstation.com/p/assets/images/images/090/820/719/large/envar-studio-valorantact4kv3-render-17-fd-ot-gis-jett-2.jpg?1755007158');
+            background-attachment: fixed;
+            background-size: cover;
         }
-        .container { width: 95%; max-width: 1600px; margin: 20px auto; }
-        h1, h2 { color: var(--primary-color); text-align: center; }
+        .container { width: 95%; max-width: 1600px; margin: 0 auto; }
+        .main-header-block {
+            background-color: var(--header-bg-color);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px var(--shadow-color);
+            text-align: center;
+            margin-bottom: 40px;
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+        .main-header-block h1 { color: var(--primary-color); margin: 0 0 10px 0; font-weight: 700; font-size: 2.5em; }
+        .controls-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 25px;
+        }
+        .nav-button {
+            height: var(--control-height);
+            display: inline-flex;
+            align-items: center;
+            border-radius: 8px;
+            font-weight: 500;
+            padding: 0 25px;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+            text-decoration: none;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .nav-button:hover { background-color: var(--primary-color); color: white; }
+        .top-right-controls { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 15px; }
+        #theme-text { font-size: 0.8em; opacity: 0.8; }
+        .theme-switch { display: inline-block; height: 24px; position: relative; width: 48px; }
+        .theme-switch input { display:none; }
+        .slider { background-color: var(--border-color); bottom: 0; cursor: pointer; left: 0; position: absolute; right: 0; top: 0; transition: .4s; border-radius: 24px; }
+        .slider:before { background-color: var(--text-color); bottom: 4px; content: ""; height: 16px; left: 4px; position: absolute; transition: .4s; width: 16px; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary-color); }
+        input:checked + .slider:before { transform: translateX(24px); }
+
         .nav-tabs { display: flex; justify-content: center; margin-bottom: 2rem; border-bottom: 2px solid var(--border-color); }
         .nav-tabs button { padding: 1rem 1.5rem; border: none; background: none; color: var(--text-color); cursor: pointer; font-size: 1.1em; border-bottom: 3px solid transparent; }
         .nav-tabs button.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
@@ -33,11 +87,11 @@
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
-        .form-section, .table-section { background-color: var(--card-bg-color); padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px var(--shadow-color); }
+        .form-section, .table-section { background-color: var(--card-bg-color); padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px var(--shadow-color); margin-top: 2rem; }
         .form-section h3, .table-section h3 { margin-top: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; }
 
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 0.75rem; border: 1px solid var(--border-color); text-align: left; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th, td { padding: 0.75rem; border: 1px solid var(--border-color); text-align: left; white-space: nowrap; }
         thead th { background-color: rgba(214, 69, 80, 0.2); }
         tbody tr:nth-child(even) { background-color: rgba(0,0,0,0.2); }
 
@@ -67,7 +121,6 @@
         button.add-row-btn { margin-bottom: 1rem; }
         .delete-row-btn { background-color: #7f8c8d; }
         
-        /* Modal Styles */
         .modal-backdrop {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(0, 0, 0, 0.8); backdrop-filter: blur(5px);
@@ -91,7 +144,21 @@
     </div>
 
     <div id="admin-panel" class="container" style="display: none;">
-        <h1>管理后台</h1>
+        <header class="main-header-block">
+             <div class="top-right-controls">
+                <span id="theme-text"></span>
+                <label class="theme-switch">
+                    <input type="checkbox" id="theme-toggle-checkbox">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <h1>管理后台</h1>
+            <div class="controls-container">
+                <a href="index.html" class="nav-button">返回比赛中心</a>
+                <a href="summary.html" class="nav-button">查看选手数据</a>
+            </div>
+        </header>
+
         <div class="nav-tabs">
             <button class="tab-button active" data-tab="matches-tab">赛果管理</button>
             <button class="tab-button" data-tab="schedule-tab">赛程管理</button>
@@ -106,14 +173,21 @@
                     <table id="matches-form">
                         <thead>
                             <tr>
-                                <th>组别</th><th>赛段</th><th>日期</th><th>地图</th><th>比分</th>
-                                <th>队伍A</th><th>A-P1 ID</th><th>A-P1 角色</th><th>A-P1 数据</th>
-                                <th>队伍B</th><th>B-P5 ID</th><th>B-P5 角色</th><th>B-P5 数据</th>
+                                <th>组别</th><th>赛段</th><th>比赛日期</th><th>比赛地图</th><th>比分</th>
+                                <th>队伍A</th><th>A队选手1-ID</th><th>A队选手1-角色</th><th>A队选手1-数据</th>
+                                <th>A队选手2-ID</th><th>A队选手2-角色</th><th>A队选手2-数据</th>
+                                <th>A队选手3-ID</th><th>A队选手3-角色</th><th>A队选手3-数据</th>
+                                <th>A队选手4-ID</th><th>A队选手4-角色</th><th>A队选手4-数据</th>
+                                <th>A队选手5-ID</th><th>A队选手5-角色</th><th>A队选手5-数据</th>
+                                <th>队伍B</th><th>B队选手1-ID</th><th>B队选手1-角色</th><th>B队选手1-数据</th>
+                                <th>B队选手2-ID</th><th>B队选手2-角色</th><th>B队选手2-数据</th>
+                                <th>B队选手3-ID</th><th>B队选手3-角色</th><th>B队选手3-数据</th>
+                                <th>B队选手4-ID</th><th>B队选手4-角色</th><th>B队选手4-数据</th>
+                                <th>B队选手5-ID</th><th>B队选手5-角色</th><th>B队选手5-数据</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
-                        <tbody id="matches-table-body">
-                            </tbody>
+                        <tbody id="matches-table-body"></tbody>
                     </table>
                 </div>
                 <button class="success" style="margin-top: 1rem;" id="submit-matches">提交赛果</button>
@@ -126,13 +200,9 @@
                 <button class="add-row-btn" data-table="schedule-table-body">新增一行</button>
                 <table>
                     <thead>
-                        <tr>
-                            <th>组别</th><th>Match ID</th><th>队伍 A</th><th>队伍 B</th>
-                            <th>A队得分</th><th>B队得分</th><th>回放链接</th><th>操作</th>
-                        </tr>
+                        <tr><th>组别</th><th>比赛ID</th><th>队伍A</th><th>队伍B</th><th>A队得分</th><th>B队得分</th><th>回放链接</th><th>操作</th></tr>
                     </thead>
-                    <tbody id="schedule-table-body">
-                        </tbody>
+                    <tbody id="schedule-table-body"></tbody>
                 </table>
                 <button class="success" style="margin-top: 1rem;" id="submit-schedule">提交赛程</button>
             </div>
@@ -140,14 +210,13 @@
 
         <div id="ids-tab" class="tab-content">
             <div class="table-section">
-                <h3>选手 ID 维护</h3>
+                <h3>选手 ID 与荣誉维护</h3>
                 <button class="add-row-btn" data-table="ids-table-body">新增一行</button>
                 <table>
                     <thead>
-                        <tr><th>选手 ID (主键)</th><th>选手真名</th><th>操作</th></tr>
+                        <tr><th>选手 ID (主键)</th><th>选手真名</th><th>选手荣誉 (用"、"分割)</th><th>操作</th></tr>
                     </thead>
-                    <tbody id="ids-table-body">
-                        </tbody>
+                    <tbody id="ids-table-body"></tbody>
                 </table>
                 <button class="success" style="margin-top: 1rem;" id="update-ids">更新/添加 ID</button>
             </div>
@@ -166,22 +235,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordInput = document.getElementById('password-input');
     const passwordSubmit = document.getElementById('password-submit');
 
-    // --- 认证逻辑 ---
     async function checkPassword() {
         const inputPassword = passwordInput.value;
-        if (!inputPassword) {
-            alert('请输入口令！');
-            return;
-        }
+        if (!inputPassword) { alert('请输入口令！'); return; }
         try {
-            const { data, error } = await supabaseClient
-                .from('manage')
-                .select('password')
-                .limit(1)
-                .single();
-            
+            const { data, error } = await supabaseClient.from('manage').select('password').limit(1).single();
             if (error) throw error;
-            
             if (data && data.password === inputPassword) {
                 passwordModal.style.display = 'none';
                 adminPanel.style.display = 'block';
@@ -195,53 +254,50 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     passwordSubmit.addEventListener('click', checkPassword);
-    passwordInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') checkPassword();
-    });
+    passwordInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') checkPassword(); });
 
-    // --- 面板初始化 ---
     function initializeAdminPanel() {
+        setupThemeToggle();
         setupTabs();
         setupDynamicRows();
         loadIdsData();
-
         document.getElementById('submit-matches').addEventListener('click', submitMatches);
         document.getElementById('submit-schedule').addEventListener('click', submitSchedule);
         document.getElementById('update-ids').addEventListener('click', updateIds);
     }
     
-    // --- Tab 切换逻辑 ---
+    function setupThemeToggle() {
+        const themeToggle = document.getElementById('theme-toggle-checkbox');
+        const themeText = document.getElementById('theme-text');
+        function setTheme(isLight) {
+            document.body.classList.toggle('light-theme', isLight);
+            themeToggle.checked = isLight;
+            themeText.textContent = isLight ? '点击切换夜间模式' : '点击切换日间模式';
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        }
+        const savedTheme = localStorage.getItem('theme');
+        setTheme((savedTheme === null) ? true : (savedTheme === 'light'));
+        themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
+    }
+
     function setupTabs() {
         const tabButtons = document.querySelectorAll('.nav-tabs .tab-button');
         const tabContents = document.querySelectorAll('.tab-content');
-
         tabButtons.forEach(button => {
             button.addEventListener('click', () => {
                 tabButtons.forEach(btn => btn.classList.remove('active'));
                 button.classList.add('active');
-
                 tabContents.forEach(content => {
                     content.classList.remove('active');
-                    if (content.id === button.dataset.tab) {
-                        content.classList.add('active');
-                    }
+                    if (content.id === button.dataset.tab) content.classList.add('active');
                 });
             });
         });
     }
 
-    // --- 动态增删行逻辑 ---
     const groupOptions = `<option value="传奇组">传奇组</option><option value="中坚组">中坚组</option><option value="挑战组">挑战组</option>`;
     const stageOptions = `<option value="小组赛">小组赛</option><option value="淘汰赛">淘汰赛</option><option value="决赛">决赛</option>`;
-    const scheduleMatchIdOptions = `
-        <option value="S1-1">S1-1: 瑞士轮 0-0组 第1场</option><option value="S1-2">S1-2: 瑞士轮 0-0组 第2场</option>
-        <option value="S1-3">S1-3: 瑞士轮 0-0组 第3场</option><option value="S1-4">S1-4: 瑞士轮 0-0组 第4场</option>
-        <option value="S2-1W">S2-1W: 瑞士轮 1-0组 第1场</option><option value="S2-2W">S2-2W: 瑞士轮 1-0组 第2场</option>
-        <option value="S2-1L">S2-1L: 瑞士轮 0-1组 第1场</option><option value="S2-2L">S2-2L: 瑞士轮 0-1组 第2场</option>
-        <option value="S3-1M">S3-1M: 瑞士轮 1-1组 第1场</option><option value="S3-2M">S3-2M: 瑞士轮 1-1组 第2场</option>
-        <option value="P-WB1-1">P-WB1-1: 胜者组 R1 第1场</option><option value="P-WB1-2">P-WB1-2: 胜者组 R1 第2场</option>
-        <option value="P-WBF">P-WBF: 胜者组 决赛</option><option value="P-LB1">P-LB1: 败者组 R1</option>
-        <option value="P-LBF">P-LBF: 败者组 决赛</option><option value="P-GF">P-GF: 总决赛</option>`;
+    const scheduleMatchIdOptions = `<option value="S1-1">S1-1: 瑞士轮 0-0组 第1场</option><option value="S1-2">S1-2: 瑞士轮 0-0组 第2场</option><option value="S1-3">S1-3: 瑞士轮 0-0组 第3场</option><option value="S1-4">S1-4: 瑞士轮 0-0组 第4场</option><option value="S2-1W">S2-1W: 瑞士轮 1-0组 第1场</option><option value="S2-2W">S2-2W: 瑞士轮 1-0组 第2场</option><option value="S2-1L">S2-1L: 瑞士轮 0-1组 第1场</option><option value="S2-2L">S2-2L: 瑞士轮 0-1组 第2场</option><option value="S3-1M">S3-1M: 瑞士轮 1-1组 第1场</option><option value="S3-2M">S3-2M: 瑞士轮 1-1组 第2场</option><option value="P-WB1-1">P-WB1-1: 胜者组 R1 第1场</option><option value="P-WB1-2">P-WB1-2: 胜者组 R1 第2场</option><option value="P-WBF">P-WBF: 胜者组 决赛</option><option value="P-LB1">P-LB1: 败者组 R1</option><option value="P-LBF">P-LBF: 败者组 决赛</option><option value="P-GF">P-GF: 总决赛</option>`;
 
     function createDeleteButton() {
         const deleteBtn = document.createElement('button');
@@ -254,31 +310,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const rowTemplates = {
         'matches-table-body': () => {
             const tr = document.createElement('tr');
-            let playerInputs = '';
+            let content = `<td><select data-col="group">${groupOptions}</select></td>
+                <td><select data-col="stage">${stageOptions}</select></td>
+                <td><input type="date" data-col="match_date"></td>
+                <td><input type="text" data-col="map" placeholder="地图名"></td>
+                <td><input type="text" data-col="score" placeholder="eg: 13:9"></td>`;
             for (const team of ['a', 'b']) {
-                playerInputs += `<td><input type="text" data-col="team_${team}" placeholder="队伍${team.toUpperCase()}"></td>`;
+                content += `<td><input type="text" data-col="team_${team}" placeholder="队伍${team.toUpperCase()}"></td>`;
                 for (let i = 1; i <= 5; i++) {
-                    playerInputs += `
+                    content += `
                         <td><input type="text" data-col="team_${team}_player${i}_id" placeholder="ID"></td>
                         <td><input type="text" data-col="team_${team}_player${i}_ch" placeholder="角色"></td>
                         <td><input type="text" data-col="team_${team}_player${i}_data" placeholder="ACS/K/D/A"></td>`;
                 }
             }
-            tr.innerHTML = `
-                <td><select data-col="group">${groupOptions}</select></td>
-                <td><select data-col="stage">${stageOptions}</select></td>
-                <td><input type="date" data-col="match_date"></td>
-                <td><input type="text" data-col="map" placeholder="地图名"></td>
-                <td><input type="text" data-col="score" placeholder="eg: 13:9"></td>
-                ${playerInputs.replace('team_a', 'team_a').replace('team_b', 'team_b')} 
-                <td class="actions"></td>`;
+            content += `<td class="actions"></td>`;
+            tr.innerHTML = content;
             tr.querySelector('.actions').appendChild(createDeleteButton());
             return tr;
         },
         'schedule-table-body': () => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><select data-col="group">${groupOptions}</select></td>
+            tr.innerHTML = `<td><select data-col="group">${groupOptions}</select></td>
                 <td><select data-col="match_id">${scheduleMatchIdOptions}</select></td>
                 <td><input type="text" data-col="team_a" placeholder="队伍A"></td>
                 <td><input type="text" data-col="team_b" placeholder="队伍B"></td>
@@ -289,12 +342,13 @@ document.addEventListener('DOMContentLoaded', () => {
             tr.querySelector('.actions').appendChild(createDeleteButton());
             return tr;
         },
-        'ids-table-body': (isNew = true, data = { id: '', name: '' }) => {
+        'ids-table-body': (isNew = true, data = { id: '', name: '', honor: '' }) => {
             const tr = document.createElement('tr');
             tr.dataset.isNew = isNew;
             tr.innerHTML = `
-                <td><input type="text" data-col="id" value="${data.id}" ${!isNew ? 'readonly' : ''}></td>
-                <td><input type="text" data-col="name" value="${data.name}"></td>
+                <td><input type="text" data-col="id" value="${data.id || ''}" ${!isNew ? 'readonly' : ''}></td>
+                <td><input type="text" data-col="name" value="${data.name || ''}"></td>
+                <td><input type="text" data-col="honor" value="${data.honor || ''}"></td>
                 <td class="actions"></td>`;
             tr.querySelector('.actions').appendChild(createDeleteButton());
             return tr;
@@ -312,7 +366,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 数据提交逻辑 ---
     function getTableData(tableBodyId) {
         const rows = document.querySelectorAll(`#${tableBodyId} tr`);
         const data = [];
@@ -320,11 +373,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const rowData = {};
             row.querySelectorAll('input, select').forEach(input => {
                 if (input.dataset.col) {
-                    rowData[input.dataset.col] = input.type === 'number' ? (input.value ? parseInt(input.value) : null) : input.value;
+                    let value = input.value;
+                    if (input.type === 'number') value = value ? parseInt(value) : null;
+                    if (value !== '' && value !== null) rowData[input.dataset.col] = value;
                 }
             });
-            // 补充额外信息用于更新
-            if (row.dataset.isNew !== undefined) rowData.isNew = row.dataset.isNew === 'true';
             if (Object.keys(rowData).length > 0) data.push(rowData);
         });
         return data;
@@ -333,68 +386,47 @@ document.addEventListener('DOMContentLoaded', () => {
     async function submitMatches() {
         const data = getTableData('matches-table-body');
         if (data.length === 0) return alert('没有要提交的数据。');
-        
-        // 简单验证
         for (const row of data) {
-            if (!row.group || !row.stage || !row.team_a || !row.team_b) {
-                return alert('请确保每行的组别、赛段和队伍名都已填写！');
-            }
+            if (!row.group || !row.stage || !row.team_a || !row.team_b) return alert('请确保每行的组别、赛段和队伍名都已填写！');
         }
-
         const { error } = await supabaseClient.from('matches').insert(data);
-        if (error) {
-            alert('提交赛果失败: ' + error.message);
-        } else {
-            alert('赛果提交成功！');
-            document.getElementById('matches-table-body').innerHTML = '';
-        }
+        if (error) { alert('提交赛果失败: ' + error.message); }
+        else { alert('赛果提交成功！'); document.getElementById('matches-table-body').innerHTML = ''; }
     }
 
     async function submitSchedule() {
         const data = getTableData('schedule-table-body');
         if (data.length === 0) return alert('没有要提交的数据。');
-
         const { error } = await supabaseClient.from('match_schedule').insert(data);
-        if (error) {
-            alert('提交赛程失败: ' + error.message);
-        } else {
-            alert('赛程提交成功！');
-            document.getElementById('schedule-table-body').innerHTML = '';
-        }
+        if (error) { alert('提交赛程失败: ' + error.message); }
+        else { alert('赛程提交成功！'); document.getElementById('schedule-table-body').innerHTML = ''; }
     }
 
     async function loadIdsData() {
         const tableBody = document.getElementById('ids-table-body');
-        tableBody.innerHTML = '<tr><td colspan="3">正在加载...</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="4">正在加载...</td></tr>';
         const { data, error } = await supabaseClient.from('player_ids').select('*').order('id');
-        if (error) {
-            tableBody.innerHTML = `<tr><td colspan="3">加载失败: ${error.message}</td></tr>`;
-            return;
-        }
+        if (error) { tableBody.innerHTML = `<tr><td colspan="4">加载失败: ${error.message}</td></tr>`; return; }
         tableBody.innerHTML = '';
-        data.forEach(player => {
-            const row = rowTemplates['ids-table-body'](false, player);
-            tableBody.appendChild(row);
-        });
+        data.forEach(player => tableBody.appendChild(rowTemplates['ids-table-body'](false, player)));
     }
 
     async function updateIds() {
-        const data = getTableData('ids-table-body');
-        if (data.length === 0) return alert('没有要更新的数据。');
-        
-        // 验证主键不能为空
-        for (const row of data) {
-            if (!row.id) return alert('选手ID为主键，不能为空！');
-        }
+        const dataToUpsert = [];
+        document.querySelectorAll('#ids-table-body tr').forEach(row => {
+            const rowData = {};
+            row.querySelectorAll('input').forEach(input => {
+                rowData[input.dataset.col] = input.value || null;
+            });
+            if (rowData.id) dataToUpsert.push(rowData);
+        });
 
-        // upsert 用于 "update or insert"
-        const { error } = await supabaseClient.from('player_ids').upsert(data);
-        if (error) {
-            alert('更新失败: ' + error.message);
-        } else {
-            alert('选手ID更新成功！');
-            loadIdsData(); // 重新加载数据
-        }
+        if (dataToUpsert.length === 0) return alert('没有要更新的数据。');
+        for (const row of dataToUpsert) { if (!row.id) return alert('选手ID为主键，不能为空！'); }
+        
+        const { error } = await supabaseClient.from('player_ids').upsert(dataToUpsert);
+        if (error) { alert('更新失败: ' + error.message); }
+        else { alert('选手ID更新成功！'); loadIdsData(); }
     }
 });
 </script>

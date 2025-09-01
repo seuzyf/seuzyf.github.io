@@ -55,39 +55,14 @@
             position: relative;
         }
         .main-header-block h1 { color: var(--primary-color); margin: 0; font-weight: 700; font-size: 2.5em; }
-        .player-avg-score {
-            color: var(--star-color);
-            font-size: 1.5em;
-            font-weight: 500;
-            margin: 10px 0 0 0;
-        }
-        .controls-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 15px;
-            flex-wrap: wrap;
-            margin-top: 25px;
-        }
-        .nav-button {
-            height: var(--control-height);
-            display: inline-flex;
-            align-items: center;
-            border-radius: 8px;
-            font-weight: 500;
-            padding: 0 25px;
-            border: 2px solid var(--primary-color);
-            color: var(--primary-color);
-            text-decoration: none;
-            transition: background-color 0.3s, color 0.3s;
-        }
+        #player-honors { margin-top: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 15px; }
+        .honor-item { display: inline-flex; align-items: center; gap: 5px; font-size: 1.1em; opacity: 0.9; }
+        .honor-item .trophy-icon { color: var(--star-color); font-size: 1.2em; }
+        
+        .controls-container { display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap; margin-top: 25px; }
+        .nav-button { height: var(--control-height); display: inline-flex; align-items: center; border-radius: 8px; font-weight: 500; padding: 0 25px; border: 2px solid var(--primary-color); color: var(--primary-color); text-decoration: none; transition: background-color 0.3s, color 0.3s; }
         .nav-button:hover { background-color: var(--primary-color); color: white; }
-        .group-badge {
-            position: absolute; top: -1px; left: -1px; padding: 8px 20px;
-            border-bottom-right-radius: 12px; border-top-left-radius: 12px;
-            font-size: 1.1em; font-weight: 500; color: #0f1923; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
+        .group-badge { position: absolute; top: -1px; left: -1px; padding: 8px 20px; border-bottom-right-radius: 12px; border-top-left-radius: 12px; font-size: 1.1em; font-weight: 500; color: #0f1923; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
         .group-badge.legend { background-image: linear-gradient(135deg, #FFD700, #B8860B); }
         .group-badge.contender { background-image: linear-gradient(135deg, #e0e0e0, #a0a0a0); }
         .group-badge.challenger { background-image: linear-gradient(135deg, #CD7F32, #A0522D); }
@@ -96,25 +71,13 @@
         #career-stats-card { flex: 1; min-width: 320px; position: sticky; top: 20px; }
         #character-stats-section { flex: 2.5; min-width: 600px; }
 
-        .data-section {
-            background-color: var(--card-bg-color);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 8px 16px var(--shadow-color);
-            margin-bottom: 30px;
-        }
+        .data-section { background-color: var(--card-bg-color); backdrop-filter: blur(10px); border: 1px solid var(--border-color); border-radius: 12px; padding: 25px; box-shadow: 0 8px 16px var(--shadow-color); margin-bottom: 30px; }
         .data-section h2 { margin-top: 0; color: var(--primary-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
         .summary-list { display: flex; flex-direction: column; gap: 15px; font-size: 1.1em; }
         .summary-list div { background-color: var(--bg-color); padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: baseline; }
         .summary-list strong { color: var(--primary-color); }
         .rank-top { font-size: 0.9em; color: var(--winner-color); font-weight: bold; }
-        #radar-chart-container {
-            position: relative;
-            margin: 20px auto;
-            max-width: 300px;
-        }
+        #radar-chart-container { position: relative; margin: 20px auto; max-width: 300px; }
         #character-stats-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
         #character-stats-table thead { background-color: var(--primary-color); color: white; }
         #character-stats-table th, #character-stats-table td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
@@ -129,91 +92,24 @@
         input:checked + .slider:before { transform: translateX(24px); }
         
         /* --- 评论区样式 (已修改) --- */
-        .comments-section {
-            background-color: var(--card-bg-color);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 8px 16px var(--shadow-color);
-        }
-        .comments-section h2, .comments-section h3 {
-            margin-top: 0;
-            color: var(--primary-color);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
-        }
-        .comment-card {
-            position: relative;
-            background-color: var(--bg-color);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
-        }
-        .comment-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            font-size: 0.9em;
-            flex-wrap: wrap;
-        }
-        .comment-author { font-weight: bold; color: var(--primary-color); }
+        .comments-section h2 { display: flex; justify-content: space-between; align-items: center; }
+        .player-avg-score { color: var(--star-color); font-size: 0.8em; font-weight: 500; }
+        .comment-card { position: relative; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .comment-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; font-size: 0.9em; flex-wrap: wrap; gap: 5px;}
+        .comment-author { font-weight: bold; color: var(--primary-color); margin-right: auto;}
+        .comment-rating { white-space: nowrap; }
         .comment-rating span { color: var(--star-color); font-weight: bold; }
         .comment-body { font-size: 1em; line-height: 1.5; word-wrap: break-word; }
-        .delete-comment-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #D64550;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            padding: 3px 8px;
-            cursor: pointer;
-            font-size: 0.8em;
-            opacity: 0.7;
-            transition: opacity 0.2s;
-        }
+        .delete-comment-btn { position: absolute; top: 10px; right: 10px; background: #D64550; color: white; border: none; border-radius: 5px; padding: 3px 8px; cursor: pointer; font-size: 0.8em; opacity: 0.7; transition: opacity 0.2s; }
         .delete-comment-btn:hover { opacity: 1; }
         #comment-form { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
         .form-row { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
-        #nickname-input {
-            flex: 1;
-            min-width: 150px;
-            height: var(--control-height);
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-size: 1em;
-            box-sizing: border-box;
-        }
+        #nickname-input { flex: 1; min-width: 150px; height: var(--control-height); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-color); color: var(--text-color); font-size: 1em; box-sizing: border-box; }
         .star-rating-container { display: flex; align-items: center; gap: 2px; }
         .star { font-size: 1.8em; color: var(--star-color-inactive); cursor: pointer; transition: color 0.2s, transform 0.2s; }
         .star:hover { transform: scale(1.2); }
-        #comment-form textarea {
-            width: 100%;
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-size: 1em;
-            box-sizing: border-box;
-        }
-        #comment-form button {
-            height: var(--control-height);
-            border: none;
-            border-radius: 8px;
-            background-color: var(--primary-color);
-            color: white;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
+        #comment-form textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-color); color: var(--text-color); font-size: 1em; box-sizing: border-box; }
+        #comment-form button { height: var(--control-height); border: none; border-radius: 8px; background-color: var(--primary-color); color: white; font-weight: 500; cursor: pointer; transition: background-color 0.3s; }
         #comment-form button:hover { opacity: 0.9; }
         #comment-form button:disabled { background-color: #888; cursor: not-allowed; }
     </style>
@@ -230,8 +126,8 @@
                 </label>
             </div>
             <h1 id="player-id-header">Loading...</h1>
-            <h2 id="player-average-score" class="player-avg-score"></h2>
-             <div class="controls-container">
+            <div id="player-honors"></div>
+            <div class="controls-container">
                 <a href="index.html" class="nav-button">返回比赛中心</a>
                 <a href="summary.html" class="nav-button">查看选手数据</a>
             </div>
@@ -239,9 +135,7 @@
         <main class="main-layout">
             <section class="data-section" id="career-stats-card">
                 <h2>生涯平均数据</h2>
-                <div id="radar-chart-container">
-                    <canvas id="player-radar-chart"></canvas>
-                </div>
+                <div id="radar-chart-container"><canvas id="player-radar-chart"></canvas></div>
                 <div class="summary-list" id="summary-list-content"><p>正在计算数据...</p></div>
             </section>
             <div style="flex: 2.5; min-width: 600px;">
@@ -249,29 +143,15 @@
                     <h2>各角色平均数据</h2>
                     <div style="overflow-x: auto;">
                         <table id="character-stats-table">
-                             <thead>
-                                <tr>
-                                    <th>角色</th>
-                                    <th>出场</th>
-                                    <th>ACS</th>
-                                    <th>每局击杀</th>
-                                    <th>每局死亡</th>
-                                    <th>每局助攻</th>
-                                    <th>每回合击杀</th>
-                                    <th>每回合死亡</th>
-                                    <th>每回合助攻</th>
-                                </tr>
-                            </thead>
+                            <thead><tr><th>角色</th><th>出场</th><th>ACS</th><th>每局击杀</th><th>每局死亡</th><th>每局助攻</th><th>每回合击杀</th><th>每回合死亡</th><th>每回合助攻</th></tr></thead>
                             <tbody id="character-stats-body"></tbody>
                         </table>
                     </div>
                 </section>
                 
                 <section class="comments-section">
-                    <h2>玩家评分与评论</h2>
-                    <div id="comments-list">
-                        <p>正在加载评论...</p>
-                    </div>
+                    <h2>玩家评分与评论 <span id="player-average-score" class="player-avg-score"></span></h2>
+                    <div id="comments-list"><p>正在加载评论...</p></div>
                     <div id="comment-form-container">
                         <h3>发表您的看法</h3>
                         <form id="comment-form">
@@ -289,7 +169,6 @@
         </main>
     </div>
 <script>
-    // --- Supabase 评论系统 ---
     const SUPABASE_URL = 'https://vbyvolmtkjjyeiibpljf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieXZvbG10a2pqeWVpaWJwbGpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzMxNDksImV4cCI6MjA3MjI0OTE0OX0.Tnot1kIVn8vJ-vggYaTGBGTkIBY7m6yIOquSjG5mSUM';
     const { createClient } = supabase;
@@ -304,23 +183,12 @@
             const data = await response.json();
             currentUserIP = data.ip;
             return currentUserIP;
-        } catch (error) {
-            console.error("无法获取IP地址:", error);
-            return null;
-        }
+        } catch (error) { console.error("无法获取IP地址:", error); return null; }
     }
     
     async function fetchAllComments(uniquePlayerKey) {
-        const { data, error } = await supabaseClient
-            .from('comments')
-            .select('*')
-            .eq('player_key', uniquePlayerKey)
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            console.error('获取评论失败:', error);
-            return [];
-        }
+        const { data, error } = await supabaseClient.from('comments').select('*').eq('player_key', uniquePlayerKey).order('created_at', { ascending: false });
+        if (error) { console.error('获取评论失败:', error); return []; }
         return data;
     }
     
@@ -331,32 +199,26 @@
         if (playerComments.length > 0) {
             const totalScore = playerComments.reduce((sum, comment) => sum + comment.rating, 0);
             const averageScore = (totalScore / playerComments.length).toFixed(2);
-            avgScoreEl.textContent = `玩家平均评分: ${averageScore} / 10`;
+            avgScoreEl.textContent = `平均分: ${averageScore} / 10`;
         } else {
-            avgScoreEl.textContent = '暂无玩家评分';
+            avgScoreEl.textContent = '暂无评分';
         }
 
-        if (playerComments.length === 0) {
-            commentsList.innerHTML = '<p>暂无评论，快来抢沙发吧！</p>';
-        } else {
-            commentsList.innerHTML = playerComments.map(comment => `
-                <div class="comment-card">
-                    ${comment.ip === currentUserIP ? `<button class="delete-comment-btn" data-comment-id="${comment.id}">删除</button>` : ''}
-                    <div class="comment-header">
-                        <span class="comment-author">${escapeHTML(comment.nickname)}</span>
-                        <span class="comment-rating">评分: <span>${comment.rating}</span> / 10</span>
-                    </div>
-                    <p class="comment-body">${escapeHTML(comment.content)}</p>
-                    <small style="opacity: 0.6;">${new Date(comment.created_at).toLocaleString()}</small>
+        commentsList.innerHTML = playerComments.length === 0 ? '<p>暂无评论，快来抢沙发吧！</p>' : playerComments.map(comment => `
+            <div class="comment-card">
+                ${comment.ip === currentUserIP ? `<button class="delete-comment-btn" data-comment-id="${comment.id}">删除</button>` : ''}
+                <div class="comment-header">
+                    <span class="comment-author">${escapeHTML(comment.nickname)}</span>
+                    <span class="comment-rating">评分: <span>${comment.rating}</span> / 10</span>
                 </div>
-            `).join('');
-        }
+                <p class="comment-body">${escapeHTML(comment.content)}</p>
+                <small style="opacity: 0.6;">${new Date(comment.created_at).toLocaleString()}</small>
+            </div>`).join('');
 
         document.querySelectorAll('.delete-comment-btn').forEach(button => {
             button.addEventListener('click', (event) => {
-                const commentId = event.target.dataset.commentId;
                 if (confirm('您确定要删除这条评论吗？')) {
-                    handleDeleteComment(commentId, uniquePlayerKey);
+                    handleDeleteComment(event.target.dataset.commentId, uniquePlayerKey);
                 }
             });
         });
@@ -371,14 +233,12 @@
         submitButton.disabled = true;
         submitButton.textContent = '提交中...';
 
-        const userIP = await getUserIP();
-        
         const newComment = {
             player_key: uniquePlayerKey,
             nickname: document.getElementById('nickname-input').value,
             rating: parseInt(ratingInput.value),
             content: document.getElementById('comment-input').value,
-            ip: userIP
+            ip: await getUserIP()
         };
         
         const { error } = await supabaseClient.from('comments').insert([newComment]);
@@ -399,11 +259,7 @@
     }
 
     async function handleDeleteComment(commentId, uniquePlayerKey) {
-        const { error } = await supabaseClient
-            .from('comments')
-            .delete()
-            .match({ id: commentId, ip: currentUserIP });
-
+        const { error } = await supabaseClient.from('comments').delete().match({ id: commentId, ip: currentUserIP });
         if (!error) {
             alert('删除成功！');
             const updatedComments = await fetchAllComments(uniquePlayerKey);
@@ -429,7 +285,6 @@
         const ratingInput = document.getElementById('rating-input');
         starContainer.innerHTML = '';
         const stars = [];
-
         for (let i = 1; i <= 10; i++) {
             const star = document.createElement('span');
             star.className = 'star';
@@ -438,33 +293,20 @@
             starContainer.appendChild(star);
             stars.push(star);
         }
-
         const updateStars = (hoverValue) => {
             stars.forEach(star => {
-                const starValue = parseInt(star.dataset.value);
-                const isActive = starValue <= hoverValue;
-                star.style.color = isActive ? 'var(--star-color)' : 'var(--star-color-inactive)';
+                star.style.color = parseInt(star.dataset.value) <= hoverValue ? 'var(--star-color)' : 'var(--star-color-inactive)';
             });
         };
-
-        starContainer.addEventListener('mouseover', (e) => {
-            if (e.target.classList.contains('star')) {
-                updateStars(parseInt(e.target.dataset.value));
-            }
-        });
-
-        starContainer.addEventListener('mouseout', () => {
-            updateStars(parseInt(ratingInput.value) || 0);
-        });
-
-        starContainer.addEventListener('click', (e) => {
+        starContainer.addEventListener('mouseover', e => { if (e.target.classList.contains('star')) updateStars(parseInt(e.target.dataset.value)); });
+        starContainer.addEventListener('mouseout', () => updateStars(parseInt(ratingInput.value) || 0));
+        starContainer.addEventListener('click', e => {
             if (e.target.classList.contains('star')) {
                 const value = parseInt(e.target.dataset.value);
                 ratingInput.value = value;
                 updateStars(value);
             }
         });
-
         updateStars(parseInt(ratingInput.value) || 0);
     }
 
@@ -476,36 +318,20 @@
         const angleLinesColor = isLightTheme ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.2)';
         const pointLabelsColor = isLightTheme ? '#333' : '#eee';
 
-        if (radarChartInstance) {
-            radarChartInstance.destroy();
-        }
-
+        if (radarChartInstance) radarChartInstance.destroy();
         radarChartInstance = new Chart(ctx, {
             type: 'radar',
             data: {
                 labels: ['ACS', '每回合击杀', '每回合助攻', '每回合存活率', 'KDA'],
                 datasets: [{
-                    label: '选手能力 (百分位)',
-                    data: percentileData,
-                    backgroundColor: 'rgba(214, 69, 80, 0.4)',
-                    borderColor: 'rgba(214, 69, 80, 1)',
-                    borderWidth: 2,
-                    pointBackgroundColor: 'rgba(214, 69, 80, 1)',
-                    pointBorderColor: '#fff',
-                    pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: 'rgba(214, 69, 80, 1)'
+                    label: '选手能力 (百分位)', data: percentileData, backgroundColor: 'rgba(214, 69, 80, 0.4)', borderColor: 'rgba(214, 69, 80, 1)',
+                    borderWidth: 2, pointBackgroundColor: 'rgba(214, 69, 80, 1)', pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff', pointHoverBorderColor: 'rgba(214, 69, 80, 1)'
                 }]
             },
             options: {
                 responsive: true, maintainAspectRatio: true,
-                scales: {
-                    r: {
-                        min: 0, max: 100, backgroundColor: 'transparent',
-                        grid: { color: gridColor }, angleLines: { color: angleLinesColor },
-                        pointLabels: { color: pointLabelsColor, font: { size: 12 } },
-                        ticks: { display: false, stepSize: 25 }
-                    }
-                },
+                scales: { r: { min: 0, max: 100, backgroundColor: 'transparent', grid: { color: gridColor }, angleLines: { color: angleLinesColor }, pointLabels: { color: pointLabelsColor, font: { size: 12 } }, ticks: { display: false, stepSize: 25 } } },
                 plugins: { legend: { display: false } }
             }
         });
@@ -516,9 +342,7 @@
         const playerId = params.get('id');
         const groupName = params.get('group');
 
-        if (!playerId || !groupName) {
-            document.body.innerHTML = '<h1>错误：缺少选手ID或组别信息</h1>'; return;
-        }
+        if (!playerId || !groupName) { document.body.innerHTML = '<h1>错误：缺少选手ID或组别信息</h1>'; return; }
 
         const uniquePlayerKeyForComments = `${playerId}::${groupName}`;
         setupStarRating();
@@ -532,54 +356,44 @@
             themeToggle.checked = isLight;
             themeText.textContent = isLight ? '点击切换夜间模式' : '点击切换日间模式';
             localStorage.setItem('theme', isLight ? 'light' : 'dark');
-            if (window.playerRadarPercentiles) {
-                drawRadarChart(window.playerRadarPercentiles);
-            }
+            if (window.playerRadarPercentiles) drawRadarChart(window.playerRadarPercentiles);
         }
         const savedTheme = localStorage.getItem('theme');
         setTheme((savedTheme === null) ? true : (savedTheme === 'light'));
         themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
 
-        // --- 数据独立加载 ---
-        const { data: matches, error: matchesError } = await supabaseClient.from('matches').select('*');
-        const { data: idData, error: idError } = await supabaseClient.from('player_ids').select('*');
+        const [{ data: matches, error: matchesError }, { data: idData, error: idError }] = await Promise.all([
+            supabaseClient.from('matches').select('*'),
+            supabaseClient.from('player_ids').select('*')
+        ]);
 
-        if(matchesError || idError) {
-            document.body.innerHTML = `<h1>错误：加载数据失败</h1><p>${(matchesError || idError).message}</p>`; return;
-        }
+        if(matchesError || idError) { document.body.innerHTML = `<h1>错误：加载数据失败</h1><p>${(matchesError || idError).message}</p>`; return; }
 
-        const idNameMap = idData.reduce((map, row) => { map[row.id] = row.name; return map; }, {});
+        const idNameMap = idData.reduce((map, row) => { map[row.id] = row; return map; }, {});
         const allPlayerData = processAllPlayerData(matches);
         
-        // --- 渲染页面 ---
-        const realName = idNameMap[playerId] || playerId;
+        const realName = idNameMap[playerId]?.name || playerId;
         document.getElementById('player-id-header').textContent = `${realName} (${playerId})`;
 
-        const groupBadgeContainer = document.getElementById('group-badge-container');
+        const honors = idNameMap[playerId]?.honor;
+        if (honors) {
+            document.getElementById('player-honors').innerHTML = honors.split('、').map(h => `<span class="honor-item"><span class="trophy-icon">🏆</span>${escapeHTML(h)}</span>`).join('');
+        }
+
         let groupClass = '';
         if (groupName === '传奇组') groupClass = 'legend';
         else if (groupName === '中坚组') groupClass = 'contender';
         else if (groupName === '挑战组') groupClass = 'challenger';
-        groupBadgeContainer.innerHTML = `<div class="group-badge ${groupClass}">${groupName}</div>`;
+        document.getElementById('group-badge-container').innerHTML = `<div class="group-badge ${groupClass}">${groupName}</div>`;
 
         const uniquePlayerKey = `${playerId}::${groupName}`;
         const playerData = allPlayerData[uniquePlayerKey];
-
-        if (!playerData) {
-            document.body.innerHTML = `<h1>错误：未找到选手 ${playerId} 在 ${groupName} 组的数据</h1>`; return;
-        }
+        if (!playerData) { document.body.innerHTML = `<h1>错误：未找到选手 ${playerId} 在 ${groupName} 组的数据</h1>`; return; }
 
         const { groupPlayersForRank, statsByCharacter } = calculateGroupRanks(allPlayerData, groupName);
-        
         const currentPlayerStats = groupPlayersForRank.find(p => p.id === playerId);
         if (currentPlayerStats) {
-            window.playerRadarPercentiles = [
-                calculatePercentile(currentPlayerStats.acs, groupPlayersForRank.map(p => p.acs)),
-                calculatePercentile(currentPlayerStats.k_round, groupPlayersForRank.map(p => p.k_round)),
-                calculatePercentile(currentPlayerStats.a_round, groupPlayersForRank.map(p => p.a_round)),
-                calculatePercentile(currentPlayerStats.survival_rate, groupPlayersForRank.map(p => p.survival_rate)),
-                calculatePercentile(currentPlayerStats.kda, groupPlayersForRank.map(p => p.kda))
-            ];
+            window.playerRadarPercentiles = ['acs', 'k_round', 'a_round', 'survival_rate', 'kda'].map(key => calculatePercentile(currentPlayerStats[key], groupPlayersForRank.map(p => p[key])));
             drawRadarChart(window.playerRadarPercentiles);
         }
         
@@ -601,21 +415,15 @@
                     if (!playerId || !playerDataStr) continue;
                     const stats = String(playerDataStr).split('/').map(Number);
                     if (stats.length !== 4 || stats.some(isNaN)) continue;
-                    
                     const uniquePlayerKey = `${playerId}::${match.group}`;
                     if (!playerData[uniquePlayerKey]) {
-                        playerData[uniquePlayerKey] = {
-                            id: playerId, group: match.group, team: teamName,
-                            total_stats: { kills: 0, deaths: 0, assists: 0, acs: 0, matchCount: 0, totalRounds: 0 },
-                            by_character: {}
-                        };
+                        playerData[uniquePlayerKey] = { id: playerId, group: match.group, team: teamName, total_stats: { kills: 0, deaths: 0, assists: 0, acs: 0, matchCount: 0, totalRounds: 0 }, by_character: {} };
                     }
                     const playerEntry = playerData[uniquePlayerKey];
                     playerEntry.team = teamName;
                     const p_stats = playerEntry.total_stats;
                     p_stats.acs += stats[0]; p_stats.kills += stats[1]; p_stats.deaths += stats[2]; p_stats.assists += stats[3];
                     p_stats.matchCount++; p_stats.totalRounds += totalRounds;
-
                     if (playerCh) {
                         const charName = String(playerCh).trim();
                         if (!playerEntry.by_character[charName]) {
@@ -632,67 +440,41 @@
     }
 
     function calculateGroupRanks(allPlayerData, groupName) {
-        const groupPlayersForRank = [];
-        const statsByCharacter = {};
+        const groupPlayersForRank = []; const statsByCharacter = {};
         for (const key in allPlayerData) {
             const p = allPlayerData[key];
             if (p.group === groupName) {
                 const stats = p.total_stats;
                 if (stats.matchCount === 0 || stats.totalRounds === 0) continue;
-                
-                groupPlayersForRank.push({
-                    id: p.id,
-                    acs: stats.acs / stats.matchCount,
-                    k_map: stats.kills / stats.matchCount, d_map: stats.deaths / stats.matchCount, a_map: stats.assists / stats.matchCount,
-                    k_round: stats.kills / stats.totalRounds, d_round: stats.deaths / stats.totalRounds, a_round: stats.assists / stats.totalRounds,
-                    survival_rate: 1 - (stats.deaths / stats.totalRounds),
-                    kda: stats.deaths > 0 ? (stats.kills + stats.assists) / stats.deaths : (stats.kills + stats.assists),
-                });
-
+                groupPlayersForRank.push({ id: p.id, acs: stats.acs / stats.matchCount, k_map: stats.kills / stats.matchCount, d_map: stats.deaths / stats.matchCount, a_map: stats.assists / stats.matchCount, k_round: stats.kills / stats.totalRounds, d_round: stats.deaths / stats.totalRounds, a_round: stats.assists / stats.totalRounds, survival_rate: 1 - (stats.deaths / stats.totalRounds), kda: stats.deaths > 0 ? (stats.kills + stats.assists) / stats.deaths : (stats.kills + stats.assists), });
                 for (const charName in p.by_character) {
                     const charStats = p.by_character[charName];
                     if (charStats.matchCount === 0) continue;
                     if (!statsByCharacter[charName]) statsByCharacter[charName] = [];
-                    
-                    statsByCharacter[charName].push({
-                        id: p.id,
-                        acs: charStats.acs / charStats.matchCount,
-                        k_map: charStats.kills / charStats.matchCount, d_map: charStats.deaths / charStats.matchCount, a_map: charStats.assists / charStats.matchCount,
-                        k_round: charStats.totalRounds > 0 ? charStats.kills / charStats.totalRounds : 0,
-                        d_round: charStats.totalRounds > 0 ? charStats.deaths / charStats.totalRounds : 0,
-                        a_round: charStats.totalRounds > 0 ? charStats.assists / charStats.totalRounds : 0,
-                    });
+                    statsByCharacter[charName].push({ id: p.id, acs: charStats.acs / charStats.matchCount, k_map: charStats.kills / charStats.matchCount, d_map: charStats.deaths / charStats.matchCount, a_map: charStats.assists / charStats.matchCount, k_round: charStats.totalRounds > 0 ? charStats.kills / charStats.totalRounds : 0, d_round: charStats.totalRounds > 0 ? charStats.deaths / charStats.totalRounds : 0, a_round: charStats.totalRounds > 0 ? charStats.assists / charStats.totalRounds : 0, });
                 }
             }
         }
         return { groupPlayersForRank, statsByCharacter };
     }
-
+    
     function calculatePercentile(playerValue, allValues) {
         if (allValues.length <= 1) return 50;
         const sortedValues = [...allValues].sort((a, b) => a - b);
         const rank = sortedValues.findIndex(v => v === playerValue);
+        if (rank === -1) return 50; // Handle case where playerValue might not be in the list
         return (rank / (sortedValues.length - 1)) * 100;
     }
-
+    
     function getRank(id, key, rankList, invert = false) {
         if (!rankList || rankList.length === 0) return '';
         const sortedList = [...rankList].sort((a, b) => invert ? a[key] - b[key] : b[key] - a[key]);
         const rank = sortedList.findIndex(p => p.id === id) + 1;
         return rank > 0 ? `(TOP ${rank})` : '';
     }
-
+    
     function renderSummaryList(playerData, playerId, groupPlayersForRank) {
-        const playerAverages = {
-             acs: playerData.total_stats.matchCount > 0 ? playerData.total_stats.acs / playerData.total_stats.matchCount : 0,
-             k_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.kills / playerData.total_stats.matchCount : 0,
-             d_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.deaths / playerData.total_stats.matchCount : 0,
-             a_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.assists / playerData.total_stats.matchCount : 0,
-             k_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.kills / playerData.total_stats.totalRounds : 0,
-             d_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.deaths / playerData.total_stats.totalRounds : 0,
-             a_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.assists / playerData.total_stats.totalRounds : 0,
-        };
-
+        const playerAverages = { acs: playerData.total_stats.matchCount > 0 ? playerData.total_stats.acs / playerData.total_stats.matchCount : 0, k_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.kills / playerData.total_stats.matchCount : 0, d_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.deaths / playerData.total_stats.matchCount : 0, a_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.assists / playerData.total_stats.matchCount : 0, k_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.kills / playerData.total_stats.totalRounds : 0, d_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.deaths / playerData.total_stats.totalRounds : 0, a_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.assists / playerData.total_stats.totalRounds : 0, };
         document.getElementById('summary-list-content').innerHTML = `
             <div><strong>平均ACS:</strong> <span>${playerAverages.acs.toFixed(2)} <span class="rank-top">${getRank(playerId, 'acs', groupPlayersForRank)}</span></span></div>
             <div><strong>每局击杀:</strong> <span>${playerAverages.k_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_map', groupPlayersForRank)}</span></span></div>
@@ -700,37 +482,17 @@
             <div><strong>每局助攻:</strong> <span>${playerAverages.a_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_map', groupPlayersForRank)}</span></span></div>
             <div><strong>每回合击杀:</strong> <span>${playerAverages.k_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_round', groupPlayersForRank)}</span></span></div>
             <div><strong>每回合死亡:</strong> <span>${playerAverages.d_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_round', groupPlayersForRank, true)}</span></span></div>
-            <div><strong>每回合助攻:</strong> <span>${playerAverages.a_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_round', groupPlayersForRank)}</span></span></div>
-        `;
+            <div><strong>每回合助攻:</strong> <span>${playerAverages.a_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_round', groupPlayersForRank)}</span></span></div>`;
     }
-
+    
     function renderCharacterTable(playerData, playerId, statsByCharacter) {
         const tableBody = document.getElementById('character-stats-body');
         tableBody.innerHTML = '';
         Object.entries(playerData.by_character).sort(([,a],[,b]) => b.matchCount - a.matchCount).forEach(([charName, stats]) => {
-            const avg = {
-                acs: stats.matchCount > 0 ? stats.acs / stats.matchCount : 0,
-                k_map: stats.matchCount > 0 ? stats.kills / stats.matchCount : 0,
-                d_map: stats.matchCount > 0 ? stats.deaths / stats.matchCount : 0,
-                a_map: stats.matchCount > 0 ? stats.assists / stats.matchCount : 0,
-                k_round: stats.totalRounds > 0 ? stats.kills / stats.totalRounds : 0,
-                d_round: stats.totalRounds > 0 ? stats.deaths / stats.totalRounds : 0,
-                a_round: stats.totalRounds > 0 ? stats.assists / stats.totalRounds : 0,
-            };
+            const avg = { acs: stats.matchCount > 0 ? stats.acs / stats.matchCount : 0, k_map: stats.matchCount > 0 ? stats.kills / stats.matchCount : 0, d_map: stats.matchCount > 0 ? stats.deaths / stats.matchCount : 0, a_map: stats.matchCount > 0 ? stats.assists / stats.matchCount : 0, k_round: stats.totalRounds > 0 ? stats.kills / stats.totalRounds : 0, d_round: stats.totalRounds > 0 ? stats.deaths / stats.totalRounds : 0, a_round: stats.totalRounds > 0 ? stats.assists / stats.totalRounds : 0, };
             const characterRankList = statsByCharacter[charName] || [];
-
             tableBody.innerHTML += `
-                <tr>
-                    <td><strong>${charName}</strong></td>
-                    <td>${stats.matchCount}</td>
-                    <td>${avg.acs.toFixed(2)} <span class="rank-top">${getRank(playerId, 'acs', characterRankList)}</span></td>
-                    <td>${avg.k_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_map', characterRankList)}</span></td>
-                    <td>${avg.d_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_map', characterRankList, true)}</span></td>
-                    <td>${avg.a_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_map', characterRankList)}</span></td>
-                    <td>${avg.k_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_round', characterRankList)}</span></td>
-                    <td>${avg.d_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_round', characterRankList, true)}</span></td>
-                    <td>${avg.a_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_round', characterRankList)}</span></td>
-                </tr>`;
+                <tr><td><strong>${charName}</strong></td><td>${stats.matchCount}</td><td>${avg.acs.toFixed(2)} <span class="rank-top">${getRank(playerId, 'acs', characterRankList)}</span></td><td>${avg.k_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_map', characterRankList)}</span></td><td>${avg.d_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_map', characterRankList, true)}</span></td><td>${avg.a_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_map', characterRankList)}</span></td><td>${avg.k_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_round', characterRankList)}</span></td><td>${avg.d_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_round', characterRankList, true)}</span></td><td>${avg.a_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_round', characterRankList)}</span></td></tr>`;
         });
     }
 
