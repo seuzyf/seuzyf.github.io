@@ -256,7 +256,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             const SUPABASE_URL = 'https://vbyvolmtkjjyeiibpljf.supabase.co';
             const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieXZvbG10a2pqeWVpaWJwbGpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzMxNDksImV4cCI6MjA3MjI0OTE0OX0.Tnot1kIVn8vJ-vggYaTGBGTkIBY7m6yIOquSjG5mSUM';
-            const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            const { createClient } = supabase;
+            const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
             const matchesView = document.getElementById('matches-view');
             const modal = document.getElementById('modal');
@@ -286,7 +287,7 @@
             async function loadDataFromSupabase() {
                 matchesView.innerHTML = '<p>正在从 Supabase 加载数据...</p>';
                 try {
-                    const { data: matches, error: matchesError } = await supabase.from('matches').select('*');
+                    const { data: matches, error: matchesError } = await supabaseClient.from('matches').select('*');
                     if (matchesError) throw matchesError;
 
                     parseData(matches);
@@ -398,7 +399,7 @@
                 allPlayerData = playerData;
                 localStorage.setItem('valorantPlayerSummary', JSON.stringify(playerData));
                 
-                const { data: idData, error: idError } = await supabase.from('player_ids').select('*');
+                const { data: idData, error: idError } = await supabaseClient.from('player_ids').select('*');
                 if (idError) {
                     console.error("无法加载选手ID映射:", idError);
                 } else {

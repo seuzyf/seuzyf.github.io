@@ -330,7 +330,8 @@
     // --- Supabase 评论系统 ---
     const SUPABASE_URL = 'https://vbyvolmtkjjyeiibpljf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieXZvbG10a2pqeWVpaWJwbGpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzMxNDksImV4cCI6MjA3MjI0OTE0OX0.Tnot1kIVn8vJ-vggYaTGBGTkIBY7m6yIOquSjG5mSUM';
-    const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const { createClient } = supabase;
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
     
     let currentUserIP = null;
 
@@ -349,7 +350,7 @@
     
     // 读取所有评论
     async function fetchAllComments(uniquePlayerKey) {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('comments')
             .select('*')
             .eq('player_key', uniquePlayerKey)
@@ -421,7 +422,7 @@
             ip: userIP
         };
         
-        const { error } = await supabase.from('comments').insert([newComment]);
+        const { error } = await supabaseClient.from('comments').insert([newComment]);
 
         if (!error) {
             alert('评论提交成功！');
@@ -440,7 +441,7 @@
 
     // 删除评论
     async function handleDeleteComment(commentId, uniquePlayerKey) {
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('comments')
             .delete()
             .match({ id: commentId, ip: currentUserIP });
