@@ -6,6 +6,7 @@
     <title>选手主页</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --primary-color: #D64550;
@@ -326,13 +327,13 @@
         </main>
     </div>
 <script>
-    // --- 评论系统配置 (最终稳定版) ---
-    const JSONBIN_URL = 'https://api.jsonbin.io/v3/b/';
-    const BIN_ID = '68b42d09d0ea881f406ce164'; // *** 您的正确 Bin ID ***
-    const MASTER_KEY = '$2a$10$BfFgHMusbQpjq0IwprPps.4OT0sXBOYcUnVqvawJldPYFF68o7wWW'; // 您的 API Key
-    let currentUserIP = null; // 用于存储当前用户IP
+    // --- Supabase 评论系统 ---
+    const SUPABASE_URL = 'https://vbyvolmtkjjyeiibpljf.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieXZvbG10a2pqeWVpaWJwbGpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzMxNDksImV4cCI6MjA3MjI0OTE0OX0.Tnot1kIVn8vJ-vggYaTGBGTkIBY7m6yIOquSjG5mSUM';
+    const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    let currentUserIP = null;
 
-    // 获取当前用户IP地址
     async function getUserIP() {
         if (currentUserIP) return currentUserIP;
         try {
@@ -347,35 +348,25 @@
     }
     
     // 读取所有评论
-    async function fetchAllComments() {
-        const response = await fetch(`${JSONBIN_URL}${BIN_ID}/latest`, {
-            headers: { 'X-Master-Key': MASTER_KEY, 'X-Bin-Meta': 'false' }
-        });
-        if (response.status === 404) {
-            return { comments: [] };
+    async function fetchAllComments(uniquePlayerKey) {
+        const { data, error } = await supabase
+            .from('comments')
+            .select('*')
+            .eq('player_key', uniquePlayerKey)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('获取评论失败:', error);
+            return [];
         }
-        if (!response.ok) {
-            console.error('Failed to fetch comments. Status:', response.status);
-            return { comments: [] };
-        }
-        try {
-            const data = await response.json();
-            return data && typeof data === 'object' ? data : { comments: [] };
-        } catch (error) {
-            console.error('Failed to parse comments JSON:', error);
-            return { comments: [] };
-        }
+        return data;
     }
     
     // 显示评论
-    function displayComments(allComments, uniquePlayerKey) {
+    function displayComments(playerComments, uniquePlayerKey) {
         const commentsList = document.getElementById('comments-list');
         const avgScoreEl = document.getElementById('player-average-score');
         
-        const playerComments = (allComments.comments || [])
-            .filter(c => c.player_key === uniquePlayerKey)
-            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
         if (playerComments.length > 0) {
             const totalScore = playerComments.reduce((sum, comment) => sum + comment.rating, 0);
             const averageScore = (totalScore / playerComments.length).toFixed(2);
@@ -400,7 +391,6 @@
             `).join('');
         }
 
-        // 为删除按钮添加事件监听
         document.querySelectorAll('.delete-comment-btn').forEach(button => {
             button.addEventListener('click', (event) => {
                 const commentId = event.target.dataset.commentId;
@@ -422,37 +412,26 @@
         submitButton.textContent = '提交中...';
 
         const userIP = await getUserIP();
-        const currentData = await fetchAllComments();
         
         const newComment = {
-            id: `comment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // 创建一个唯一的ID
             player_key: uniquePlayerKey,
             nickname: document.getElementById('nickname-input').value,
             rating: parseInt(ratingInput.value),
             content: document.getElementById('comment-input').value,
-            created_at: new Date().toISOString(),
-            ip: userIP // 记录IP
+            ip: userIP
         };
         
-        if (!Array.isArray(currentData.comments)) {
-            currentData.comments = [];
-        }
-        currentData.comments.push(newComment);
+        const { error } = await supabase.from('comments').insert([newComment]);
 
-        const response = await fetch(`${JSONBIN_URL}${BIN_ID}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
-            body: JSON.stringify(currentData)
-        });
-
-        if (response.ok) {
+        if (!error) {
             alert('评论提交成功！');
             document.getElementById('comment-form').reset();
             ratingInput.value = '';
             setupStarRating(); 
-            displayComments(currentData, uniquePlayerKey);
+            const updatedComments = await fetchAllComments(uniquePlayerKey);
+            displayComments(updatedComments, uniquePlayerKey);
         } else {
-            console.error('提交失败:', await response.text());
+            console.error('提交失败:', error);
             alert('评论提交失败，请稍后再试。');
         }
         submitButton.disabled = false;
@@ -461,23 +440,17 @@
 
     // 删除评论
     async function handleDeleteComment(commentId, uniquePlayerKey) {
-        const allData = await fetchAllComments();
-        if (!allData.comments) return;
+        const { error } = await supabase
+            .from('comments')
+            .delete()
+            .match({ id: commentId, ip: currentUserIP });
 
-        // 过滤掉要删除的评论
-        allData.comments = allData.comments.filter(c => c.id !== commentId);
-
-        const response = await fetch(`${JSONBIN_URL}${BIN_ID}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
-            body: JSON.stringify(allData)
-        });
-
-        if (response.ok) {
+        if (!error) {
             alert('删除成功！');
-            displayComments(allData, uniquePlayerKey); // 重新渲染评论区
+            const updatedComments = await fetchAllComments(uniquePlayerKey);
+            displayComments(updatedComments, uniquePlayerKey);
         } else {
-            console.error('删除失败:', await response.text());
+            console.error('删除失败:', error);
             alert('删除失败，请稍后再试。');
         }
     }
@@ -487,9 +460,9 @@
     }
 
     async function loadComments(uniquePlayerKey) {
-        await getUserIP(); // 先获取当前用户IP
-        const allComments = await fetchAllComments();
-        displayComments(allComments, uniquePlayerKey);
+        await getUserIP();
+        const comments = await fetchAllComments(uniquePlayerKey);
+        displayComments(comments, uniquePlayerKey);
     }
     
     function setupStarRating() {

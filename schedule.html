@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HWVCTS4 - 赛程中心</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --primary-color: #D64550;
@@ -208,9 +208,12 @@
         </main>
     </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
+        const SUPABASE_URL = 'https://vbyvolmtkjjyeiibpljf.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieXZvbG10a2pqeWVpaWJwbGpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzMxNDksImV4cCI6MjA3MjI0OTE0OX0.Tnot1kIVn8vJ-vggYaTGBGTkIBY7m6yIOquSjG5mSUM';
+        const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         const groupFilters = document.getElementById('group-filters');
         const stageFilters = document.getElementById('stage-filters');
         const swissSection = document.getElementById('swiss-stage-section');
@@ -253,7 +256,7 @@
             if (!match || typeof match.score_a === 'undefined' || typeof match.score_b === 'undefined') return null;
             return Number(match.score_a) < Number(match.score_b) ? match.team_a : match.team_b;
         }
-
+        
         function processResultNodes(rawData) {
             const data = JSON.parse(JSON.stringify(rawData));
             const ensureNodeExists = (id) => { if (!data[id]) data[id] = {}; };
@@ -271,23 +274,26 @@
 
         async function loadData() {
             try {
-                const response = await fetch('match_data.xlsx');
-                const arrayBuffer = await response.arrayBuffer();
-                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-                workbook.SheetNames.forEach(sheetName => {
-                    const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-                    allMatchesData[sheetName] = sheetData.reduce((acc, row) => {
-                        if(row.match_id) acc[String(row.match_id).trim()] = row; 
-                        return acc;
-                    }, {});
+                const { data, error } = await supabase.from('match_schedule').select('*');
+                if (error) throw error;
+
+                allMatchesData = {}; // Clear previous data
+                data.forEach(row => {
+                    if (!allMatchesData[row.group]) {
+                        allMatchesData[row.group] = {};
+                    }
+                    if (row.match_id) {
+                        allMatchesData[row.group][String(row.match_id).trim()] = row;
+                    }
                 });
+
                 renderBrackets('传奇组');
             } catch (error) {
-                console.error("加载或解析match_data.xlsx失败:", error);
+                console.error("加载或解析赛程数据失败:", error);
                 document.getElementById('swiss-bracket').innerHTML = `<p style="color:red; text-align:center;">无法加载赛程数据: ${error.message}</p>`;
             }
         }
-
+        
         function createMatchCard(data) {
             const teamA = data?.team_a || 'TBD', teamB = data?.team_b || 'TBD';
             const scoreA = data?.score_a ?? 0, scoreB = data?.score_b ?? 0;

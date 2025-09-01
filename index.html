@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HWVCTS4 - 比赛中心</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --primary-color: #D64550;
@@ -251,9 +252,12 @@
         <div class="modal-content" id="modal-content-body"></div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const SUPABASE_URL = 'https://vbyvolmtkjjyeiibpljf.supabase.co';
+            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieXZvbG10a2pqeWVpaWJwbGpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzMxNDksImV4cCI6MjA3MjI0OTE0OX0.Tnot1kIVn8vJ-vggYaTGBGTkIBY7m6yIOquSjG5mSUM';
+            const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
             const matchesView = document.getElementById('matches-view');
             const modal = document.getElementById('modal');
             const modalContent = document.getElementById('modal-content-body');
@@ -264,6 +268,7 @@
             const stageFilterButtons = document.getElementById('stage-filter-buttons');
             const matchesTitle = document.getElementById('matches-title');
             const standingsTitle = document.getElementById('standings-title');
+            
             let tournamentData = { '传奇组': [], '中坚组': [], '挑战组': [] };
             let currentFilteredMatches = [];
             let allPlayerData = {};
@@ -278,16 +283,14 @@
             setTheme((savedTheme === null) ? true : (savedTheme === 'dark'));
             themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
 
-            async function loadDataFromRepo() {
-                matchesView.innerHTML = '<p>正在加载数据...</p>';
+            async function loadDataFromSupabase() {
+                matchesView.innerHTML = '<p>正在从 Supabase 加载数据...</p>';
                 try {
-                    const response = await fetch('data.xlsx');
-                    if (!response.ok) throw new Error(`错误: data.xlsx 文件未找到。`);
-                    const arrayBuffer = await response.arrayBuffer();
-                    const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
-                    
-                    parseAllSheets(workbook);
-                    processAndStorePlayerData(workbook);
+                    const { data: matches, error: matchesError } = await supabase.from('matches').select('*');
+                    if (matchesError) throw matchesError;
+
+                    parseData(matches);
+                    await processAndStorePlayerData(matches);
 
                     document.querySelector('#group-filter-buttons button.active')?.classList.remove('active');
                     document.querySelector('#group-filter-buttons button[data-group="传奇组"]')?.classList.add('active');
@@ -296,7 +299,7 @@
                     matchesView.innerHTML = `<p style="color:red;">数据加载失败: ${error.message}</p>`;
                 }
             }
-            loadDataFromRepo();
+            loadDataFromSupabase();
 
             groupFilterButtons.addEventListener('click', (e) => {
                 if (e.target.tagName === 'BUTTON' && !e.target.classList.contains('active')) {
@@ -318,66 +321,87 @@
                 const selectedStage = stageFilterButtons.querySelector('.active').dataset.stage;
                 matchesTitle.textContent = `比赛结果 - ${activeGroup}`;
                 standingsTitle.textContent = `战队积分榜 - ${activeGroup}`;
-                currentFilteredMatches = (tournamentData[activeGroup] || []).filter(match => selectedStage === 'all' || ((match['赛段'] === '小组赛' ? '小组赛' : '淘汰赛') === selectedStage));
+                
+                const groupMatches = tournamentData[activeGroup] || [];
+                
+                currentFilteredMatches = groupMatches.filter(match => 
+                    selectedStage === 'all' || 
+                    ((match['stage'] === '小组赛' ? '小组赛' : '淘汰赛') === selectedStage)
+                );
+
                 displayMatchCards(currentFilteredMatches);
                 calculateAndDisplayStandings(currentFilteredMatches);
             }
 
-            function parseAllSheets(workbook) {
-                workbook.SheetNames.forEach(sheetName => {
-                    if (tournamentData.hasOwnProperty(sheetName)) {
-                        tournamentData[sheetName] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]).filter(row => row['比赛日期']);
+            function parseData(matches) {
+                tournamentData = { '传奇组': [], '中坚组': [], '挑战组': [] };
+                matches.forEach(match => {
+                    if (tournamentData.hasOwnProperty(match.group)) {
+                        tournamentData[match.group].push(match);
                     }
                 });
             }
 
-            function processAndStorePlayerData(workbook) {
+            async function processAndStorePlayerData(matches) {
                 const playerData = {};
-                for (const groupName in tournamentData) {
-                    tournamentData[groupName].forEach(match => {
-                        const score = String(match['比分']).split(/[/:：]/).map(Number);
-                        const totalRounds = (score.length === 2 && !isNaN(score[0]) && !isNaN(score[1])) ? (score[0] + score[1]) : 0;
-                        ['teamA', 'teamB'].forEach(teamKey => {
-                            const teamName = match[teamKey];
-                            for (let p = 1; p <= 5; p++) {
-                                const playerId = match[`${teamKey}_player${p}ID`];
-                                const playerDataStr = match[`${teamKey}_player${p}数据`];
-                                const playerCh = match[`${teamKey}_player${p}Ch`];
-                                if (!playerId || !playerDataStr) continue;
-                                const stats = String(playerDataStr).split('/').map(Number);
-                                if (stats.length !== 4 || stats.some(isNaN)) continue;
-                                const uniquePlayerKey = `${playerId}::${groupName}`;
-                                if (!playerData[uniquePlayerKey]) {
-                                    playerData[uniquePlayerKey] = {
-                                        id: playerId, group: groupName, team: teamName,
-                                        total_stats: { kills: 0, deaths: 0, assists: 0, acs: 0, matchCount: 0, totalRounds: 0 },
-                                        by_character: {}
-                                    };
-                                }
-                                const playerEntry = playerData[uniquePlayerKey];
-                                playerEntry.team = teamName;
-                                const p_stats = playerEntry.total_stats;
-                                p_stats.acs += stats[0]; p_stats.kills += stats[1]; p_stats.deaths += stats[2]; p_stats.assists += stats[3];
-                                p_stats.matchCount++; p_stats.totalRounds += totalRounds;
-                                if (playerCh) {
-                                    const charName = String(playerCh).trim();
-                                    if (!playerEntry.by_character[charName]) {
-                                        playerEntry.by_character[charName] = { kills: 0, deaths: 0, assists: 0, acs: 0, matchCount: 0, totalRounds: 0 };
-                                    }
-                                    const charStats = playerEntry.by_character[charName];
-                                    charStats.acs += stats[0]; charStats.kills += stats[1]; charStats.deaths += stats[2]; charStats.assists += stats[3];
-                                    charStats.matchCount++; charStats.totalRounds += totalRounds;
-                                }
+                 matches.forEach(match => {
+                    const score = String(match['score']).split(/[/:：]/).map(Number);
+                    const totalRounds = (score.length === 2 && !isNaN(score[0]) && !isNaN(score[1])) ? (score[0] + score[1]) : 0;
+                    ['team_a', 'team_b'].forEach(teamKey => {
+                        const teamName = match[teamKey];
+                        for (let p = 1; p <= 5; p++) {
+                            const playerId = match[`${teamKey}_player${p}_id`];
+                            const playerDataStr = match[`${teamKey}_player${p}_data`];
+                            const playerCh = match[`${teamKey}_player${p}_ch`];
+                            if (!playerId || !playerDataStr) continue;
+
+                            const stats = String(playerDataStr).split('/').map(Number);
+                            if (stats.length !== 4 || stats.some(isNaN)) continue;
+                            
+                            const uniquePlayerKey = `${playerId}::${match.group}`;
+                            if (!playerData[uniquePlayerKey]) {
+                                playerData[uniquePlayerKey] = {
+                                    id: playerId, group: match.group, team: teamName,
+                                    total_stats: { kills: 0, deaths: 0, assists: 0, acs: 0, matchCount: 0, totalRounds: 0 },
+                                    by_character: {}
+                                };
                             }
-                        });
+                            
+                            const playerEntry = playerData[uniquePlayerKey];
+                            playerEntry.team = teamName;
+                            
+                            const p_stats = playerEntry.total_stats;
+                            p_stats.acs += stats[0]; 
+                            p_stats.kills += stats[1]; 
+                            p_stats.deaths += stats[2]; 
+                            p_stats.assists += stats[3];
+                            p_stats.matchCount++; 
+                            p_stats.totalRounds += totalRounds;
+
+                            if (playerCh) {
+                                const charName = String(playerCh).trim();
+                                if (!playerEntry.by_character[charName]) {
+                                    playerEntry.by_character[charName] = { kills: 0, deaths: 0, assists: 0, acs: 0, matchCount: 0, totalRounds: 0 };
+                                }
+                                const charStats = playerEntry.by_character[charName];
+                                charStats.acs += stats[0]; 
+                                charStats.kills += stats[1]; 
+                                charStats.deaths += stats[2]; 
+                                charStats.assists += stats[3];
+                                charStats.matchCount++; 
+                                charStats.totalRounds += totalRounds;
+                            }
+                        }
                     });
-                }
+                });
+
                 allPlayerData = playerData;
                 localStorage.setItem('valorantPlayerSummary', JSON.stringify(playerData));
-
-                const idSheet = workbook.Sheets['id'];
-                if (idSheet) {
-                    const idData = XLSX.utils.sheet_to_json(idSheet);
+                
+                const { data: idData, error: idError } = await supabase.from('player_ids').select('*');
+                if (idError) {
+                    console.error("无法加载选手ID映射:", idError);
+                } else {
                     const idNameMap = idData.reduce((map, row) => {
                         if(row.id && row.name) map[row.id] = row.name;
                         return map;
@@ -394,18 +418,30 @@
             function calculateAndDisplayStandings(matches) {
                 const teamStandings = {};
                 matches.forEach(match => {
-                    const [teamA, teamB] = [match['teamA'], match['teamB']];
-                    if (!match['比分']) return;
-                    const [scoreA, scoreB] = String(match['比分']).split(/[/:：]/).map(Number);
+                    const [teamA, teamB] = [match['team_a'], match['team_b']];
+                    if (!match['score']) return;
+                    const [scoreA, scoreB] = String(match['score']).split(/[/:：]/).map(Number);
                     if (isNaN(scoreA) || isNaN(scoreB)) return;
+
                     if (!teamStandings[teamA]) teamStandings[teamA] = { wins: 0, losses: 0, roundDiff: 0 };
                     if (!teamStandings[teamB]) teamStandings[teamB] = { wins: 0, losses: 0, roundDiff: 0 };
-                    if (scoreA > scoreB) { teamStandings[teamA].wins++; teamStandings[teamB].losses++; }
-                    else { teamStandings[teamB].wins++; teamStandings[teamA].losses++; }
+
+                    if (scoreA > scoreB) { 
+                        teamStandings[teamA].wins++; 
+                        teamStandings[teamB].losses++; 
+                    } else { 
+                        teamStandings[teamB].wins++; 
+                        teamStandings[teamA].losses++; 
+                    }
                     teamStandings[teamA].roundDiff += (scoreA - scoreB);
                     teamStandings[teamB].roundDiff += (scoreB - scoreA);
                 });
-                const sortedTeams = Object.keys(teamStandings).sort((a, b) => teamStandings[b].wins - teamStandings[a].wins || teamStandings[b].roundDiff - teamStandings[a].roundDiff);
+                
+                const sortedTeams = Object.keys(teamStandings).sort((a, b) => 
+                    teamStandings[b].wins - teamStandings[a].wins || 
+                    teamStandings[b].roundDiff - teamStandings[a].roundDiff
+                );
+
                 standingsTableBody.innerHTML = sortedTeams.map((teamName, index) => {
                     const team = teamStandings[teamName];
                     return `<tr><td>${index + 1}</td><td class="team-name-cell" data-team="${teamName}">${teamName}</td><td>${team.wins}</td><td>${team.losses}</td><td>${team.roundDiff > 0 ? '+' : ''}${team.roundDiff}</td></tr>`;
@@ -414,21 +450,21 @@
 
             function createMatchCard(matchData, index) {
                 const card = document.createElement('div');
-                const stageType = (matchData['赛段'] === '小组赛') ? '小组赛' : '淘汰赛';
-                card.className = `match-card stage-${stageType} ${matchData['赛段'] === '决赛' ? 'stage-is-final' : ''}`;
-                card.dataset.stageName = matchData['赛段'];
+                const stageType = (matchData['stage'] === '小组赛') ? '小组赛' : '淘汰赛';
+                card.className = `match-card stage-${stageType} ${matchData['stage'] === '决赛' ? 'stage-is-final' : ''}`;
+                card.dataset.stageName = matchData['stage'];
                 card.dataset.matchIndex = index;
-                const score = String(matchData['比分']).replace(/[/：]/, ' : ');
+                const score = String(matchData['score']).replace(/[/：]/, ' : ');
                 card.innerHTML = `
                     <div class="match-header">
                         <div class="match-meta">
-                            <span class="map">${matchData['比赛地图']}</span>
-                            <span class="date">${matchData['比赛日期']}</span>
+                            <span class="map">${matchData['map']}</span>
+                            <span class="date">${matchData['match_date']}</span>
                         </div>
                         <div class="match-teams">
-                            <span class="team-name">${matchData['teamA']}</span>
+                            <span class="team-name">${matchData['team_a']}</span>
                             <span class="score">${score}</span>
-                            <span class="team-name">${matchData['teamB']}</span>
+                            <span class="team-name">${matchData['team_b']}</span>
                         </div>
                     </div>
                 `;
@@ -439,23 +475,26 @@
                 modalContent.innerHTML = htmlContent;
                 modal.classList.add('visible');
             }
-
+            
             function showMatchDetails(matchData) {
                 const teamAPlayers = [], teamBPlayers = [];
                 const placeholder = { id: '-', ch: '-', acs: '-', k: '-', d: '-', a: '-' };
+
                 for (let i = 1; i <= 5; i++) {
-                    const [pida, pdataa, pcha] = [matchData[`teamA_player${i}ID`], matchData[`teamA_player${i}数据`], matchData[`teamA_player${i}Ch`]];
+                    const [pida, pdataa, pcha] = [matchData[`team_a_player${i}_id`], matchData[`team_a_player${i}_data`], matchData[`team_a_player${i}_ch`]];
                     if (pida && pdataa) {
                         const stats = String(pdataa).split('/').map(Number);
                         if (stats.length === 4 && !stats.some(isNaN)) teamAPlayers.push({ id: pida, acs: stats[0], k: stats[1], d: stats[2], a: stats[3], ch: pcha });
                     }
-                    const [pidb, pdatab, pchb] = [matchData[`teamB_player${i}ID`], matchData[`teamB_player${i}数据`], matchData[`teamB_player${i}Ch`]];
+                    const [pidb, pdatab, pchb] = [matchData[`team_b_player${i}_id`], matchData[`team_b_player${i}_data`], matchData[`team_b_player${i}_ch`]];
                     if (pidb && pdatab) {
                         const stats = String(pdatab).split('/').map(Number);
                         if (stats.length === 4 && !stats.some(isNaN)) teamBPlayers.push({ id: pidb, acs: stats[0], k: stats[1], d: stats[2], a: stats[3], ch: pchb });
                     }
                 }
-                teamAPlayers.sort((a, b) => b.acs - a.acs); teamBPlayers.sort((a, b) => b.acs - a.acs);
+                teamAPlayers.sort((a, b) => b.acs - a.acs); 
+                teamBPlayers.sort((a, b) => b.acs - a.acs);
+
                 let rowsHTML = '';
                 for (let i = 0; i < 5; i++) {
                     const pA = teamAPlayers[i] || placeholder, pB = teamBPlayers[i] || placeholder;
@@ -467,11 +506,12 @@
                         <td class="player-acs">${pB.acs}</td><td>${pB.k}</td><td>${pB.d}</td><td>${pB.a}</td>
                     </tr>`;
                 }
-                const score = String(matchData['比分']).replace(/[/：]/, ' : ');
+
+                const score = String(matchData['score']).replace(/[/：]/, ' : ');
                 const modalHTML = `
                     <table class="player-comparison-table">
                         <thead>
-                            <tr><th colspan="6" class="team-name-header">${matchData['teamA']}</th><th class="score-cell">${score}</th><th colspan="6" class="team-name-header">${matchData['teamB']}</th></tr>
+                            <tr><th colspan="6" class="team-name-header">${matchData['team_a']}</th><th class="score-cell">${score}</th><th colspan="6" class="team-name-header">${matchData['team_b']}</th></tr>
                             <tr class="stat-header"><th>ID</th><th>角色</th><th>ACS</th><th>K</th><th>D</th><th>A</th><th class="separator"></th><th>ID</th><th>角色</th><th>ACS</th><th>K</th><th>D</th><th>A</th></tr>
                         </thead>
                         <tbody>${rowsHTML}</tbody>
