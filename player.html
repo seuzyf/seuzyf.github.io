@@ -33,13 +33,12 @@
             --gold-dark: #b8860b;
             --gold-stroke: rgba(218, 165, 32, 0.3);
 
-            /* Red styles for others */
-            --red-light: #ffcdd2;
-            --red-main: #f44336;
-            --red-medium: #e57373;
-            --red-dark: #c62828;
-            --red-glow: rgba(244, 67, 54, 0.6);
-            --red-stroke: rgba(211, 47, 47, 0.3);
+            /* Cool Gradient styles for others */
+            --cool-light: #a7d7d9;      /* Ice Blue */
+            --cool-main: #6b48ff;       /* Electric Purple */
+            --cool-medium: #00bcd4;     /* Vibrant Cyan */
+            --cool-dark: #3d1cbf;       /* Deep Space Purple */
+            --cool-stroke: rgba(74, 20, 140, 0.3);
         }
         body.light-theme {
             --primary-color: #D64550;
@@ -135,17 +134,15 @@
             filter: drop-shadow(0 2px 4px rgba(184, 134, 11, 0.2));
         }
         
-        .honor-text.red-gradient {
+        .honor-text.cool-gradient {
             background-image: linear-gradient(135deg, 
-                var(--red-light) 10%,
-                var(--red-main) 30%,
-                var(--red-medium) 45%,
-                #ef5350 60%,
-                var(--red-dark) 75%,
-                var(--red-main) 90%);
-            -webkit-text-stroke: 1px var(--red-stroke);
-            -webkit-box-reflect: below 2px linear-gradient(transparent, transparent 70%, rgba(244, 67, 54, 0.15));
-            filter: drop-shadow(0 2px 4px rgba(211, 47, 47, 0.2));
+                var(--cool-light) 0%,
+                var(--cool-medium) 40%,
+                var(--cool-main) 70%,
+                var(--cool-dark) 100%);
+            -webkit-text-stroke: 1px var(--cool-stroke);
+            -webkit-box-reflect: below 2px linear-gradient(transparent, transparent 70%, rgba(76, 175, 80, 0.1));
+            filter: drop-shadow(0 2px 4px rgba(74, 20, 140, 0.2));
         }
 
         @keyframes crown-shimmer {
@@ -505,7 +502,7 @@
                             </span>`;
                 } else {
                     return `<span class="honor-item">
-                                <span class="honor-text red-gradient" style="--i: ${i}">${honorText}</span>
+                                <span class="honor-text cool-gradient" style="--i: ${i}">${honorText}</span>
                             </span>`;
                 }
             }).join('');
