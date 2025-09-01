@@ -77,27 +77,22 @@
         .honor-item {
             display: inline-flex;
             align-items: center;
-            gap: 10px; /* 增加间距让元素呼吸 */
+            gap: 10px;
             padding: 5px 12px;
             position: relative;
         }
 
-        /* 皇冠图标优化 - 与文字风格统一 */
         .honor-item .crown-icon {
-            /* 尺寸与文字更协调 */
             font-size: 1.3em;
-            /* 使用渐变色彩与文字呼应 */
             background: linear-gradient(135deg, var(--gold-light), var(--gold-main), var(--gold-dark));
             background-size: 200% 100%;
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
-            /* 增强光泽感 */
             filter: drop-shadow(0 0 6px var(--gold-glow));
-            /* 与文字同步的动画，增强整体性 */
             animation: 
                 crown-shimmer 3s infinite ease-in-out,
-                subtle-bob 4s infinite ease-in-out 0.2s; /* 轻微延迟，形成错落感 */
+                subtle-bob 4s infinite ease-in-out 0.2s;
             transform-origin: center;
         }
 
@@ -107,35 +102,43 @@
             font-size: 1.8em;
             letter-spacing: 3px;
             color: transparent;
-            background: linear-gradient(135deg, 
+            background-size: 300% 100%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            animation: 
+                subtle-bob 4s ease-in-out infinite;
+            transform-origin: bottom center;
+            text-rendering: optimizeLegibility;
+        }
+
+        .honor-text.champion {
+            background-image: linear-gradient(135deg, 
                 var(--gold-light) 10%,
                 var(--gold-main) 30%,
                 var(--gold-medium) 45%,
                 #d4af37 60%,
                 var(--gold-dark) 75%,
                 var(--gold-main) 90%);
-            background-size: 300% 100%;
-            -webkit-background-clip: text;
-            background-clip: text;
             -webkit-text-stroke: 1px rgba(218, 165, 32, 0.3);
             -webkit-box-reflect: below 2px linear-gradient(transparent, transparent 70%, rgba(255, 215, 0, 0.15));
-            animation: 
-                rainbow-scroll 8s ease-in-out infinite,
-                subtle-bob 4s ease-in-out infinite,
-                shimmer 3s ease-in-out infinite alternate;
-            transform-origin: bottom center;
-            text-rendering: optimizeLegibility;
+             animation-name: rainbow-scroll, subtle-bob, shimmer;
+             animation-duration: 8s, 4s, 3s;
+             animation-timing-function: ease-in-out, ease-in-out, ease-in-out;
+             animation-iteration-count: infinite, infinite, infinite;
+             animation-direction: normal, normal, alternate;
             filter: drop-shadow(0 2px 4px rgba(184, 134, 11, 0.2));
         }
-
-        /* 新增的彩虹样式 */
+        
         .honor-text.rainbow {
-             background: linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff);
+             background-image: linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff);
              background-size: 400% 400%;
-             animation: rainbow-scroll 8s ease-in-out infinite, subtle-bob 4s ease-in-out infinite, shimmer 3s ease-in-out infinite alternate;
+             -webkit-text-stroke: 1px rgba(255, 255, 255, 0.1);
+             animation-name: rainbow-scroll, subtle-bob;
+             animation-duration: 8s, 4s;
+             animation-timing-function: ease-in-out, ease-in-out;
+             animation-iteration-count: infinite, infinite;
         }
 
-        /* 皇冠专属闪烁动画 */
         @keyframes crown-shimmer {
             0%, 100% { 
                 background-position: 0% 50%;
@@ -478,26 +481,22 @@
         const realName = idNameMap[playerId]?.name || playerId;
         document.getElementById('player-id-header').textContent = `${realName} (${playerId})`;
 
-        // MODIFIED PART
         const honors = idNameMap[playerId]?.honor;
         if (honors) {
             document.getElementById('player-honors').innerHTML = honors.split('、').map((h, i) => {
                 const honorText = escapeHTML(h);
                 if (honorText.includes('冠军')) {
-                    // Style for champions
                     return `<span class="honor-item">
                                 <span class="crown-icon">👑</span>
-                                <span class="honor-text" style="--i: ${i}">${honorText}</span>
+                                <span class="honor-text champion" style="--i: ${i}">${honorText}</span>
                             </span>`;
                 } else {
-                    // Style for other honors
                     return `<span class="honor-item">
                                 <span class="honor-text rainbow" style="--i: ${i}">${honorText}</span>
                             </span>`;
                 }
             }).join('');
         }
-        // END OF MODIFIED PART
 
         let groupClass = '';
         if (groupName === '传奇组') groupClass = 'legend';
