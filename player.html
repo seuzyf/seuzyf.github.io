@@ -23,13 +23,23 @@
             --control-height: 42px;
             --star-color: #ffd700;
             --star-color-inactive: #555;
+
+            /* Golden styles for Champion */
             --gold-color: #FFD700;
             --gold-glow: rgba(255, 215, 0, 0.7);
             --gold-light: #fff3cd;
             --gold-main: #ffd700;
             --gold-medium: #ffc107;
             --gold-dark: #b8860b;
-            --gold-glow: rgba(255, 215, 0, 0.6);
+            --gold-stroke: rgba(218, 165, 32, 0.3);
+
+            /* Blue styles for others */
+            --blue-light: #e0f2f7;
+            --blue-main: #2196F3;
+            --blue-medium: #03a9f4;
+            --blue-dark: #1976D2;
+            --blue-glow: rgba(33, 150, 243, 0.6);
+            --blue-stroke: rgba(25, 118, 210, 0.3);
         }
         body.light-theme {
             --primary-color: #D64550;
@@ -102,11 +112,12 @@
             font-size: 1.8em;
             letter-spacing: 3px;
             color: transparent;
-            background-size: 300% 100%;
+            background-size: 300% 100%; /* For horizontal gradient animation */
             -webkit-background-clip: text;
             background-clip: text;
             animation: 
-                subtle-bob 4s ease-in-out infinite;
+                subtle-bob 4s ease-in-out infinite,
+                gradient-flow 8s ease-in-out infinite; /* Apply gradient flow to all */
             transform-origin: bottom center;
             text-rendering: optimizeLegibility;
         }
@@ -119,24 +130,22 @@
                 #d4af37 60%,
                 var(--gold-dark) 75%,
                 var(--gold-main) 90%);
-            -webkit-text-stroke: 1px rgba(218, 165, 32, 0.3);
+            -webkit-text-stroke: 1px var(--gold-stroke);
             -webkit-box-reflect: below 2px linear-gradient(transparent, transparent 70%, rgba(255, 215, 0, 0.15));
-             animation-name: rainbow-scroll, subtle-bob, shimmer;
-             animation-duration: 8s, 4s, 3s;
-             animation-timing-function: ease-in-out, ease-in-out, ease-in-out;
-             animation-iteration-count: infinite, infinite, infinite;
-             animation-direction: normal, normal, alternate;
             filter: drop-shadow(0 2px 4px rgba(184, 134, 11, 0.2));
         }
         
-        .honor-text.rainbow {
-             background-image: linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff);
-             background-size: 400% 400%;
-             -webkit-text-stroke: 1px rgba(255, 255, 255, 0.1);
-             animation-name: rainbow-scroll, subtle-bob;
-             animation-duration: 8s, 4s;
-             animation-timing-function: ease-in-out, ease-in-out;
-             animation-iteration-count: infinite, infinite;
+        .honor-text.blue-gradient {
+            background-image: linear-gradient(135deg, 
+                var(--blue-light) 10%,
+                var(--blue-main) 30%,
+                var(--blue-medium) 45%,
+                #64b5f6 60%,
+                var(--blue-dark) 75%,
+                var(--blue-main) 90%);
+            -webkit-text-stroke: 1px var(--blue-stroke);
+            -webkit-box-reflect: below 2px linear-gradient(transparent, transparent 70%, rgba(33, 150, 243, 0.15));
+            filter: drop_shadow(0 2px 4px rgba(25, 118, 210, 0.2));
         }
 
         @keyframes crown-shimmer {
@@ -150,7 +159,7 @@
             }
         }
 
-        @keyframes rainbow-scroll {
+        @keyframes gradient-flow {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
@@ -160,11 +169,15 @@
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-5px); }
         }
-
+        /* Shimmer effect for champion can be more pronounced */
+        .honor-text.champion {
+            animation: subtle-bob 4s ease-in-out infinite, gradient-flow 8s ease-in-out infinite, shimmer 3s ease-in-out infinite alternate;
+        }
         @keyframes shimmer {
             0% { opacity: 0.9; }
             100% { opacity: 1; filter: drop-shadow(0 2px 6px rgba(255, 215, 0, 0.3)); }
         }
+
 
         .controls-container { display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap; margin-top: 25px; }
         .nav-button { height: var(--control-height); display: inline-flex; align-items: center; border-radius: 8px; font-weight: 500; padding: 0 25px; border: 2px solid var(--primary-color); color: var(--primary-color); text-decoration: none; transition: background-color 0.3s, color 0.3s; }
@@ -492,7 +505,7 @@
                             </span>`;
                 } else {
                     return `<span class="honor-item">
-                                <span class="honor-text rainbow" style="--i: ${i}">${honorText}</span>
+                                <span class="honor-text blue-gradient" style="--i: ${i}">${honorText}</span>
                             </span>`;
                 }
             }).join('');
@@ -593,7 +606,7 @@
     }
     
     function renderSummaryList(playerData, playerId, groupPlayersForRank) {
-        const playerAverages = { acs: playerData.total_stats.matchCount > 0 ? playerData.total_stats.acs / playerData.total_stats.matchCount : 0, k_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.kills / playerData.total_stats.matchCount : 0, d_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.deaths / playerData.total_stats.matchCount : 0, a_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.assists / playerData.total_stats.matchCount : 0, k_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.kills / playerData.total_stats.totalRounds : 0, d_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.deaths / playerData.total_stats.totalRounds : 0, a_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.assists / playerData.total_stats.totalRounds : 0, };
+        const playerAverages = { acs: playerData.total_stats.matchCount > 0 ? playerData.total_stats.acs / playerData.total_stats.matchCount : 0, k_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.kills / playerData.total_stats.matchCount : 0, d_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.deaths / playerData.total_stats.matchCount : 0, a_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.assists / playerData.total_stats.matchCount : 0, k_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.kills / playerData.total_stats.totalRounds : 0, d_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.deaths / playerData.totalRounds : 0, a_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.assists / playerData.total_stats.totalRounds : 0, };
         document.getElementById('summary-list-content').innerHTML = `
             <div><strong>平均ACS:</strong> <span>${playerAverages.acs.toFixed(2)} <span class="rank-top">${getRank(playerId, 'acs', groupPlayersForRank)}</span></span></div>
             <div><strong>每局击杀:</strong> <span>${playerAverages.k_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_map', groupPlayersForRank)}</span></span></div>
