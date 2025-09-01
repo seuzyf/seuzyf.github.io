@@ -69,7 +69,7 @@
 
         .main-layout { display: flex; gap: 30px; align-items: flex-start; flex-wrap: wrap; }
         #career-stats-card { flex: 1; min-width: 320px; position: sticky; top: 20px; }
-        #character-stats-section { flex: 2.5; min-width: 600px; }
+        #right-column { flex: 2.5; min-width: 600px; }
 
         .data-section { background-color: var(--card-bg-color); backdrop-filter: blur(10px); border: 1px solid var(--border-color); border-radius: 12px; padding: 25px; box-shadow: 0 8px 16px var(--shadow-color); margin-bottom: 30px; }
         .data-section h2 { margin-top: 0; color: var(--primary-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
@@ -92,7 +92,7 @@
         input:checked + .slider:before { transform: translateX(24px); }
         
         /* --- 评论区样式 (已修改) --- */
-        .comments-section h2 { display: flex; justify-content: space-between; align-items: center; }
+        #comments-section h2 { display: flex; justify-content: space-between; align-items: center; }
         .player-avg-score { color: var(--star-color); font-size: 0.8em; font-weight: 500; }
         .comment-card { position: relative; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin-bottom: 15px; }
         .comment-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; font-size: 0.9em; flex-wrap: wrap; gap: 5px;}
@@ -138,7 +138,7 @@
                 <div id="radar-chart-container"><canvas id="player-radar-chart"></canvas></div>
                 <div class="summary-list" id="summary-list-content"><p>正在计算数据...</p></div>
             </section>
-            <div style="flex: 2.5; min-width: 600px;">
+            <div id="right-column">
                 <section class="data-section" id="character-stats-section">
                     <h2>各角色平均数据</h2>
                     <div style="overflow-x: auto;">
@@ -149,7 +149,7 @@
                     </div>
                 </section>
                 
-                <section class="comments-section">
+                <section class="data-section" id="comments-section">
                     <h2>玩家评分与评论 <span id="player-average-score" class="player-avg-score"></span></h2>
                     <div id="comments-list"><p>正在加载评论...</p></div>
                     <div id="comment-form-container">
@@ -404,7 +404,8 @@
     function processAllPlayerData(matches) {
         const playerData = {};
         matches.forEach(match => {
-            const score = String(match['score']).split(/[/:：]/).map(Number);
+            const scoreText = match['score'] || '';
+            const score = String(scoreText).split(/[/:：]/).map(Number);
             const totalRounds = (score.length === 2 && !isNaN(score[0]) && !isNaN(score[1])) ? (score[0] + score[1]) : 0;
             ['team_a', 'team_b'].forEach(teamKey => {
                 const teamName = match[teamKey];
@@ -462,7 +463,7 @@
         if (allValues.length <= 1) return 50;
         const sortedValues = [...allValues].sort((a, b) => a - b);
         const rank = sortedValues.findIndex(v => v === playerValue);
-        if (rank === -1) return 50; // Handle case where playerValue might not be in the list
+        if (rank === -1) return 50;
         return (rank / (sortedValues.length - 1)) * 100;
     }
     
