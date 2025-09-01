@@ -90,9 +90,9 @@
         .form-section, .table-section { background-color: var(--card-bg-color); padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px var(--shadow-color); margin-top: 2rem; }
         .form-section h3, .table-section h3 { margin-top: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; }
 
-        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        th, td { padding: 0.75rem; border: 1px solid var(--border-color); text-align: left; white-space: nowrap; }
-        thead th { background-color: rgba(214, 69, 80, 0.2); }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.75rem; border: 1px solid var(--border-color); text-align: left; }
+        thead th { background-color: rgba(214, 69, 80, 0.2); white-space: nowrap; }
         tbody tr:nth-child(even) { background-color: rgba(0,0,0,0.2); }
 
         input, select {
@@ -198,12 +198,14 @@
             <div class="form-section">
                 <h3>新增赛程</h3>
                 <button class="add-row-btn" data-table="schedule-table-body">新增一行</button>
-                <table>
-                    <thead>
-                        <tr><th>组别</th><th>比赛ID</th><th>队伍A</th><th>队伍B</th><th>A队得分</th><th>B队得分</th><th>回放链接</th><th>操作</th></tr>
-                    </thead>
-                    <tbody id="schedule-table-body"></tbody>
-                </table>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr><th>组别</th><th>比赛ID</th><th>队伍A</th><th>队伍B</th><th>A队得分</th><th>B队得分</th><th>回放链接</th><th>操作</th></tr>
+                        </thead>
+                        <tbody id="schedule-table-body"></tbody>
+                    </table>
+                </div>
                 <button class="success" style="margin-top: 1rem;" id="submit-schedule">提交赛程</button>
             </div>
         </div>
@@ -212,12 +214,14 @@
             <div class="table-section">
                 <h3>选手 ID 与荣誉维护</h3>
                 <button class="add-row-btn" data-table="ids-table-body">新增一行</button>
-                <table>
-                    <thead>
-                        <tr><th>选手 ID (主键)</th><th>选手真名</th><th>选手荣誉 (用"、"分割)</th><th>操作</th></tr>
-                    </thead>
-                    <tbody id="ids-table-body"></tbody>
-                </table>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr><th>选手 ID (主键)</th><th>选手真名</th><th>选手荣誉 (用"、"分割)</th><th>操作</th></tr>
+                        </thead>
+                        <tbody id="ids-table-body"></tbody>
+                    </table>
+                </div>
                 <button class="success" style="margin-top: 1rem;" id="update-ids">更新/添加 ID</button>
             </div>
         </div>
