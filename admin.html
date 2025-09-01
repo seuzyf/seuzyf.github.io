@@ -58,12 +58,28 @@
             flex-wrap: wrap;
             margin-top: 25px;
         }
-        .nav-button {
+        .filter-group, .nav-button {
             height: var(--control-height);
             display: inline-flex;
             align-items: center;
             border-radius: 8px;
             font-weight: 500;
+        }
+        .filter-group { background-color: var(--card-bg-color); padding: 5px; border: 1px solid var(--border-color); }
+        .filter-group button {
+            padding: 0 15px;
+            border: none;
+            background-color: transparent;
+            color: var(--text-color);
+            opacity: 0.7;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 0.9em;
+            height: 100%;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .filter-group button.active { background-color: var(--primary-color); color: white; opacity: 1; }
+        .nav-button {
             padding: 0 25px;
             border: 2px solid var(--primary-color);
             color: var(--primary-color);
@@ -79,10 +95,6 @@
         .slider:before { background-color: var(--text-color); bottom: 4px; content: ""; height: 16px; left: 4px; position: absolute; transition: .4s; width: 16px; border-radius: 50%; }
         input:checked + .slider { background-color: var(--primary-color); }
         input:checked + .slider:before { transform: translateX(24px); }
-
-        .nav-tabs { display: flex; justify-content: center; margin-bottom: 2rem; border-bottom: 2px solid var(--border-color); }
-        .nav-tabs button { padding: 1rem 1.5rem; border: none; background: none; color: var(--text-color); cursor: pointer; font-size: 1.1em; border-bottom: 3px solid transparent; }
-        .nav-tabs button.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
 
         .tab-content { display: none; }
         .tab-content.active { display: block; }
@@ -160,13 +172,14 @@
                 <a href="index.html" class="nav-button">返回比赛中心</a>
                 <a href="summary.html" class="nav-button">查看选手数据</a>
             </div>
+            <div class="controls-container">
+                <div class="filter-group" id="tab-filters">
+                    <button class="active" data-tab="matches-tab">赛果管理</button>
+                    <button data-tab="schedule-tab">赛程管理</button>
+                    <button data-tab="ids-tab">ID 维护</button>
+                </div>
+            </div>
         </header>
-
-        <div class="nav-tabs">
-            <button class="tab-button active" data-tab="matches-tab">赛果管理</button>
-            <button class="tab-button" data-tab="schedule-tab">赛程管理</button>
-            <button class="tab-button" data-tab="ids-tab">ID 维护</button>
-        </div>
 
         <div id="matches-tab" class="tab-content active">
             <div class="form-section">
@@ -268,23 +281,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setupTabs() {
-        const tabButtons = document.querySelectorAll('.nav-tabs .tab-button');
+        const tabFilters = document.getElementById('tab-filters');
         const tabContents = document.querySelectorAll('.tab-content');
-        tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                tabButtons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
+        tabFilters.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON' && !e.target.classList.contains('active')) {
+                tabFilters.querySelector('.active').classList.remove('active');
+                e.target.classList.add('active');
+                const tabId = e.target.dataset.tab;
                 tabContents.forEach(content => {
-                    content.classList.remove('active');
-                    if (content.id === button.dataset.tab) content.classList.add('active');
+                    content.classList.toggle('active', content.id === tabId);
                 });
-            });
+            }
         });
     }
 
     const groupOptions = `<option value="传奇组">传奇组</option><option value="中坚组">中坚组</option><option value="挑战组">挑战组</option>`;
     const stageOptions = `<option value="小组赛">小组赛</option><option value="淘汰赛第一轮">淘汰赛第一轮</option><option value="胜者组决赛">胜者组决赛</option><option value="败者组第一轮">败者组第一轮</option><option value="败者组决赛">败者组决赛</option><option value="决赛">决赛</option>`;
     const characterOptions = ['幻棱','钛狐','维斯','暮蝶','壹决','不死鸟','捷风','蝰蛇','雷兹','炼狱','猎枭','奇乐','芮娜','铁臂','贤者','幽影','尚勃勒','斯凯','霓虹','夜露','海神','星礈','盖可','钢锁','黑梦'].map(c => `<option value="${c}">${c}</option>`).join('');
+    const mapOptions = ['源工重镇', '隐世修所', '霓虹町', '亚海悬城', '森寒冬港', '微风岛屿', '莲华古城', '裂变峡谷', '深海明珠', '盐海矿镇'].map(m => `<option value="${m}">${m}</option>`).join('');
     const scheduleMatchIdOptions = `<option value="S1-1">S1-1: 瑞士轮 0-0组 第1场</option><option value="S1-2">S1-2: 瑞士轮 0-0组 第2场</option><option value="S1-3">S1-3: 瑞士轮 0-0组 第3场</option><option value="S1-4">S1-4: 瑞士轮 0-0组 第4场</option><option value="S2-1W">S2-1W: 瑞士轮 1-0组 第1场</option><option value="S2-2W">S2-2W: 瑞士轮 1-0组 第2场</option><option value="S2-1L">S2-1L: 瑞士轮 0-1组 第1场</option><option value="S2-2L">S2-2L: 瑞士轮 0-1组 第2场</option><option value="S3-1M">S3-1M: 瑞士轮 1-1组 第1场</option><option value="S3-2M">S3-2M: 瑞士轮 1-1组 第2场</option><option value="P-WB1-1">P-WB1-1: 胜者组 R1 第1场</option><option value="P-WB1-2">P-WB1-2: 胜者组 R1 第2场</option><option value="P-WBF">P-WBF: 胜者组 决赛</option><option value="P-LB1">P-LB1: 败者组 R1</option><option value="P-LBF">P-LBF: 败者组 决赛</option><option value="P-GF">P-GF: 总决赛</option>`;
 
     function createDeleteButton(recordElement) {
@@ -306,7 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td><strong>组别:</strong> <select data-col="group">${groupOptions}</select></td>
                         <td><strong>赛段:</strong> <select data-col="stage">${stageOptions}</select></td>
                         <td><strong>日期:</strong> <input type="date" data-col="match_date"></td>
-                        <td><strong>地图:</strong> <input type="text" data-col="map" placeholder="地图名"></td>
+                        <td><strong>地图:</strong> <select data-col="map">${mapOptions}</select></td>
                         <td><strong>比分:</strong> <input type="text" data-col="score" placeholder="eg: 13:9"></td>
                     </tr>
                 </table>`;
