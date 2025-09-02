@@ -222,7 +222,7 @@
                 <div style="overflow-x: auto;">
                     <table>
                         <thead>
-                            <tr><th>选手 ID (主键)</th><th>选手真名</th><th>选手荣誉 (用"、"分割)</th><th>操作</th></tr>
+                            <tr><th>选手 ID (主键)</th><th>选手真名</th><th>头像链接</th><th>选手荣誉 (用"、"分割)</th><th>操作</th></tr>
                         </thead>
                         <tbody id="ids-table-body"></tbody>
                     </table>
@@ -359,12 +359,13 @@ document.addEventListener('DOMContentLoaded', () => {
             tr.querySelector('.actions').appendChild(createDeleteButton(tr));
             return tr;
         },
-        'ids-table-body': (isNew = true, data = { id: '', name: '', honor: '' }) => {
+        'ids-table-body': (isNew = true, data = { id: '', name: '', image: '', honor: '' }) => {
             const tr = document.createElement('tr');
             tr.dataset.isNew = isNew;
             tr.innerHTML = `
                 <td><input type="text" data-col="id" value="${data.id || ''}" ${!isNew ? 'readonly' : ''}></td>
                 <td><input type="text" data-col="name" value="${data.name || ''}"></td>
+                <td><input type="text" data-col="image" value="${data.image || ''}"></td>
                 <td><input type="text" data-col="honor" value="${data.honor || ''}"></td>
                 <td class="actions"></td>`;
             tr.querySelector('.actions').appendChild(createDeleteButton(tr));
@@ -529,9 +530,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadIdsData() {
         const tableBody = document.getElementById('ids-table-body');
-        tableBody.innerHTML = '<tr><td colspan="4">正在加载...</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="5">正在加载...</td></tr>';
         const { data, error } = await supabaseClient.from('player_ids').select('*').order('id');
-        if (error) { tableBody.innerHTML = `<tr><td colspan="4">加载失败: ${error.message}</td></tr>`; return; }
+        if (error) { tableBody.innerHTML = `<tr><td colspan="5">加载失败: ${error.message}</td></tr>`; return; }
         tableBody.innerHTML = '';
         data.forEach(player => tableBody.appendChild(rowTemplates['ids-table-body'](false, player)));
     }

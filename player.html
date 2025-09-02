@@ -73,6 +73,19 @@
             border: 1px solid var(--border-color);
             position: relative;
         }
+        .player-identity {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+        .player-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--primary-color);
+        }
         .main-header-block h1 { color: var(--primary-color); margin: 0; font-weight: 700; font-size: 2.5em; }
         
         #player-honors { 
@@ -239,7 +252,9 @@
                     <span class="slider"></span>
                 </label>
             </div>
-            <h1 id="player-id-header">Loading...</h1>
+            <div class="player-identity">
+                 <h1 id="player-id-header">Loading...</h1>
+            </div>
             <div id="player-honors"></div>
             <div class="controls-container">
                 <a href="index.html" class="nav-button">返回比赛中心</a>
@@ -487,6 +502,15 @@
         const allPlayerData = processAllPlayerData(matches);
         
         const realName = idNameMap[playerId]?.name || playerId;
+        const imageUrl = idNameMap[playerId]?.image;
+
+        const playerIdentityDiv = document.querySelector('.player-identity');
+        if (imageUrl) {
+            const avatar = document.createElement('img');
+            avatar.src = imageUrl;
+            avatar.className = 'player-avatar';
+            playerIdentityDiv.insertBefore(avatar, playerIdentityDiv.firstChild);
+        }
         document.getElementById('player-id-header').textContent = `${realName} (${playerId})`;
 
         const honors = idNameMap[playerId]?.honor;
