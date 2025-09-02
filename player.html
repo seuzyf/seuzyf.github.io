@@ -73,20 +73,23 @@
             border: 1px solid var(--border-color);
             position: relative;
         }
-        .player-identity {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 20px;
+        #player-avatar-container {
+            margin-bottom: 15px;
         }
         .player-avatar {
-            width: 80px;
-            height: 80px;
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
             object-fit: cover;
-            border: 3px solid var(--primary-color);
+            object-position: center center;
         }
-        .main-header-block h1 { color: var(--primary-color); margin: 0; font-weight: 700; font-size: 2.5em; }
+        .main-header-block h1 { 
+            color: var(--primary-color); 
+            margin: 0; 
+            font-weight: 700; 
+            font-size: 2.5em;
+            padding-top: 10px;
+        }
         
         #player-honors { 
             margin-top: 15px; 
@@ -252,9 +255,8 @@
                     <span class="slider"></span>
                 </label>
             </div>
-            <div class="player-identity">
-                 <h1 id="player-id-header">Loading...</h1>
-            </div>
+            <div id="player-avatar-container"></div>
+            <h1 id="player-id-header">Loading...</h1>
             <div id="player-honors"></div>
             <div class="controls-container">
                 <a href="index.html" class="nav-button">返回比赛中心</a>
@@ -504,12 +506,12 @@
         const realName = idNameMap[playerId]?.name || playerId;
         const imageUrl = idNameMap[playerId]?.image;
 
-        const playerIdentityDiv = document.querySelector('.player-identity');
         if (imageUrl) {
+            const avatarContainer = document.getElementById('player-avatar-container');
             const avatar = document.createElement('img');
             avatar.src = imageUrl;
             avatar.className = 'player-avatar';
-            playerIdentityDiv.insertBefore(avatar, playerIdentityDiv.firstChild);
+            avatarContainer.appendChild(avatar);
         }
         document.getElementById('player-id-header').textContent = `${realName} (${playerId})`;
 
