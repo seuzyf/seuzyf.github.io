@@ -207,14 +207,14 @@
         input:checked + .slider:before { transform: translateX(24px); }
         
         #comments-section h2 { display: flex; justify-content: space-between; align-items: center; }
-        .player-avg-score { color: var(--star-color); font-size: 0.8em; font-weight: 500; }
+        .player-avg-score { color: var(--primary-color); font-size: 0.8em; font-weight: 500; }
         .comment-card { position: relative; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin-bottom: 15px; }
-        .comment-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; font-size: 0.9em; flex-wrap: wrap; gap: 5px;}
+        .comment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.9em; flex-wrap: wrap; gap: 10px;}
         .comment-author { font-weight: bold; color: var(--primary-color); margin-right: auto;}
         .comment-rating { white-space: nowrap; }
-        .comment-rating span { color: var(--star-color); font-weight: bold; }
+        .comment-rating span { font-weight: bold; color: var(--primary-color); }
         .comment-body { font-size: 1em; line-height: 1.5; word-wrap: break-word; }
-        .delete-comment-btn { position: absolute; top: 10px; right: 10px; background: #D64550; color: white; border: none; border-radius: 5px; padding: 3px 8px; cursor: pointer; font-size: 0.8em; opacity: 0.7; transition: opacity 0.2s; }
+        .delete-comment-btn { background: #D64550; color: white; border: none; border-radius: 5px; padding: 3px 8px; cursor: pointer; font-size: 0.8em; opacity: 0.7; transition: opacity 0.2s; flex-shrink: 0; }
         .delete-comment-btn:hover { opacity: 1; }
         #comment-form { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
         .form-row { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
@@ -320,10 +320,10 @@
 
         commentsList.innerHTML = playerComments.length === 0 ? '<p>暂无评论，快来抢沙发吧！</p>' : playerComments.map(comment => `
             <div class="comment-card">
-                ${comment.ip === currentUserIP ? `<button class="delete-comment-btn" data-comment-id="${comment.id}">删除</button>` : ''}
                 <div class="comment-header">
                     <span class="comment-author">${escapeHTML(comment.nickname)}</span>
                     <span class="comment-rating">评分: <span>${comment.rating}</span> / 10</span>
+                    ${comment.ip === currentUserIP ? `<button class="delete-comment-btn" data-comment-id="${comment.id}">删除</button>` : ''}
                 </div>
                 <p class="comment-body">${escapeHTML(comment.content)}</p>
                 <small style="opacity: 0.6;">${new Date(comment.created_at).toLocaleString()}</small>
@@ -601,7 +601,7 @@
     }
     
     function renderSummaryList(playerData, playerId, groupPlayersForRank) {
-        const playerAverages = { acs: playerData.total_stats.matchCount > 0 ? playerData.total_stats.acs / playerData.total_stats.matchCount : 0, k_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.kills / playerData.total_stats.matchCount : 0, d_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.deaths / playerData.total_stats.matchCount : 0, a_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.assists / playerData.total_stats.matchCount : 0, k_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.kills / playerData.total_stats.totalRounds : 0, d_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.deaths / playerData.totalRounds : 0, a_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.assists / playerData.total_stats.totalRounds : 0, };
+        const playerAverages = { acs: playerData.total_stats.matchCount > 0 ? playerData.total_stats.acs / playerData.total_stats.matchCount : 0, k_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.kills / playerData.total_stats.matchCount : 0, d_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.deaths / playerData.total_stats.matchCount : 0, a_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.assists / playerData.total_stats.matchCount : 0, k_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.kills / playerData.total_stats.totalRounds : 0, d_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.deaths / playerData.total_stats.totalRounds : 0, a_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.assists / playerData.total_stats.totalRounds : 0, };
         document.getElementById('summary-list-content').innerHTML = `
             <div><strong>平均ACS:</strong> <span>${playerAverages.acs.toFixed(2)} <span class="rank-top">${getRank(playerId, 'acs', groupPlayersForRank)}</span></span></div>
             <div><strong>每局击杀:</strong> <span>${playerAverages.k_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_map', groupPlayersForRank)}</span></span></div>

@@ -100,6 +100,23 @@
             max-height: 75vh;
             overflow: auto;
         }
+        /* Scrollbar Styling */
+        .table-container::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .table-container::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+            border-radius: 10px;
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 10px;
+        }
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #b33e47;
+        }
+
         #stats-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
         #stats-table thead th {
             position: sticky;
