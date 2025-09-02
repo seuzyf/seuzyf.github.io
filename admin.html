@@ -99,7 +99,14 @@
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
-        .form-section, .table-section { background-color: var(--card-bg-color); padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px var(--shadow-color); margin-top: 2rem; }
+        .form-section, .table-section {
+            background-color: var(--card-bg-color);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            margin-top: 2rem;
+        }
         .form-section h3, .table-section h3 { margin-top: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; }
 
         table { width: 100%; border-collapse: collapse; }
@@ -133,14 +140,16 @@
         button.success { background-color: var(--success-color); }
         .add-row-btn { margin-bottom: 1rem; }
         .delete-row-btn { background-color: #7f8c8d; }
-        
+
         .modal-backdrop {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(0, 0, 0, 0.8); backdrop-filter: blur(5px);
             z-index: 1000; display: flex; justify-content: center; align-items: center;
         }
         .modal-content {
-            background-color: var(--card-bg-color); padding: 2rem;
+            background-color: var(--card-bg-color);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
             border-radius: 12px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
         #password-input { font-size: 1.2em; text-align: center; margin: 1rem 0; }
@@ -265,7 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('submit-schedule').addEventListener('click', submitSchedule);
         document.getElementById('update-ids').addEventListener('click', updateIds);
     }
-    
+
     function setupThemeToggle() {
         const themeToggle = document.getElementById('theme-toggle-checkbox');
         const themeText = document.getElementById('theme-text');
@@ -313,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'matches-table-body': () => {
             const recordDiv = document.createElement('div');
             recordDiv.className = 'match-record';
-            
+
             let commonInputs = `
                 <table style="width:100%; margin-bottom:1rem;">
                     <tr>
@@ -327,14 +336,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let teamA_Inputs = createTeamTable('A');
             let teamB_Inputs = createTeamTable('B');
-            
+
             recordDiv.innerHTML = commonInputs + teamA_Inputs + teamB_Inputs;
             const deleteContainer = document.createElement('div');
             deleteContainer.style.textAlign = 'right';
             deleteContainer.style.padding = '10px';
             deleteContainer.appendChild(createDeleteButton(recordDiv));
             recordDiv.appendChild(deleteContainer);
-            
+
             return recordDiv;
         },
         'schedule-table-body': () => {
@@ -362,7 +371,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return tr;
         }
     };
-    
+
     function createTeamTable(teamLabel) {
         let table = `<table style="width:100%; margin-bottom: 1rem;">
             <thead>
@@ -495,7 +504,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const dataToUpsert = getTableData('ids-table-body');
         if (dataToUpsert.length === 0) return alert('没有要更新的数据。');
         for (const row of dataToUpsert) { if (!row.id) return alert('选手ID为主键，不能为空！'); }
-        
+
         const { error } = await supabaseClient.from('player_ids').upsert(dataToUpsert);
         if (error) { alert('更新失败: ' + error.message); }
         else { alert('选手ID更新成功！'); loadIdsData(); }
