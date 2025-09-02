@@ -109,8 +109,8 @@
             padding: 0;
             border: none;
         }
-        .header-controls { display: flex; align-items: center; gap: 12px; }
-        .merge-stats-switch { display: flex; align-items: center; gap: 8px; font-size: 0.9em; }
+        .header-controls { display: flex; align-items: center; gap: 12px; font-size: 0.9em; }
+        .merge-stats-switch { display: flex; align-items: center; gap: 8px; }
         .merge-stats-switch .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
         .merge-stats-switch .switch input { opacity: 0; width: 0; height: 0; }
         .merge-stats-switch .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border-color); transition: .4s; border-radius: 22px; }
@@ -201,12 +201,12 @@
         .roster-list li:last-child { border-bottom: none; }
         .player-comparison-table { width: 100%; border-collapse: collapse; font-size: 1em; }
         .player-comparison-table th, .player-comparison-table td { padding: 12px; text-align: center; border-bottom: 1px solid var(--border-color); }
-        .player-comparison-table thead th { padding: 14px; }
+        .player-comparison-table thead th { padding: 14px; vertical-align: middle;}
         .player-comparison-table tbody tr:last-child td { border-bottom: none; }
         .player-comparison-table .team-name-header { font-size: 1.5em; }
-        .player-comparison-table .score-details { font-size: 1em; font-weight: 500; padding: 8px 0; }
+        .player-comparison-table .score-details { font-size: 1em; font-weight: 500; padding: 0; }
         .score-details .score-line { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 2px 0; }
-        .score-details .score-map { opacity: 0.8; }
+        .score-details .score-map { opacity: 0.8; font-size: 0.9em; }
         .score-win { color: var(--win-color); }
         .score-loss { color: var(--loss-color); }
         .player-comparison-table .stat-header th { font-size: 0.9em; }
@@ -292,9 +292,9 @@
                             </label>
                         </div>
                         <div class="tooltip">
-                           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-question-circle" viewBox="0 0 16 16">
-                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                                <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.11.248-.247V5.5c0-.138-.11-.247-.248-.247h-.825a.237.237 0 0 0-.241.247v.286zm1.557 5.073c.04.03.052.062.052.096 0 .042-.015.077-.045.113l-.82.82c-.043.043-.105.064-.18.064s-.137-.021-.18-.064l-.82-.82c-.03-.036-.045-.071-.045-.113 0-.034.012-.066.052-.096l.82-.82c.043-.043.105-.064.18-.064s.137.021.18.064l.82.82zM7 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 16 16">
+                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                                <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.11.248-.247V5.5c0-.138-.11-.247-.248-.247h-.825a.237.237 0 0 0-.241.247v.286zm1.557 5.073c.04.03.052.062.052.096 0 .042-.015.077-.045.113l-.82.82c-.043.043-.105.064-.18.064s-.137-.021-.18-.064l-.82-.82c-.03-.036-.045-.071-.045-.113 0-.034.012-.066.052-.096l.82-.82c.043-.043.105-.064.18-.064s.137.021.18.064l.82.82zM7 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/>
                             </svg>
                             <span class="tooltiptext">勾选后，点击比赛将自动合并相同日期、阶段和队伍间的多场比赛数据 (如BO3)，展示总战绩。</span>
                         </div>
@@ -312,7 +312,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const SUPABASE_URL = 'https://vbyvolmtkjjyeiibpljf.supabase.co';
-            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieXZvbG10a2pqeWVpaWJwbGpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzMxNDksImV4cCI6MjA3MjI4OTE0OX0.Tnot1kIVn8vJ-vggYaTGBGTkIBY7m6yIOquSjG5mSUM';
+            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieXZvbG10a2pqeWVpaWJwbGpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzMxNDksImV4cCI6MjA3MjI0OTE0OX0.Tnot1kIVn8vJ-vggYaTGBGTkIBY7m6yIOquSjG5mSUM';
             const { createClient } = supabase;
             const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -598,7 +598,7 @@
                     const scoreB = isReversed ? scores[0] : scores[1];
                     const scoreAClass = scoreA >= 13 ? 'score-win' : 'score-loss';
                     const scoreBClass = scoreB >= 13 ? 'score-win' : 'score-loss';
-                    return `<div class="score-line"><span class="${scoreAClass}">${scoreA}</span> : <span class="${scoreBClass}">${scoreB}</span><span class="score-map">${match.map}</span></div>`;
+                    return `<div class="score-line"><span class="${scoreAClass}">${scoreA}</span>:<span class="${scoreBClass}">${scoreB}</span><span class="score-map">${match.map}</span></div>`;
                 }).join('');
 
                 const modalHTML = `
@@ -610,9 +610,9 @@
                                 <th colspan="7" class="team-name-header">${team_b}</th>
                             </tr>
                             <tr class="stat-header">
-                                <th>ID</th><th>角色</th><th>平均ACS</th><th>总K</th><th>总D</th><th>总A</th><th>出场</th>
+                                <th>ID</th><th>角色</th><th>平均ACS</th><th>总K</th><th>总D</th><th>总A</th><th>图数</th>
                                 <th class="separator"></th>
-                                <th>ID</th><th>角色</th><th>平均ACS</th><th>总K</th><th>总D</th><th>总A</th><th>出场</th>
+                                <th>ID</th><th>角色</th><th>平均ACS</th><th>总K</th><th>总D</th><th>总A</th><th>图数</th>
                             </tr>
                         </thead>
                         <tbody>${rowsHTML}</tbody>
