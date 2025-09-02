@@ -96,8 +96,18 @@
             padding: 20px;
             box-shadow: 0 8px 16px var(--shadow-color);
         }
+        .table-container {
+            max-height: 75vh;
+            overflow: auto;
+        }
         #stats-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
-        #stats-table thead { background-color: var(--primary-color); color: white; }
+        #stats-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background-color: var(--primary-color);
+            color: white;
+        }
         #stats-table th, #stats-table td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
         #stats-table tbody tr:hover { background-color: rgba(255,255,255,0.05); }
         #stats-table th { cursor: pointer; position: relative; }
@@ -150,7 +160,7 @@
         </div>
 
         <main>
-            <div style="overflow-x: auto;">
+            <div class="table-container">
                 <table id="stats-table">
                     <thead>
                         <tr>
