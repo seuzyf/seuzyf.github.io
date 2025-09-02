@@ -84,10 +84,24 @@
             object-position: center center;
         }
         .main-header-block h1 { 
-            color: var(--primary-color); 
             margin: 0; 
             font-weight: 700; 
             font-size: 2.5em;
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .player-id {
+             color: var(--text-color);
+        }
+        
+        .player-real-name {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            font-weight: 500;
         }
         
         #player-honors { 
@@ -577,7 +591,7 @@
         const idNameMap = idData.reduce((map, row) => { map[row.id] = row; return map; }, {});
         const allPlayerData = processAllPlayerData(matches);
         
-        const realName = idNameMap[playerId]?.name || playerId;
+        const realName = idNameMap[playerId]?.name || '';
         const imageUrl = idNameMap[playerId]?.image;
         const header = document.getElementById('player-id-header');
 
@@ -590,7 +604,13 @@
             avatarContainer.appendChild(avatar);
             header.parentNode.insertBefore(avatarContainer, header);
         }
-        header.textContent = `${realName} (${playerId})`;
+        
+        if (realName) {
+            header.innerHTML = `<span class="player-id">${playerId}</span><span class="player-real-name">${realName}</span>`;
+        } else {
+            header.innerHTML = `<span class="player-id">${playerId}</span>`;
+        }
+
 
         const honors = idNameMap[playerId]?.honor;
         if (honors) {
