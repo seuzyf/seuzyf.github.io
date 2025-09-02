@@ -20,6 +20,8 @@
             --group-stage-bg: rgba(83, 104, 126, 0.2);
             --playoff-stage-bg: rgba(74, 144, 226, 0.2);
             --final-stage-bg: rgba(255, 215, 0, 0.15);
+            --win-color: #4CAF50;
+            --loss-color: #F44336;
         }
         body.light-theme {
             --primary-color: #D64550;
@@ -107,43 +109,18 @@
             padding: 0;
             border: none;
         }
-        .header-controls {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .header-controls label {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            cursor: pointer;
-        }
-        .tooltip {
-            position: relative;
-            display: inline-block;
-        }
-        .tooltip .tooltiptext {
-            visibility: hidden;
-            width: 220px;
-            background-color: #555;
-            color: #fff;
-            text-align: center;
-            border-radius: 6px;
-            padding: 5px;
-            position: absolute;
-            z-index: 1;
-            bottom: 125%;
-            left: 50%;
-            margin-left: -110px;
-            opacity: 0;
-            transition: opacity 0.3s;
-            font-size: 0.8em;
-            font-weight: 400;
-        }
-        .tooltip:hover .tooltiptext {
-            visibility: visible;
-            opacity: 1;
-        }
+        .header-controls { display: flex; align-items: center; gap: 12px; }
+        .merge-stats-switch { display: flex; align-items: center; gap: 8px; font-size: 0.9em; }
+        .merge-stats-switch .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+        .merge-stats-switch .switch input { opacity: 0; width: 0; height: 0; }
+        .merge-stats-switch .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border-color); transition: .4s; border-radius: 22px; }
+        .merge-stats-switch .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: var(--text-color); transition: .4s; border-radius: 50%; }
+        .merge-stats-switch input:checked + .slider { background-color: var(--primary-color); }
+        .merge-stats-switch input:checked + .slider:before { transform: translateX(18px); }
+        .tooltip { position: relative; display: flex; align-items: center; }
+        .tooltip .tooltiptext { visibility: hidden; width: 220px; background-color: #333; color: #fff; text-align: left; border-radius: 6px; padding: 8px; position: absolute; z-index: 10; bottom: 150%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.3s; font-size: 0.85em; font-weight: 400; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
+        .tooltip svg { fill: #aaa; }
 
 
         #matches-view {
@@ -213,7 +190,7 @@
             background-color: var(--card-bg-color);
             border-radius: 12px; border: 1px solid var(--border-color);
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            width: 90%; max-width: 800px; max-height: 90vh;
+            width: 90%; max-width: 850px; max-height: 90vh;
             overflow-y: auto; transform: scale(0.9); transition: transform 0.3s;
             padding: 20px 30px;
         }
@@ -227,7 +204,11 @@
         .player-comparison-table thead th { padding: 14px; }
         .player-comparison-table tbody tr:last-child td { border-bottom: none; }
         .player-comparison-table .team-name-header { font-size: 1.5em; }
-        .player-comparison-table .score-cell { font-size: 2em; }
+        .player-comparison-table .score-details { font-size: 1em; font-weight: 500; padding: 8px 0; }
+        .score-details .score-line { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 2px 0; }
+        .score-details .score-map { opacity: 0.8; }
+        .score-win { color: var(--win-color); }
+        .score-loss { color: var(--loss-color); }
         .player-comparison-table .stat-header th { font-size: 0.9em; }
         .player-comparison-table td.player-id, .player-comparison-table td.player-character { font-weight: 500; text-align: left; white-space: nowrap; }
         .player-comparison-table td.player-acs { font-weight: bold; color: var(--primary-color); }
@@ -303,16 +284,19 @@
                 <div class="content-block-header">
                     <h2 id="matches-title">比赛结果 - 传奇组</h2>
                     <div class="header-controls">
-                        <label>
-                            <input type="checkbox" id="merge-stats-checkbox">
-                            合并统计
-                        </label>
+                        <div class="merge-stats-switch">
+                            <span>合并统计</span>
+                            <label class="switch">
+                                <input type="checkbox" id="merge-stats-checkbox">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
                         <div class="tooltip">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-question-circle" viewBox="0 0 16 16">
                                 <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
                                 <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.11.248-.247V5.5c0-.138-.11-.247-.248-.247h-.825a.237.237 0 0 0-.241.247v.286zm1.557 5.073c.04.03.052.062.052.096 0 .042-.015.077-.045.113l-.82.82c-.043.043-.105.064-.18.064s-.137-.021-.18-.064l-.82-.82c-.03-.036-.045-.071-.045-.113 0-.034.012-.066.052-.096l.82-.82c.043-.043.105-.064.18-.064s.137.021.18.064l.82.82zM7 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
                             </svg>
-                            <span class="tooltiptext">勾选后，点击比赛将自动合并相同日期、相同队伍间的多场比赛数据 (如BO3)，展示总战绩。</span>
+                            <span class="tooltiptext">勾选后，点击比赛将自动合并相同日期、阶段和队伍间的多场比赛数据 (如BO3)，展示总战绩。</span>
                         </div>
                     </div>
                 </div>
@@ -328,7 +312,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const SUPABASE_URL = 'https://vbyvolmtkjjyeiibpljf.supabase.co';
-            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieXZvbG10a2pqeWVpaWJwbGpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzMxNDksImV4cCI6MjA3MjI0OTE0OX0.Tnot1kIVn8vJ-vggYaTGBGTkIBY7m6yIOquSjG5mSUM';
+            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieXZvbG10a2pqeWVpaWJwbGpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzMxNDksImV4cCI6MjA3MjI4OTE0OX0.Tnot1kIVn8vJ-vggYaTGBGTkIBY7m6yIOquSjG5mSUM';
             const { createClient } = supabase;
             const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -551,58 +535,85 @@
                 modal.classList.add('visible');
             }
             
-            function showMatchDetails(matchData) {
-                const { team_a, team_b } = matchData;
+            function showMatchDetails(matches) {
+                if (!Array.isArray(matches)) matches = [matches];
+                const mainMatch = matches[0];
+                const { team_a, team_b } = mainMatch;
+
                 const combinedPlayerData = {};
 
-                const processPlayer = (id, data, ch, team) => {
-                    if (!id || !data) return;
-                    const stats = String(data).split('/').map(Number);
-                    if (stats.length !== 4 || stats.some(isNaN)) return;
-                    
-                    if (!combinedPlayerData[id]) {
-                        combinedPlayerData[id] = { id, team, ch, acs: 0, k: 0, d: 0, a: 0, count: 0 };
-                    }
-                    const p = combinedPlayerData[id];
-                    p.acs += stats[0];
-                    p.k += stats[1];
-                    p.d += stats[2];
-                    p.a += stats[3];
-                    p.ch = ch; // Use the character from the last map played
-                    p.count++;
-                };
+                matches.forEach(match => {
+                    const isReversed = match.team_a !== team_a;
+                    ['team_a', 'team_b'].forEach((teamKey, teamIndex) => {
+                        const currentTeamKey = isReversed ? (teamIndex === 0 ? 'team_b' : 'team_a') : teamKey;
+                        const currentTeamName = match[currentTeamKey];
+                        for (let p = 1; p <= 5; p++) {
+                            const playerId = match[`${currentTeamKey}_player${p}_id`];
+                            const playerDataStr = match[`${currentTeamKey}_player${p}_data`];
+                            const playerCh = match[`${currentTeamKey}_player${p}_ch`];
+                            if (!playerId || !playerDataStr) continue;
 
-                for (let i = 1; i <= 5; i++) {
-                    processPlayer(matchData[`team_a_player${i}_id`], matchData[`team_a_player${i}_data`], matchData[`team_a_player${i}_ch`], team_a);
-                    processPlayer(matchData[`team_b_player${i}_id`], matchData[`team_b_player${i}_data`], matchData[`team_b_player${i}_ch`], team_b);
-                }
+                            const stats = String(playerDataStr).split('/').map(Number);
+                            if (stats.length !== 4 || stats.some(isNaN)) continue;
+
+                            if (!combinedPlayerData[playerId]) {
+                                combinedPlayerData[playerId] = { id: playerId, team: currentTeamName, ch: playerCh, acs: 0, k: 0, d: 0, a: 0, count: 0 };
+                            }
+                            const pData = combinedPlayerData[playerId];
+                            pData.acs += stats[0];
+                            pData.k += stats[1];
+                            pData.d += stats[2];
+                            pData.a += stats[3];
+                            pData.ch = playerCh;
+                            pData.count++;
+                        }
+                    });
+                });
                 
                 const teamAPlayers = Object.values(combinedPlayerData).filter(p => p.team === team_a);
                 const teamBPlayers = Object.values(combinedPlayerData).filter(p => p.team === team_b);
-
+                
                 const finalTeamAPlayers = teamAPlayers.map(p => ({ ...p, acs: (p.acs / p.count).toFixed(0) })).sort((a, b) => b.acs - a.acs);
                 const finalTeamBPlayers = teamBPlayers.map(p => ({ ...p, acs: (p.acs / p.count).toFixed(0) })).sort((a, b) => b.acs - a.acs);
 
                 let rowsHTML = '';
-                const placeholder = { id: '-', ch: '-', acs: '-', k: '-', d: '-', a: '-' };
-                for (let i = 0; i < 5; i++) {
+                const maxPlayers = Math.max(finalTeamAPlayers.length, finalTeamBPlayers.length);
+                const placeholder = { id: '-', ch: '-', acs: '-', k: '-', d: '-', a: '-', count: '-' };
+                for (let i = 0; i < maxPlayers; i++) {
                     const pA = finalTeamAPlayers[i] || placeholder;
                     const pB = finalTeamBPlayers[i] || placeholder;
                     rowsHTML += `<tr>
                         <td class="player-id">${pA.id}</td><td class="player-character">${pA.ch}</td>
-                        <td class="player-acs">${pA.acs}</td><td>${pA.k}</td><td>${pA.d}</td><td>${pA.a}</td>
+                        <td class="player-acs">${pA.acs}</td><td>${pA.k}</td><td>${pA.d}</td><td>${pA.a}</td><td>${pA.count}</td>
                         <td class="separator"></td>
                         <td class="player-id">${pB.id}</td><td class="player-character">${pB.ch}</td>
-                        <td class="player-acs">${pB.acs}</td><td>${pB.k}</td><td>${pB.d}</td><td>${pB.a}</td>
+                        <td class="player-acs">${pB.acs}</td><td>${pB.k}</td><td>${pB.d}</td><td>${pB.a}</td><td>${pB.count}</td>
                     </tr>`;
                 }
 
-                const score = String(matchData.score).replace(/[/：]/g, ' : ');
+                const scoreHTML = matches.map(match => {
+                    const isReversed = match.team_a !== team_a;
+                    const scores = String(match.score).split(/[:/：]/).map(Number);
+                    const scoreA = isReversed ? scores[1] : scores[0];
+                    const scoreB = isReversed ? scores[0] : scores[1];
+                    const scoreAClass = scoreA >= 13 ? 'score-win' : 'score-loss';
+                    const scoreBClass = scoreB >= 13 ? 'score-win' : 'score-loss';
+                    return `<div class="score-line"><span class="${scoreAClass}">${scoreA}</span> : <span class="${scoreBClass}">${scoreB}</span><span class="score-map">${match.map}</span></div>`;
+                }).join('');
+
                 const modalHTML = `
                     <table class="player-comparison-table">
                         <thead>
-                            <tr><th colspan="6" class="team-name-header">${team_a}</th><th class="score-cell">${score}</th><th colspan="6" class="team-name-header">${team_b}</th></tr>
-                            <tr class="stat-header"><th>ID</th><th>角色</th><th>平均ACS</th><th>总K</th><th>总D</th><th>总A</th><th class="separator"></th><th>ID</th><th>角色</th><th>平均ACS</th><th>总K</th><th>总D</th><th>总A</th></tr>
+                            <tr>
+                                <th colspan="7" class="team-name-header">${team_a}</th>
+                                <th class="score-details">${scoreHTML}</th>
+                                <th colspan="7" class="team-name-header">${team_b}</th>
+                            </tr>
+                            <tr class="stat-header">
+                                <th>ID</th><th>角色</th><th>平均ACS</th><th>总K</th><th>总D</th><th>总A</th><th>出场</th>
+                                <th class="separator"></th>
+                                <th>ID</th><th>角色</th><th>平均ACS</th><th>总K</th><th>总D</th><th>总A</th><th>出场</th>
+                            </tr>
                         </thead>
                         <tbody>${rowsHTML}</tbody>
                     </table>`;
@@ -640,74 +651,21 @@
                 if (!clickedMatch) return;
 
                 if (mergeStatsCheckbox.checked) {
-                    const { match_date, team_a, team_b } = clickedMatch;
+                    const { match_date, team_a, team_b, stage } = clickedMatch;
                     
                     const relatedMatches = currentFilteredMatches.filter(m =>
-                        m.match_date === match_date &&
+                        m.match_date === match_date && m.stage === stage &&
                         ((m.team_a === team_a && m.team_b === team_b) || (m.team_a === team_b && m.team_b === team_a))
                     );
 
-                    if (relatedMatches.length > 1) {
-                        const mergedData = JSON.parse(JSON.stringify(relatedMatches[0])); // Deep copy
-                        mergedData.score = relatedMatches.map(m => {
-                            // Ensure score format is consistent for team_a vs team_b
-                            if (m.team_a === team_a) return m.score;
-                            return String(m.score).split(/[:/：]/).reverse().join(':');
-                        }).join(', ');
-                        
-                        for (let i = 2; i <= 5; i++) {
-                            delete mergedData[`team_a_player${i}_id`]; delete mergedData[`team_a_player${i}_data`]; delete mergedData[`team_a_player${i}_ch`];
-                            delete mergedData[`team_b_player${i}_id`]; delete mergedData[`team_b_player${i}_data`]; delete mergedData[`team_b_player${i}_ch`];
-                        }
-
-                        const combinedStats = {};
-
-                        relatedMatches.forEach(match => {
-                            const isReversed = match.team_a !== team_a;
-                            for (let i = 1; i <= 5; i++) {
-                                const teamAKey = isReversed ? 'team_b' : 'team_a';
-                                const teamBKey = isReversed ? 'team_a' : 'team_b';
-                                
-                                const pA_id = match[`${teamAKey}_player${i}_id`], pA_data = match[`${teamAKey}_player${i}_data`], pA_ch = match[`${teamAKey}_player${i}_ch`];
-                                const pB_id = match[`${teamBKey}_player${i}_id`], pB_data = match[`${teamBKey}_player${i}_data`], pB_ch = match[`${teamBKey}_player${i}_ch`];
-                                
-                                [pA_id, pB_id].forEach((id, index) => {
-                                    if(id) {
-                                        const data = index === 0 ? pA_data : pB_data;
-                                        const ch = index === 0 ? pA_ch : pB_ch;
-                                        const stats = String(data).split('/').map(Number);
-                                        if(!combinedStats[id]) combinedStats[id] = { id, ch, acs:0, k:0, d:0, a:0, count:0 };
-                                        combinedStats[id].acs += stats[0]; combinedStats[id].k += stats[1]; combinedStats[id].d += stats[2]; combinedStats[id].a += stats[3]; combinedStats[id].count++; combinedStats[id].ch = ch;
-                                    }
-                                });
-                            }
-                        });
-
-                        Object.values(combinedStats).forEach(p => {
-                            p.data = `${p.acs/p.count}/${p.k}/${p.d}/${p.a}`;
-                        });
-                        
-                        let teamAIndex = 1, teamBIndex = 1;
-                        Object.values(combinedStats).forEach(p => {
-                            if (p.id.startsWith(team_a.slice(0,2))) { // Simple team check
-                                mergedData[`team_a_player${teamAIndex}_id`] = p.id;
-                                mergedData[`team_a_player${teamAIndex}_data`] = p.data;
-                                mergedData[`team_a_player${teamAIndex}_ch`] = p.ch;
-                                teamAIndex++;
-                            } else {
-                                mergedData[`team_b_player${teamBIndex}_id`] = p.id;
-                                mergedData[`team_b_player${teamBIndex}_data`] = p.data;
-                                mergedData[`team_b_player${teamBIndex}_ch`] = p.ch;
-                                teamBIndex++;
-                            }
-                        });
-
-                        showMatchDetails(mergedData);
-                        return;
+                    if (relatedMatches.length > 0) {
+                        showMatchDetails(relatedMatches);
+                    } else {
+                        showMatchDetails([clickedMatch]);
                     }
+                } else {
+                     showMatchDetails([clickedMatch]);
                 }
-                
-                showMatchDetails(clickedMatch);
             });
 
             standingsTableBody.addEventListener('click', (e) => {
