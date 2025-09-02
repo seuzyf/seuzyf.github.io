@@ -112,7 +112,6 @@
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 0.75rem; border: 1px solid var(--border-color); text-align: left; }
         thead th { background-color: rgba(214, 69, 80, 0.2); white-space: nowrap; }
-        tbody tr:nth-child(even) { background-color: rgba(0,0,0,0.2); }
 
         input, select {
             width: 100%;
@@ -448,40 +447,32 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function getTableData(containerId) {
-        const records = document.querySelectorAll(`#${containerId} .match-record`);
-        if (records.length > 0) { // New match record format
-            const data = [];
-            records.forEach(record => {
-                const rowData = {};
-                record.querySelectorAll('input, select').forEach(input => {
-                    if (input.dataset.col) {
-                        let value = input.value;
-                        if (value !== '' && value !== null) {
-                             if (input.type === 'number') value = parseFloat(value);
-                             rowData[input.dataset.col] = value;
-                        }
-                    }
-                });
-                if (Object.keys(rowData).length > 0) data.push(rowData);
-            });
-            return data;
-        } else { // Old table format for schedule and IDs
-             const rows = document.querySelectorAll(`#${containerId} tr`);
-            const data = [];
-            rows.forEach(row => {
-                const rowData = {};
-                row.querySelectorAll('input, select').forEach(input => {
-                    if (input.dataset.col) {
-                        let value = input.value;
-                        if (input.type === 'number') value = value ? parseInt(value) : null;
-                        if (value !== '' && value !== null) rowData[input.dataset.col] = value;
-                    }
-                });
-                if (Object.keys(rowData).length > 0) data.push(rowData);
-            });
-            return data;
+    function getTableData(containerId, isIdsTable = false) {
+        let rows;
+        if (containerId === 'matches-form-container') {
+            rows = document.querySelectorAll(`#${containerId} .match-record`);
+        } else {
+            rows = document.querySelectorAll(`#${containerId} tr`);
         }
+
+        const data = [];
+        rows.forEach(row => {
+            const rowData = {};
+            if (isIdsTable) {
+                rowData.isNew = row.dataset.isNew === 'true';
+            }
+            row.querySelectorAll('input, select').forEach(input => {
+                if (input.dataset.col) {
+                    let value = input.value.trim();
+                    if (value !== '' && value !== null) {
+                         if (input.type === 'number') value = parseFloat(value);
+                         rowData[input.dataset.col] = value;
+                    }
+                }
+            });
+            if (Object.keys(rowData).length > (isIdsTable ? 1 : 0)) data.push(rowData);
+        });
+        return data;
     }
 
     async function submitMatches() {
@@ -522,7 +513,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function submitSchedule() {
         const data = getTableData('schedule-table-body');
         if (data.length === 0) return alert('没有要提交的数据。');
-        // Use upsert to update if exists, or insert if not.
         const { error } = await supabaseClient.from('match_schedule').upsert(data, { onConflict: 'group, match_id' });
         if (error) { alert('提交赛程失败: ' + error.message); }
         else { alert('赛程提交/更新成功！'); document.getElementById('schedule-table-body').innerHTML = ''; }
@@ -538,13 +528,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function updateIds() {
-        const dataToUpsert = getTableData('ids-table-body');
+        const dataToUpsert = getTableData('ids-table-body', true).map(row => {
+            // Don't include the isNew helper property in the data sent to Supabase
+            const { isNew, ...dbRow } = row;
+            return dbRow;
+        });
+
         if (dataToUpsert.length === 0) return alert('没有要更新的数据。');
-        for (const row of dataToUpsert) { if (!row.id) return alert('选手ID为主键，不能为空！'); }
+        
+        for (const row of dataToUpsert) { 
+            if (!row.id) return alert('选手ID为主键，不能为空！'); 
+        }
         
         const { error } = await supabaseClient.from('player_ids').upsert(dataToUpsert);
-        if (error) { alert('更新失败: ' + error.message); }
-        else { alert('选手ID更新成功！'); loadIdsData(); }
+
+        if (error) { 
+            alert('更新失败: ' + error.message); 
+            console.error(error);
+        } else { 
+            alert('选手ID更新成功！'); 
+            loadIdsData(); 
+        }
     }
 });
 </script>
