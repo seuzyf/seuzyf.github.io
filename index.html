@@ -117,10 +117,10 @@
         .merge-stats-switch .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: var(--text-color); transition: .4s; border-radius: 50%; }
         .merge-stats-switch input:checked + .slider { background-color: var(--primary-color); }
         .merge-stats-switch input:checked + .slider:before { transform: translateX(18px); }
-        .tooltip { position: relative; display: flex; align-items: center; }
+        .tooltip { position: relative; display: flex; align-items: center; cursor: help; }
+        .tooltip .tooltip-icon { font-weight: bold; color: #aaa; border: 1px solid #aaa; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; justify-content: center; align-items: center; line-height: 1; }
         .tooltip .tooltiptext { visibility: hidden; width: 220px; background-color: #333; color: #fff; text-align: left; border-radius: 6px; padding: 8px; position: absolute; z-index: 10; bottom: 150%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.3s; font-size: 0.85em; font-weight: 400; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
-        .tooltip svg { fill: #aaa; }
 
 
         #matches-view {
@@ -190,7 +190,7 @@
             background-color: var(--card-bg-color);
             border-radius: 12px; border: 1px solid var(--border-color);
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            width: 90%; max-width: 850px; max-height: 90vh;
+            width: 90%; max-width: 1100px; max-height: 90vh;
             overflow-y: auto; transform: scale(0.9); transition: transform 0.3s;
             padding: 20px 30px;
         }
@@ -199,18 +199,20 @@
         .roster-list { list-style: none; padding: 0; font-size: 1.2em; }
         .roster-list li { padding: 8px 0; border-bottom: 1px solid var(--border-color); }
         .roster-list li:last-child { border-bottom: none; }
-        .player-comparison-table { width: 100%; border-collapse: collapse; font-size: 1em; }
-        .player-comparison-table th, .player-comparison-table td { padding: 12px; text-align: center; border-bottom: 1px solid var(--border-color); }
-        .player-comparison-table thead th { padding: 14px; vertical-align: middle;}
+        .player-comparison-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        .player-comparison-table th, .player-comparison-table td { padding: 10px 8px; text-align: center; border-bottom: 1px solid var(--border-color); white-space: normal; }
+        .player-comparison-table thead th { padding: 12px 8px; vertical-align: middle; white-space: nowrap; }
         .player-comparison-table tbody tr:last-child td { border-bottom: none; }
-        .player-comparison-table .team-name-header { font-size: 1.5em; }
+        .player-comparison-table .team-name-header { font-size: 1.4em; }
         .player-comparison-table .score-details { font-size: 1em; font-weight: 500; padding: 0; }
         .score-details .score-line { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 2px 0; }
         .score-details .score-map { opacity: 0.8; font-size: 0.9em; }
         .score-win { color: var(--win-color); }
         .score-loss { color: var(--loss-color); }
         .player-comparison-table .stat-header th { font-size: 0.9em; }
-        .player-comparison-table td.player-id, .player-comparison-table td.player-character { font-weight: 500; text-align: left; white-space: nowrap; }
+        .player-comparison-table td.player-id-cell { text-align: left; }
+        .player-id-cell .player-id { font-weight: 500; }
+        .player-id-cell .player-name { font-size: 0.9em; opacity: 0.8; }
         .player-comparison-table td.player-acs { font-weight: bold; color: var(--primary-color); }
         .player-comparison-table .separator { width: 1px; padding: 0; }
         
@@ -292,10 +294,7 @@
                             </label>
                         </div>
                         <div class="tooltip">
-                           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 16 16">
-                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
-                                <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.11.248-.247V5.5c0-.138-.11-.247-.248-.247h-.825a.237.237 0 0 0-.241.247v.286zm1.557 5.073c.04.03.052.062.052.096 0 .042-.015.077-.045.113l-.82.82c-.043.043-.105.064-.18.064s-.137-.021-.18-.064l-.82-.82c-.03-.036-.045-.071-.045-.113 0-.034.012-.066.052-.096l.82-.82c.043-.043.105-.064.18-.064s.137.021.18.064l.82.82zM7 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/>
-                            </svg>
+                           <span class="tooltip-icon">?</span>
                             <span class="tooltiptext">勾选后，点击比赛将自动合并相同日期、阶段和队伍间的多场比赛数据 (如BO3)，展示总战绩。</span>
                         </div>
                     </div>
@@ -331,6 +330,7 @@
             let tournamentData = { '传奇组': [], '中坚组': [], '挑战组': [] };
             let currentFilteredMatches = [];
             let allPlayerData = {};
+            let idNameMap = {};
 
             function setTheme(isLight) {
                 document.body.classList.toggle('light-theme', isLight);
@@ -457,11 +457,11 @@
                 allPlayerData = playerData;
                 localStorage.setItem('valorantPlayerSummary', JSON.stringify(playerData));
                 
-                const { data: idData, error: idError } = await supabaseClient.from('player_ids').select('*');
+                const { data: idData, error: idError } = await supabaseClient.from('player_ids').select('id, name');
                 if (idError) {
                     console.error("无法加载选手ID映射:", idError);
                 } else {
-                    const idNameMap = idData.reduce((map, row) => {
+                    idNameMap = idData.reduce((map, row) => {
                         if(row.id && row.name) map[row.id] = row.name;
                         return map;
                     }, {});
@@ -557,14 +557,14 @@
                             if (stats.length !== 4 || stats.some(isNaN)) continue;
 
                             if (!combinedPlayerData[playerId]) {
-                                combinedPlayerData[playerId] = { id: playerId, team: currentTeamName, ch: playerCh, acs: 0, k: 0, d: 0, a: 0, count: 0 };
+                                combinedPlayerData[playerId] = { id: playerId, name: idNameMap[playerId] || '', team: currentTeamName, characters: new Set(), acs: 0, k: 0, d: 0, a: 0, count: 0 };
                             }
                             const pData = combinedPlayerData[playerId];
                             pData.acs += stats[0];
                             pData.k += stats[1];
                             pData.d += stats[2];
                             pData.a += stats[3];
-                            pData.ch = playerCh;
+                            if (playerCh) pData.characters.add(playerCh);
                             pData.count++;
                         }
                     });
@@ -578,15 +578,17 @@
 
                 let rowsHTML = '';
                 const maxPlayers = Math.max(finalTeamAPlayers.length, finalTeamBPlayers.length);
-                const placeholder = { id: '-', ch: '-', acs: '-', k: '-', d: '-', a: '-', count: '-' };
+                const placeholder = { id: '-', name: '', characters: new Set(), acs: '-', k: '-', d: '-', a: '-', count: '-' };
                 for (let i = 0; i < maxPlayers; i++) {
                     const pA = finalTeamAPlayers[i] || placeholder;
                     const pB = finalTeamBPlayers[i] || placeholder;
                     rowsHTML += `<tr>
-                        <td class="player-id">${pA.id}</td><td class="player-character">${pA.ch}</td>
+                        <td class="player-id-cell"><div class="player-id">${pA.id}</div><div class="player-name">${pA.name}</div></td>
+                        <td>${[...pA.characters].join(', ')}</td>
                         <td class="player-acs">${pA.acs}</td><td>${pA.k}</td><td>${pA.d}</td><td>${pA.a}</td><td>${pA.count}</td>
                         <td class="separator"></td>
-                        <td class="player-id">${pB.id}</td><td class="player-character">${pB.ch}</td>
+                        <td class="player-id-cell"><div class="player-id">${pB.id}</div><div class="player-name">${pB.name}</div></td>
+                        <td>${[...pB.characters].join(', ')}</td>
                         <td class="player-acs">${pB.acs}</td><td>${pB.k}</td><td>${pB.d}</td><td>${pB.a}</td><td>${pB.count}</td>
                     </tr>`;
                 }
@@ -610,9 +612,9 @@
                                 <th colspan="7" class="team-name-header">${team_b}</th>
                             </tr>
                             <tr class="stat-header">
-                                <th>ID</th><th>角色</th><th>平均ACS</th><th>总K</th><th>总D</th><th>总A</th><th>图数</th>
+                                <th>ID/真名</th><th>角色</th><th>平均ACS</th><th>总K</th><th>总D</th><th>总A</th><th>图数</th>
                                 <th class="separator"></th>
-                                <th>ID</th><th>角色</th><th>平均ACS</th><th>总K</th><th>总D</th><th>总A</th><th>图数</th>
+                                <th>ID/真名</th><th>角色</th><th>平均ACS</th><th>总K</th><th>总D</th><th>总A</th><th>图数</th>
                             </tr>
                         </thead>
                         <tbody>${rowsHTML}</tbody>
@@ -621,7 +623,6 @@
             }
             
             function showTeamRoster(teamName, groupName) {
-                const idNameMap = JSON.parse(localStorage.getItem('valorantIdNameMap') || '{}');
                 const roster = new Set();
                 for(const key in allPlayerData) {
                     const player = allPlayerData[key];

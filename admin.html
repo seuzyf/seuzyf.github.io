@@ -158,6 +158,10 @@
 </head>
 <body>
 
+    <datalist id="teams-datalist"></datalist>
+    <datalist id="team-a-players-datalist"></datalist>
+    <datalist id="team-b-players-datalist"></datalist>
+
     <div id="password-modal" class="modal-backdrop">
         <div class="modal-content">
             <h2>请输入管理口令</h2>
@@ -176,6 +180,13 @@
                 </label>
             </div>
             <h1>管理后台</h1>
+            <div class="controls-container">
+                 <div class="filter-group" id="group-filter-buttons">
+                    <button class="active" data-group="传奇组">传奇组</button>
+                    <button data-group="中坚组">中坚组</button>
+                    <button data-group="挑战组">挑战组</button>
+                </div>
+            </div>
             <div class="controls-container">
                 <a href="index.html" class="nav-button">返回比赛中心</a>
                 <a href="summary.html" class="nav-button">查看选手数据</a>
@@ -205,7 +216,7 @@
                 <div style="overflow-x: auto;">
                     <table>
                         <thead>
-                            <tr><th>组别</th><th>比赛ID</th><th>队伍A</th><th>队伍B</th><th>A队得分</th><th>B队得分</th><th>回放链接</th><th>操作</th></tr>
+                            <tr><th>比赛ID</th><th>队伍A</th><th>队伍B</th><th>A队得分</th><th>B队得分</th><th>回放链接</th><th>操作</th></tr>
                         </thead>
                         <tbody id="schedule-table-body"></tbody>
                     </table>
@@ -221,7 +232,7 @@
                 <div style="overflow-x: auto;">
                     <table>
                         <thead>
-                            <tr><th>选手 ID (主键)</th><th>选手真名</th><th>头像链接</th><th>选手荣誉 (用"、"分割)</th><th>操作</th></tr>
+                            <tr><th>选手 ID (主键)</th><th>选手真名</th><th>所属队伍</th><th>头像链接</th><th>选手荣誉 (用"、"分割)</th><th>操作</th></tr>
                         </thead>
                         <tbody id="ids-table-body"></tbody>
                     </table>
@@ -242,6 +253,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminPanel = document.getElementById('admin-panel');
     const passwordInput = document.getElementById('password-input');
     const passwordSubmit = document.getElementById('password-submit');
+
+    let allPlayersData = [];
+    let teamRosters = {};
+    let teamOptionsHTML = '<option value="">选择队伍</option>';
+    let teamDatalistHTML = '';
 
     async function checkPassword() {
         const inputPassword = passwordInput.value;
@@ -264,16 +280,52 @@ document.addEventListener('DOMContentLoaded', () => {
     passwordSubmit.addEventListener('click', checkPassword);
     passwordInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') checkPassword(); });
 
-    function initializeAdminPanel() {
+    async function initializeAdminPanel() {
+        await loadInitialData();
         setupThemeToggle();
         setupTabs();
         setupDynamicRows();
+        setupGroupFilters();
         loadIdsData();
         document.getElementById('submit-matches').addEventListener('click', submitMatches);
         document.getElementById('submit-schedule').addEventListener('click', submitSchedule);
         document.getElementById('update-ids').addEventListener('click', updateIds);
     }
     
+    async function loadInitialData() {
+        const { data, error } = await supabaseClient.from('player_ids').select('id, name, team');
+        if (error) { console.error('无法加载选手数据:', error); return; }
+        
+        allPlayersData = data;
+        const teams = new Set();
+        teamRosters = {};
+
+        data.forEach(player => {
+            if (player.team) {
+                teams.add(player.team);
+                if (!teamRosters[player.team]) {
+                    teamRosters[player.team] = [];
+                }
+                teamRosters[player.team].push({ id: player.id, name: player.name });
+            }
+        });
+
+        const sortedTeams = [...teams].sort();
+        teamOptionsHTML = '<option value="">选择队伍</option>' + sortedTeams.map(t => `<option value="${t}">${t}</option>`).join('');
+        teamDatalistHTML = sortedTeams.map(t => `<option value="${t}"></option>`).join('');
+        document.getElementById('teams-datalist').innerHTML = teamDatalistHTML;
+    }
+
+    function setupGroupFilters() {
+        const groupFilterButtons = document.getElementById('group-filter-buttons');
+        groupFilterButtons.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON' && !e.target.classList.contains('active')) {
+                groupFilterButtons.querySelector('.active').classList.remove('active');
+                e.target.classList.add('active');
+            }
+        });
+    }
+
     function setupThemeToggle() {
         const themeToggle = document.getElementById('theme-toggle-checkbox');
         const themeText = document.getElementById('theme-text');
@@ -284,7 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('theme', isLight ? 'light' : 'dark');
         }
         const savedTheme = localStorage.getItem('theme');
-        setTheme((savedTheme === null) ? true : (savedTheme === 'light'));
+        setTheme((savedTheme === null) ? true : (savedTheme === 'dark'));
         themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
     }
 
@@ -303,11 +355,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const groupOptions = `<option value="传奇组">传奇组</option><option value="中坚组">中坚组</option><option value="挑战组">挑战组</option>`;
     const stageOptions = `<option value="小组赛">小组赛</option><option value="淘汰赛第一轮">淘汰赛第一轮</option><option value="胜者组决赛">胜者组决赛</option><option value="败者组第一轮">败者组第一轮</option><option value="败者组决赛">败者组决赛</option><option value="决赛">决赛</option>`;
     const characterOptions = ['幻棱','钛狐','维斯','暮蝶','壹决','不死鸟','捷风','蝰蛇','雷兹','炼狱','猎枭','奇乐','芮娜','铁臂','贤者','幽影','尚勃勒','斯凯','霓虹','夜露','海神','星礈','盖可','钢锁','黑梦'].map(c => `<option value="${c}">${c}</option>`).join('');
     const mapOptions = ['源工重镇', '隐世修所', '霓虹町', '亚海悬城', '森寒冬港', '微风岛屿', '莲华古城', '裂变峡谷', '深海明珠', '盐海矿镇'].map(m => `<option value="${m}">${m}</option>`).join('');
-    const scheduleMatchIdOptions = `<option value="S1-1">S1-1: 瑞士轮 0-0组 第1场</option><option value="S1-2">S1-2: 瑞士轮 0-0组 第2场</option><option value="S1-3">S1-3: 瑞士轮 0-0组 第3场</option><option value="S1-4">S1-4: 瑞士轮 0-0组 第4场</option><option value="S2-1W">S2-1W: 瑞士轮 1-0组 第1场</option><option value="S2-2W">S2-2W: 瑞士轮 1-0组 第2场</option><option value="S2-1L">S2-1L: 瑞士轮 0-1组 第1场</option><option value="S2-2L">S2-2L: 瑞士轮 0-1组 第2场</option><option value="S3-1M">S3-1M: 瑞士轮 1-1组 第1场</option><option value="S3-2M">S3-2M: 瑞士轮 1-1组 第2场</option><option value="P-WB1-1">P-WB1-1: 胜者组 R1 第1场</option><option value="P-WB1-2">P-WB1-2: 胜者组 R1 第2场</option><option value="P-WBF">P-WBF: 胜者组 决赛</option><option value="P-LB1">P-LB1: 败者组 R1</option><option value="P-LBF">P-LBF: 败者组 决赛</option><option value="P-GF">P-GF: 总决赛</option>`;
+    const scheduleMatchIdOptions = `<option value="S1-1">S1-1</option><option value="S1-2">S1-2</option><option value="S1-3">S1-3</option><option value="S1-4">S1-4</option><option value="S2-1W">S2-1W</option><option value="S2-2W">S2-2W</option><option value="S2-1L">S2-1L</option><option value="S2-2L">S2-2L</option><option value="S3-1M">S3-1M</option><option value="S3-2M">S3-2M</option><option value="P-WB1-1">P-WB1-1</option><option value="P-WB1-2">P-WB1-2</option><option value="P-WBF">P-WBF</option><option value="P-LB1">P-LB1</option><option value="P-LBF">P-LBF</option><option value="P-GF">P-GF</option>`;
 
     function createDeleteButton(recordElement) {
         const deleteBtn = document.createElement('button');
@@ -325,7 +376,6 @@ document.addEventListener('DOMContentLoaded', () => {
             let commonInputs = `
                 <div style="overflow-x:auto;"><table style="width:100%; margin-bottom:1rem;">
                     <tr>
-                        <td><strong>组别:</strong> <select data-col="group">${groupOptions}</select></td>
                         <td><strong>赛段:</strong> <select data-col="stage">${stageOptions}</select></td>
                         <td><strong>日期:</strong> <input type="date" data-col="match_date"></td>
                         <td><strong>地图:</strong> <select data-col="map">${mapOptions}</select></td>
@@ -347,10 +397,9 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         'schedule-table-body': () => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td><select data-col="group">${groupOptions}</select></td>
-                <td><select data-col="match_id">${scheduleMatchIdOptions}</select></td>
-                <td><input type="text" data-col="team_a" placeholder="队伍A"></td>
-                <td><input type="text" data-col="team_b" placeholder="队伍B"></td>
+            tr.innerHTML = `<td><select data-col="match_id">${scheduleMatchIdOptions}</select></td>
+                <td><select data-col="team_a">${teamOptionsHTML}</select></td>
+                <td><select data-col="team_b">${teamOptionsHTML}</select></td>
                 <td><input type="number" data-col="score_a" placeholder="得分"></td>
                 <td><input type="number" data-col="score_b" placeholder="得分"></td>
                 <td><input type="text" data-col="link" placeholder="https://..."></td>
@@ -358,12 +407,13 @@ document.addEventListener('DOMContentLoaded', () => {
             tr.querySelector('.actions').appendChild(createDeleteButton(tr));
             return tr;
         },
-        'ids-table-body': (isNew = true, data = { id: '', name: '', image: '', honor: '' }) => {
+        'ids-table-body': (isNew = true, data = { id: '', name: '', team: '', image: '', honor: '' }) => {
             const tr = document.createElement('tr');
             tr.dataset.isNew = isNew;
             tr.innerHTML = `
                 <td><input type="text" data-col="id" value="${data.id || ''}" ${!isNew ? 'readonly' : ''}></td>
                 <td><input type="text" data-col="name" value="${data.name || ''}"></td>
+                <td><input type="text" data-col="team" value="${data.team || ''}" list="teams-datalist"></td>
                 <td><input type="text" data-col="image" value="${data.image || ''}"></td>
                 <td><input type="text" data-col="honor" value="${data.honor || ''}"></td>
                 <td class="actions"></td>`;
@@ -374,6 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function createTeamTable(teamLabel) {
         const teamKey = `team_${teamLabel.toLowerCase()}`;
+        const datalistId = `team-${teamLabel.toLowerCase()}-players-datalist`;
         let table = `<div style="overflow-x:auto;"><table style="width:100%; margin-bottom: 1rem;">
             <thead>
                 <tr>
@@ -383,51 +434,49 @@ document.addEventListener('DOMContentLoaded', () => {
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td rowspan="5" style="vertical-align: middle;"><input type="text" data-col="${teamKey}" placeholder="队伍 ${teamLabel} 名称"></td>
-                    <td><input type="text" data-col="${teamKey}_player1_id" placeholder="ID"></td>
-                    <td><select data-col="${teamKey}_player1_ch">${characterOptions}</select></td>
-                    <td><input type="number" data-col="${teamKey}_player1_acs" placeholder="ACS"></td>
-                    <td><input type="number" data-col="${teamKey}_player1_k" placeholder="K"></td>
-                    <td><input type="number" data-col="${teamKey}_player1_d" placeholder="D"></td>
-                    <td><input type="number" data-col="${teamKey}_player1_a" placeholder="A"></td>
-                </tr>
-                <tr>
-                    <td><input type="text" data-col="${teamKey}_player2_id" placeholder="ID"></td>
-                    <td><select data-col="${teamKey}_player2_ch">${characterOptions}</select></td>
-                    <td><input type="number" data-col="${teamKey}_player2_acs" placeholder="ACS"></td>
-                    <td><input type="number" data-col="${teamKey}_player2_k" placeholder="K"></td>
-                    <td><input type="number" data-col="${teamKey}_player2_d" placeholder="D"></td>
-                    <td><input type="number" data-col="${teamKey}_player2_a" placeholder="A"></td>
-                </tr>
-                <tr>
-                    <td><input type="text" data-col="${teamKey}_player3_id" placeholder="ID"></td>
-                    <td><select data-col="${teamKey}_player3_ch">${characterOptions}</select></td>
-                    <td><input type="number" data-col="${teamKey}_player3_acs" placeholder="ACS"></td>
-                    <td><input type="number" data-col="${teamKey}_player3_k" placeholder="K"></td>
-                    <td><input type="number" data-col="${teamKey}_player3_d" placeholder="D"></td>
-                    <td><input type="number" data-col="${teamKey}_player3_a" placeholder="A"></td>
-                </tr>
-                <tr>
-                    <td><input type="text" data-col="${teamKey}_player4_id" placeholder="ID"></td>
-                    <td><select data-col="${teamKey}_player4_ch">${characterOptions}</select></td>
-                    <td><input type="number" data-col="${teamKey}_player4_acs" placeholder="ACS"></td>
-                    <td><input type="number" data-col="${teamKey}_player4_k" placeholder="K"></td>
-                    <td><input type="number" data-col="${teamKey}_player4_d" placeholder="D"></td>
-                    <td><input type="number" data-col="${teamKey}_player4_a" placeholder="A"></td>
-                </tr>
-                <tr>
-                    <td><input type="text" data-col="${teamKey}_player5_id" placeholder="ID"></td>
-                    <td><select data-col="${teamKey}_player5_ch">${characterOptions}</select></td>
-                    <td><input type="number" data-col="${teamKey}_player5_acs" placeholder="ACS"></td>
-                    <td><input type="number" data-col="${teamKey}_player5_k" placeholder="K"></td>
-                    <td><input type="number" data-col="${teamKey}_player5_d" placeholder="D"></td>
-                    <td><input type="number" data-col="${teamKey}_player5_a" placeholder="A"></td>
+                 <tr>
+                    <td rowspan="5" style="vertical-align: middle;"><select data-col="${teamKey}" class="team-selector">${teamOptionsHTML}</select></td>
+                    ${Array(5).fill(0).map((_, i) => `
+                        ${i > 0 ? '<tr>' : ''}
+                        <td><input type="text" data-col="${teamKey}_player${i+1}_id" placeholder="ID" list="${datalistId}"></td>
+                        <td><select data-col="${teamKey}_player${i+1}_ch">${characterOptions}</select></td>
+                        <td><input type="number" data-col="${teamKey}_player${i+1}_acs" placeholder="ACS"></td>
+                        <td><input type="number" data-col="${teamKey}_player${i+1}_k" placeholder="K"></td>
+                        <td><input type="number" data-col="${teamKey}_player${i+1}_d" placeholder="D"></td>
+                        <td><input type="number" data-col="${teamKey}_player${i+1}_a" placeholder="A"></td>
+                        ${i > 0 ? '</tr>' : ''}
+                    `).join('')}
                 </tr>
             </tbody>
         </table></div>`;
         return table;
     }
+    
+    document.getElementById('matches-form-container').addEventListener('change', function(e) {
+        if (e.target.classList.contains('team-selector')) {
+            const selectedTeam = e.target.value;
+            const roster = teamRosters[selectedTeam] || [];
+            const playerOptions = roster.map(p => `<option value="${p.id}">${p.name || ''}</option>`).join('');
+            
+            const table = e.target.closest('table');
+            const teamLabel = e.target.dataset.col === 'team_a' ? 'a' : 'b';
+            const datalistId = `team-${teamLabel}-players-datalist`;
+            
+            const datalist = document.getElementById(datalistId) || document.createElement('datalist');
+            datalist.id = datalistId;
+            datalist.innerHTML = roster.map(p => `<option value="${p.id}"></option>`).join('');
+            if (!document.getElementById(datalistId)) document.body.appendChild(datalist);
+
+            const idInputs = table.querySelectorAll(`input[data-col^="team_${teamLabel}_player"]`);
+            idInputs.forEach((input, index) => {
+                if (roster[index]) {
+                    input.value = roster[index].id;
+                } else {
+                    input.value = '';
+                }
+            });
+        }
+    });
 
     function setupDynamicRows() {
         document.querySelectorAll('.add-row-btn').forEach(btn => {
@@ -456,11 +505,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const data = [];
+        const selectedGroup = document.querySelector('#group-filter-buttons .active').dataset.group;
+
         rows.forEach(row => {
             const rowData = {};
             if (isIdsTable) {
                 rowData.isNew = row.dataset.isNew === 'true';
             }
+            rowData.group = selectedGroup; 
+
             row.querySelectorAll('input, select').forEach(input => {
                 if (input.dataset.col) {
                     let value = input.value.trim();
@@ -470,7 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             });
-            if (Object.keys(rowData).length > (isIdsTable ? 1 : 0)) data.push(rowData);
+            if (Object.keys(rowData).length > (isIdsTable ? 2 : 1)) data.push(rowData);
         });
         return data;
     }
@@ -502,7 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         for (const row of processedData) {
-            if (!row.group || !row.stage || !row.team_a || !row.team_b) return alert('请确保每条记录的组别、赛段和队伍名都已填写！');
+            if (!row.group || !row.stage || !row.team_a || !row.team_b) return alert('请确保每条记录的赛段和队伍名都已填写！');
         }
 
         const { error } = await supabaseClient.from('matches').insert(processedData);
@@ -520,17 +573,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadIdsData() {
         const tableBody = document.getElementById('ids-table-body');
-        tableBody.innerHTML = '<tr><td colspan="5">正在加载...</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="6">正在加载...</td></tr>';
         const { data, error } = await supabaseClient.from('player_ids').select('*').order('id');
-        if (error) { tableBody.innerHTML = `<tr><td colspan="5">加载失败: ${error.message}</td></tr>`; return; }
+        if (error) { tableBody.innerHTML = `<tr><td colspan="6">加载失败: ${error.message}</td></tr>`; return; }
         tableBody.innerHTML = '';
         data.forEach(player => tableBody.appendChild(rowTemplates['ids-table-body'](false, player)));
     }
 
     async function updateIds() {
         const dataToUpsert = getTableData('ids-table-body', true).map(row => {
-            // Don't include the isNew helper property in the data sent to Supabase
-            const { isNew, ...dbRow } = row;
+            const { isNew, group, ...dbRow } = row;
             return dbRow;
         });
 
@@ -547,6 +599,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error(error);
         } else { 
             alert('选手ID更新成功！'); 
+            await loadInitialData();
             loadIdsData(); 
         }
     }
