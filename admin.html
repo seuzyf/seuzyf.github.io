@@ -289,7 +289,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function loadInitialData() {
-        const { data, error } = await supabaseClient.from('player_ids').select('id, name, team, "group"');
+        // Corrected: Select all necessary fields including image and honor
+        const { data, error } = await supabaseClient.from('player_ids').select('id, name, team, "group", image, honor');
         if (error) { console.error('无法加载选手数据:', error); return; }
         
         allPlayersData = data;
