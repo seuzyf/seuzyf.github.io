@@ -56,9 +56,9 @@
             color: var(--text-color);
             margin: 0;
             padding: 20px 0;
-            background-image: url('https://cdnb.artstation.com/p/assets/images/images/057/058/627/4k/rudy-parfaite-shattered-episode5-lisbon-mattepainting-rudyparfaite-03.jpg?1670735519');
+            background-image: url('https://cdnb.artstation.com/p/assets/images/images/048/686/679/large/suke-episode-4-keyart-4k-4-f1.jpg?1650654264');
             background-attachment: fixed;
-            background-size: 120%;
+            background-size: cover;
             background-position: center;
         }
         .container { width: 90%; max-width: 1400px; margin: 0 auto; }
@@ -73,36 +73,7 @@
             border: 1px solid var(--border-color);
             position: relative;
         }
-        #player-avatar-container {
-            margin-bottom: 15px;
-        }
-        .player-avatar {
-            width: 100px;
-            height: 100px;
-            border-radius: 15px;
-            object-fit: cover;
-            object-position: center center;
-        }
-        .main-header-block h1 { 
-            margin: 0; 
-            font-weight: 700; 
-            font-size: 2.5em;
-            display: flex;
-            align-items: baseline;
-            justify-content: center;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .player-id {
-             color: var(--text-color);
-        }
-        
-        .player-real-name {
-            color: var(--primary-color);
-            font-size: 0.8em;
-            font-weight: 500;
-        }
+        .main-header-block h1 { color: var(--primary-color); margin: 0; font-weight: 700; font-size: 2.5em; }
         
         #player-honors { 
             margin-top: 15px; 
@@ -236,17 +207,15 @@
         input:checked + .slider:before { transform: translateX(24px); }
         
         #comments-section h2 { display: flex; justify-content: space-between; align-items: center; }
-        .player-avg-score { color: var(--primary-color); font-size: 0.8em; font-weight: 500; }
+        .player-avg-score { color: var(--star-color); font-size: 0.8em; font-weight: 500; }
         .comment-card { position: relative; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin-bottom: 15px; }
-        .comment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.9em; flex-wrap: wrap; gap: 10px;}
+        .comment-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; font-size: 0.9em; flex-wrap: wrap; gap: 5px;}
         .comment-author { font-weight: bold; color: var(--primary-color); margin-right: auto;}
         .comment-rating { white-space: nowrap; }
-        .comment-rating span { font-weight: bold; color: var(--primary-color); }
+        .comment-rating span { color: var(--star-color); font-weight: bold; }
         .comment-body { font-size: 1em; line-height: 1.5; word-wrap: break-word; }
-        .delete-comment-btn, .reply-comment-btn { background: #D64550; color: white; border: none; border-radius: 5px; padding: 3px 8px; cursor: pointer; font-size: 0.8em; opacity: 0.7; transition: opacity 0.2s; flex-shrink: 0; }
-        .delete-comment-btn:hover, .reply-comment-btn:hover { opacity: 1; }
-        .reply-comment-btn { background: #4CAF50; margin-left: 5px; }
-        .replies-container { margin-left: 30px; margin-top: 15px; border-left: 2px solid var(--border-color); padding-left: 15px; }
+        .delete-comment-btn { position: absolute; top: 10px; right: 10px; background: #D64550; color: white; border: none; border-radius: 5px; padding: 3px 8px; cursor: pointer; font-size: 0.8em; opacity: 0.7; transition: opacity 0.2s; }
+        .delete-comment-btn:hover { opacity: 1; }
         #comment-form { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
         .form-row { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
         #nickname-input { flex: 1; min-width: 150px; height: var(--control-height); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-color); color: var(--text-color); font-size: 1em; box-sizing: border-box; }
@@ -257,7 +226,6 @@
         #comment-form button { height: var(--control-height); border: none; border-radius: 8px; background-color: var(--primary-color); color: white; font-weight: 500; cursor: pointer; transition: background-color 0.3s; }
         #comment-form button:hover { opacity: 0.9; }
         #comment-form button:disabled { background-color: #888; cursor: not-allowed; }
-        .reply-form-container { margin-top: 15px; }
     </style>
 </head>
 <body>
@@ -333,7 +301,7 @@
     }
     
     async function fetchAllComments(uniquePlayerKey) {
-        const { data, error } = await supabaseClient.from('comments').select('*').eq('player_key', uniquePlayerKey).order('created_at', { ascending: true });
+        const { data, error } = await supabaseClient.from('comments').select('*').eq('player_key', uniquePlayerKey).order('created_at', { ascending: false });
         if (error) { console.error('获取评论失败:', error); return []; }
         return data;
     }
@@ -341,53 +309,25 @@
     function displayComments(playerComments, uniquePlayerKey) {
         const commentsList = document.getElementById('comments-list');
         const avgScoreEl = document.getElementById('player-average-score');
-
-        const topLevelComments = playerComments.filter(c => c.rating !== null && c.rating !== undefined);
-        if (topLevelComments.length > 0) {
-            const totalScore = topLevelComments.reduce((sum, comment) => sum + comment.rating, 0);
-            const averageScore = (totalScore / topLevelComments.length).toFixed(2);
+        
+        if (playerComments.length > 0) {
+            const totalScore = playerComments.reduce((sum, comment) => sum + comment.rating, 0);
+            const averageScore = (totalScore / playerComments.length).toFixed(2);
             avgScoreEl.textContent = `平均分: ${averageScore} / 10`;
         } else {
             avgScoreEl.textContent = '暂无评分';
         }
 
-        const commentsById = playerComments.reduce((acc, comment) => {
-            acc[comment.id] = { ...comment, replies: [] };
-            return acc;
-        }, {});
-
-        const commentTree = [];
-        playerComments.forEach(comment => {
-            if (comment.parent_id && commentsById[comment.parent_id]) {
-                commentsById[comment.parent_id].replies.push(commentsById[comment.id]);
-            } else if(comment.rating !== null && comment.rating !== undefined) {
-                commentTree.push(commentsById[comment.id]);
-            }
-        });
-
-        commentTree.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
-
-        const renderComment = (comment) => {
-            return `
-                <div class="comment-card" id="comment-${comment.id}">
-                    <div class="comment-header">
-                        <span class="comment-author">${escapeHTML(comment.nickname)}</span>
-                        ${comment.rating ? `<span class="comment-rating">评分: <span>${comment.rating}</span> / 10</span>` : ''}
-                         <div style="margin-left:auto;">
-                             <button class="reply-comment-btn" data-comment-id="${comment.id}">回复</button>
-                            ${comment.ip === currentUserIP ? `<button class="delete-comment-btn" data-comment-id="${comment.id}">删除</button>` : ''}
-                        </div>
-                    </div>
-                    <p class="comment-body">${escapeHTML(comment.content)}</p>
-                    <small style="opacity: 0.6;">${new Date(comment.created_at).toLocaleString()}</small>
-                    <div class="reply-form-container" id="reply-form-for-${comment.id}"></div>
-                    <div class="replies-container">
-                        ${comment.replies.map(renderComment).join('')}
-                    </div>
-                </div>`;
-        };
-        
-        commentsList.innerHTML = commentTree.length === 0 ? '<p>暂无评论，快来抢沙发吧！</p>' : commentTree.map(renderComment).join('');
+        commentsList.innerHTML = playerComments.length === 0 ? '<p>暂无评论，快来抢沙发吧！</p>' : playerComments.map(comment => `
+            <div class="comment-card">
+                ${comment.ip === currentUserIP ? `<button class="delete-comment-btn" data-comment-id="${comment.id}">删除</button>` : ''}
+                <div class="comment-header">
+                    <span class="comment-author">${escapeHTML(comment.nickname)}</span>
+                    <span class="comment-rating">评分: <span>${comment.rating}</span> / 10</span>
+                </div>
+                <p class="comment-body">${escapeHTML(comment.content)}</p>
+                <small style="opacity: 0.6;">${new Date(comment.created_at).toLocaleString()}</small>
+            </div>`).join('');
 
         document.querySelectorAll('.delete-comment-btn').forEach(button => {
             button.addEventListener('click', (event) => {
@@ -396,86 +336,41 @@
                 }
             });
         });
-
-        document.querySelectorAll('.reply-comment-btn').forEach(button => {
-            button.addEventListener('click', (event) => {
-                const commentId = event.target.dataset.commentId;
-                showReplyForm(commentId, uniquePlayerKey);
-            });
-        });
-    }
-    
-    function showReplyForm(parentCommentId, uniquePlayerKey) {
-        document.querySelectorAll('.reply-form-container').forEach(c => c.innerHTML = ''); // Close other reply forms
-        
-        const container = document.getElementById(`reply-form-for-${parentCommentId}`);
-        if (!container) return;
-
-        container.innerHTML = `
-            <form class="reply-form">
-                <input type="text" placeholder="您的昵称" required style="width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 5px; border: 1px solid var(--border-color); background-color: var(--bg-color); color: var(--text-color);">
-                <textarea placeholder="输入您的回复..." rows="3" required style="width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 5px; border: 1px solid var(--border-color); background-color: var(--bg-color); color: var(--text-color);"></textarea>
-                <button type="submit" style="height: 36px; border: none; border-radius: 5px; background-color: var(--primary-color); color: white; font-weight: 500; cursor: pointer;">提交回复</button>
-            </form>
-        `;
-        
-        container.querySelector('.reply-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const form = e.target;
-            const nickname = form.querySelector('input').value;
-            const content = form.querySelector('textarea').value;
-            
-            await handleCommentSubmit(e, uniquePlayerKey, {
-                nickname: nickname,
-                content: content,
-                parent_id: parentCommentId
-            });
-        });
     }
 
-    async function handleCommentSubmit(event, uniquePlayerKey, replyData = null) {
+    async function handleCommentSubmit(event, uniquePlayerKey) {
         event.preventDefault();
+        const ratingInput = document.getElementById('rating-input');
+        if (!ratingInput.value) { alert('请选择一个评分！'); return; }
 
-        const isReply = !!replyData;
-        const form = isReply ? event.target : document.getElementById('comment-form');
-        const submitButton = form.querySelector('button[type="submit"]');
-
-        if (!isReply) {
-            const ratingInput = document.getElementById('rating-input');
-            if (!ratingInput.value) { alert('请选择一个评分！'); return; }
-        }
-
+        const submitButton = event.target.querySelector('button');
         submitButton.disabled = true;
         submitButton.textContent = '提交中...';
 
         const newComment = {
             player_key: uniquePlayerKey,
-            nickname: isReply ? replyData.nickname : document.getElementById('nickname-input').value,
-            rating: isReply ? null : parseInt(document.getElementById('rating-input').value),
-            content: isReply ? replyData.content : document.getElementById('comment-input').value,
-            ip: await getUserIP(),
-            parent_id: isReply ? replyData.parent_id : null,
+            nickname: document.getElementById('nickname-input').value,
+            rating: parseInt(ratingInput.value),
+            content: document.getElementById('comment-input').value,
+            ip: await getUserIP()
         };
         
         const { error } = await supabaseClient.from('comments').insert([newComment]);
 
         if (!error) {
-            alert('提交成功！');
-            if (!isReply) {
-                form.reset();
-                document.getElementById('rating-input').value = '';
-                setupStarRating(); 
-            }
+            alert('评论提交成功！');
+            document.getElementById('comment-form').reset();
+            ratingInput.value = '';
+            setupStarRating(); 
             const updatedComments = await fetchAllComments(uniquePlayerKey);
             displayComments(updatedComments, uniquePlayerKey);
         } else {
             console.error('提交失败:', error);
-            alert('提交失败，请稍后再试。');
+            alert('评论提交失败，请稍后再试。');
         }
         submitButton.disabled = false;
-        submitButton.textContent = isReply ? '提交回复' : '提交评论';
+        submitButton.textContent = '提交评论';
     }
-
 
     async function handleDeleteComment(commentId, uniquePlayerKey) {
         const { error } = await supabaseClient.from('comments').delete().match({ id: commentId, ip: currentUserIP });
@@ -591,26 +486,8 @@
         const idNameMap = idData.reduce((map, row) => { map[row.id] = row; return map; }, {});
         const allPlayerData = processAllPlayerData(matches);
         
-        const realName = idNameMap[playerId]?.name || '';
-        const imageUrl = idNameMap[playerId]?.image;
-        const header = document.getElementById('player-id-header');
-
-        if (imageUrl) {
-            const avatarContainer = document.createElement('div');
-            avatarContainer.id = 'player-avatar-container';
-            const avatar = document.createElement('img');
-            avatar.src = imageUrl;
-            avatar.className = 'player-avatar';
-            avatarContainer.appendChild(avatar);
-            header.parentNode.insertBefore(avatarContainer, header);
-        }
-        
-        if (realName) {
-            header.innerHTML = `<span class="player-id">${playerId}</span><span class="player-real-name">${realName}</span>`;
-        } else {
-            header.innerHTML = `<span class="player-id">${playerId}</span>`;
-        }
-
+        const realName = idNameMap[playerId]?.name || playerId;
+        document.getElementById('player-id-header').textContent = `${realName} (${playerId})`;
 
         const honors = idNameMap[playerId]?.honor;
         if (honors) {
@@ -724,7 +601,7 @@
     }
     
     function renderSummaryList(playerData, playerId, groupPlayersForRank) {
-        const playerAverages = { acs: playerData.total_stats.matchCount > 0 ? playerData.total_stats.acs / playerData.total_stats.matchCount : 0, k_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.kills / playerData.total_stats.matchCount : 0, d_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.deaths / playerData.total_stats.matchCount : 0, a_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.assists / playerData.total_stats.matchCount : 0, k_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.kills / playerData.total_stats.totalRounds : 0, d_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.deaths / playerData.total_stats.totalRounds : 0, a_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.assists / playerData.total_stats.totalRounds : 0, };
+        const playerAverages = { acs: playerData.total_stats.matchCount > 0 ? playerData.total_stats.acs / playerData.total_stats.matchCount : 0, k_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.kills / playerData.total_stats.matchCount : 0, d_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.deaths / playerData.total_stats.matchCount : 0, a_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.assists / playerData.total_stats.matchCount : 0, k_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.kills / playerData.total_stats.totalRounds : 0, d_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.deaths / playerData.totalRounds : 0, a_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.assists / playerData.total_stats.totalRounds : 0, };
         document.getElementById('summary-list-content').innerHTML = `
             <div><strong>平均ACS:</strong> <span>${playerAverages.acs.toFixed(2)} <span class="rank-top">${getRank(playerId, 'acs', groupPlayersForRank)}</span></span></div>
             <div><strong>每局击杀:</strong> <span>${playerAverages.k_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_map', groupPlayersForRank)}</span></span></div>
