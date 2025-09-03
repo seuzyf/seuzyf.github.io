@@ -202,15 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentGroup = getCurrentGroup();
         const groupPlayers = allPlayersData.filter(p => p.group === currentGroup);
         
-        const groupTeams = new Set();
-        groupPlayers.forEach(p => { if (p.team) groupTeams.add(p.team) });
-        
-        // Also consider teams from team inputs that might not have players yet
-        document.querySelectorAll('.team-input').forEach(input => {
-            if (input.value.trim()) {
-                groupTeams.add(input.value.trim());
-            }
-        });
+        const groupTeams = new Set(groupPlayers.map(p => p.team).filter(Boolean));
 
         updatePlayersTable(groupPlayers);
         updateBudgets(groupPlayers, groupTeams);
@@ -242,8 +234,8 @@ document.addEventListener('DOMContentLoaded', () => {
             tr.innerHTML = `
                 <td>${player.name || ''}</td>
                 <td>${player.id}</td>
-                <td>${player.hwrank || 'N/A'}</td>
-                <td>${player.start_price || 'N/A'}</td>
+                <td>${player.hwrank || 0}</td>
+                <td>${player.start_price || 0}</td>
                 <td><input type="number" class="final-price-input" value="${player.final_price || ''}"></td>
                 <td><input type="text" class="team-input" value="${player.team || ''}" list="teams-datalist"></td>
                 <td><button class="confirm-btn">确定</button></td>
@@ -266,10 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     teamInfo[player.team] = { spending: 0, playerCount: 0 };
                 }
                 teamInfo[player.team].playerCount++;
-                
-                if (typeof player.final_price === 'number') {
-                    teamInfo[player.team].spending += player.final_price;
-                }
+                teamInfo[player.team].spending += player.final_price || 0;
             }
         });
 
