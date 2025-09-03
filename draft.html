@@ -81,7 +81,7 @@
         .data-section { background-color: var(--card-bg-color); backdrop-filter: blur(10px); border: 1px solid var(--border-color); border-radius: 12px; padding: 25px; box-shadow: 0 8px 16px var(--shadow-color); }
         .data-section h2 { margin-top: 0; color: var(--primary-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
         .budget-list { display: flex; flex-direction: column; gap: 15px; font-size: 1.1em; }
-        .budget-list div { background-color: var(--bg-color); padding: 12px; border-radius: 8px; display: flex; flex-direction: column; align-items: stretch; }
+        .budget-list div { background-color: var(--bg-color); padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: baseline; }
         .budget-list strong { color: var(--primary-color); }
         #players-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
         #players-table thead { background-color: var(--primary-color); color: white; }
@@ -150,6 +150,8 @@
             </div>
         </main>
     </div>
+    
+    <datalist id="teams-datalist"></datalist>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -164,9 +166,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const csvUpload = document.getElementById('csv-upload');
     const themeToggle = document.getElementById('theme-toggle-checkbox');
     const themeText = document.getElementById('theme-text');
+    const teamsDatalist = document.getElementById('teams-datalist');
 
     let allPlayersData = [];
-    let allTeams = new Set();
     const TEAM_BUDGET = 400;
     const MAX_PLAYERS_PER_TEAM = 5;
 
@@ -193,9 +195,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         allPlayersData = data;
-        allTeams.clear();
-        data.forEach(p => { if (p.team) allTeams.add(p.team) });
-        
         renderForCurrentGroup();
     }
 
@@ -203,10 +202,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentGroup = getCurrentGroup();
         const groupPlayers = allPlayersData.filter(p => p.group === currentGroup);
         
-        const groupTeams = new Set(allPlayersData.filter(p => p.group === currentGroup && p.team).map(p => p.team));
+        const groupTeams = new Set();
+        groupPlayers.forEach(p => { if (p.team) groupTeams.add(p.team) });
+        
+        // Also consider teams from team inputs that might not have players yet
+        document.querySelectorAll('.team-input').forEach(input => {
+            if (input.value.trim()) {
+                groupTeams.add(input.value.trim());
+            }
+        });
 
         updatePlayersTable(groupPlayers);
         updateBudgets(groupPlayers, groupTeams);
+        updateTeamsDatalist(groupTeams);
+    }
+
+    function updateTeamsDatalist(groupTeams) {
+        teamsDatalist.innerHTML = '';
+        const sortedTeams = Array.from(groupTeams).sort();
+        sortedTeams.forEach(team => {
+            const option = document.createElement('option');
+            option.value = team;
+            teamsDatalist.appendChild(option);
+        });
     }
 
     function updatePlayersTable(players) {
@@ -227,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${player.hwrank || 'N/A'}</td>
                 <td>${player.start_price || 'N/A'}</td>
                 <td><input type="number" class="final-price-input" value="${player.final_price || ''}"></td>
-                <td><input type="text" class="team-input" value="${player.team || ''}"></td>
+                <td><input type="text" class="team-input" value="${player.team || ''}" list="teams-datalist"></td>
                 <td><button class="confirm-btn">确定</button></td>
             `;
             playersTableBody.appendChild(tr);
@@ -236,52 +254,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateBudgets(groupPlayers, groupTeams) {
         budgetListContent.innerHTML = '';
-        const teamSpending = {};
-        const teamPlayerCounts = {};
+        const teamInfo = {};
 
         groupTeams.forEach(team => {
-            teamSpending[team] = 0;
-            teamPlayerCounts[team] = 0;
+            teamInfo[team] = { spending: 0, playerCount: 0 };
         });
 
         groupPlayers.forEach(player => {
             if (player.team) {
-                if (!teamPlayerCounts[player.team]) {
-                    teamPlayerCounts[player.team] = 0;
+                if (!teamInfo[player.team]) {
+                    teamInfo[player.team] = { spending: 0, playerCount: 0 };
                 }
-                teamPlayerCounts[player.team]++;
+                teamInfo[player.team].playerCount++;
                 
                 if (typeof player.final_price === 'number') {
-                    if (!teamSpending[player.team]) {
-                        teamSpending[player.team] = 0;
-                    }
-                    teamSpending[player.team] += player.final_price;
+                    teamInfo[player.team].spending += player.final_price;
                 }
             }
         });
 
-        if (groupTeams.size === 0) {
+        if (Object.keys(teamInfo).length === 0) {
              budgetListContent.innerHTML = '<p>该组别暂无队伍信息。</p>';
              return;
         }
 
-        const sortedTeams = Array.from(groupTeams).sort();
+        const sortedTeams = Object.keys(teamInfo).sort();
 
         sortedTeams.forEach(team => {
-            const spending = teamSpending[team] || 0;
+            const { spending, playerCount } = teamInfo[team];
             const remaining = TEAM_BUDGET - spending;
-            const playerCount = teamPlayerCounts[team] || 0;
-            const slotsLeft = MAX_PLAYERS_PER_TEAM - playerCount;
-
+            
             const div = document.createElement('div');
             div.innerHTML = `
-                <div style="display: flex; justify-content: space-between; width: 100%; align-items: baseline;">
-                    <span>${team}</span>
+                <span>${team}</span>
+                <div style="display: flex; align-items: baseline; gap: 10px;">
+                    <span style="font-size: 0.8em; opacity: 0.7;">${playerCount}/${MAX_PLAYERS_PER_TEAM}</span>
                     <strong>${remaining.toFixed(2)}</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; width: 100%; font-size: 0.85em; opacity: 0.7; margin-top: 5px;">
-                    <span>当前人数: ${playerCount}/${MAX_PLAYERS_PER_TEAM}</span>
-                    <span>剩余可选: ${Math.max(0, slotsLeft)}人</span>
                 </div>
             `;
             budgetListContent.appendChild(div);
