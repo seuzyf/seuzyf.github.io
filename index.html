@@ -199,6 +199,7 @@
         .roster-list { list-style: none; padding: 0; font-size: 1.2em; }
         .roster-list li { padding: 8px 0; border-bottom: 1px solid var(--border-color); }
         .roster-list li:last-child { border-bottom: none; }
+        .roster-list .sub-label { color: var(--primary-color); font-size: 0.8em; margin-left: 8px; }
         .player-comparison-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
         .player-comparison-table th, .player-comparison-table td { padding: 10px 8px; text-align: center; border-bottom: 1px solid var(--border-color); white-space: normal; }
         .player-comparison-table thead th { padding: 12px 8px; vertical-align: middle; white-space: nowrap; }
@@ -327,9 +328,8 @@
             const standingsTitle = document.getElementById('standings-title');
             const mergeStatsCheckbox = document.getElementById('merge-stats-checkbox');
             
-            let tournamentData = { '传奇组': [], '中坚组': [], '挑战组': [] };
-            let currentFilteredMatches = [];
-            let allPlayerData = {};
+            let allMatchesData = [];
+            let allPlayersData = [];
             let idNameMap = {};
 
             function setTheme(isLight) {
@@ -345,11 +345,20 @@
             async function loadDataFromSupabase() {
                 matchesView.innerHTML = '<p>正在从 Supabase 加载数据...</p>';
                 try {
-                    const { data: matches, error: matchesError } = await supabaseClient.from('matches').select('*');
-                    if (matchesError) throw matchesError;
+                    const [{ data: matches, error: matchesError }, { data: players, error: playersError }] = await Promise.all([
+                        supabaseClient.from('matches').select('*'),
+                        supabaseClient.from('player_ids').select('id, name, team, "group"')
+                    ]);
 
-                    parseData(matches);
-                    await processAndStorePlayerData(matches);
+                    if (matchesError || playersError) throw matchesError || playersError;
+
+                    allMatchesData = matches;
+                    allPlayersData = players;
+                    idNameMap = players.reduce((map, p) => { map[p.id] = p.name; return map; }, {});
+                    
+                    localStorage.setItem('valorantPlayerSummary', JSON.stringify(processAllPlayerData(matches)));
+                    localStorage.setItem('valorantIdNameMap', JSON.stringify(idNameMap));
+
 
                     document.querySelector('#group-filter-buttons button.active')?.classList.remove('active');
                     document.querySelector('#group-filter-buttons button[data-group="传奇组"]')?.classList.add('active');
@@ -381,27 +390,18 @@
                 matchesTitle.textContent = `比赛结果 - ${activeGroup}`;
                 standingsTitle.textContent = `战队积分榜 - ${activeGroup}`;
                 
-                const groupMatches = tournamentData[activeGroup] || [];
+                const groupMatches = allMatchesData.filter(m => m.group === activeGroup);
                 
-                currentFilteredMatches = groupMatches.filter(match => 
+                const filteredMatches = groupMatches.filter(match => 
                     selectedStage === 'all' || 
-                    ((match['stage'] === '小组赛' ? '小组赛' : '淘汰赛') === selectedStage)
+                    ((match.stage === '小组赛' ? '小组赛' : '淘汰赛') === selectedStage)
                 );
 
-                displayMatchCards(currentFilteredMatches);
-                calculateAndDisplayStandings(currentFilteredMatches);
+                displayMatchCards(filteredMatches, groupMatches);
+                calculateAndDisplayStandings(groupMatches);
             }
-
-            function parseData(matches) {
-                tournamentData = { '传奇组': [], '中坚组': [], '挑战组': [] };
-                matches.forEach(match => {
-                    if (tournamentData.hasOwnProperty(match.group)) {
-                        tournamentData[match.group].push(match);
-                    }
-                });
-            }
-
-            async function processAndStorePlayerData(matches) {
+            
+            function processAllPlayerData(matches) {
                 const playerData = {};
                  matches.forEach(match => {
                     const score = String(match['score']).split(/[/:：]/).map(Number);
@@ -419,16 +419,16 @@
                             
                             const uniquePlayerKey = `${playerId}::${match.group}`;
                             if (!playerData[uniquePlayerKey]) {
+                                const registeredPlayer = allPlayersData.find(pl => pl.id === playerId);
                                 playerData[uniquePlayerKey] = {
-                                    id: playerId, group: match.group, team: teamName,
+                                    id: playerId, group: match.group, 
+                                    team: registeredPlayer ? registeredPlayer.team : teamName,
                                     total_stats: { kills: 0, deaths: 0, assists: 0, acs: 0, matchCount: 0, totalRounds: 0 },
                                     by_character: {}
                                 };
                             }
                             
                             const playerEntry = playerData[uniquePlayerKey];
-                            playerEntry.team = teamName;
-                            
                             const p_stats = playerEntry.total_stats;
                             p_stats.acs += stats[0]; 
                             p_stats.kills += stats[1]; 
@@ -453,35 +453,35 @@
                         }
                     });
                 });
-
-                allPlayerData = playerData;
-                localStorage.setItem('valorantPlayerSummary', JSON.stringify(playerData));
-                
-                const { data: idData, error: idError } = await supabaseClient.from('player_ids').select('id, name');
-                if (idError) {
-                    console.error("无法加载选手ID映射:", idError);
-                } else {
-                    idNameMap = idData.reduce((map, row) => {
-                        if(row.id && row.name) map[row.id] = row.name;
-                        return map;
-                    }, {});
-                    localStorage.setItem('valorantIdNameMap', JSON.stringify(idNameMap));
-                }
+                return playerData;
             }
 
-            function displayMatchCards(matches) {
+            function displayMatchCards(matches, allGroupMatches) {
                 matchesView.innerHTML = matches.length === 0 ? '<p>当前筛选条件下没有比赛。</p>' : '';
-                matches.forEach((match, index) => createMatchCard(match, index));
+                matches.forEach(match => {
+                    // Find the original index in the unfiltered group matches to maintain a stable reference
+                    const originalIndex = allGroupMatches.findIndex(m => m.id === match.id);
+                    createMatchCard(match, originalIndex);
+                });
             }
 
-            function calculateAndDisplayStandings(matches) {
+            function calculateAndDisplayStandings(groupMatches) {
+                const activeGroup = groupFilterButtons.querySelector('.active').dataset.group;
                 const teamStandings = {};
-                matches.forEach(match => {
-                    const [teamA, teamB] = [match['team_a'], match['team_b']];
-                    if (!match['score']) return;
-                    const [scoreA, scoreB] = String(match['score']).split(/[/:：]/).map(Number);
+                
+                // Initialize all teams in the group from player_ids
+                const teamsInGroup = new Set(allPlayersData.filter(p => p.group === activeGroup && p.team).map(p => p.team));
+                teamsInGroup.forEach(teamName => {
+                    teamStandings[teamName] = { wins: 0, losses: 0, roundDiff: 0 };
+                });
+
+                groupMatches.forEach(match => {
+                    const [teamA, teamB] = [match.team_a, match.team_b];
+                    if (!match.score) return;
+                    const [scoreA, scoreB] = String(match.score).split(/[/:：]/).map(Number);
                     if (isNaN(scoreA) || isNaN(scoreB)) return;
 
+                    // Ensure teams are initialized even if not in player_ids (e.g. older data)
                     if (!teamStandings[teamA]) teamStandings[teamA] = { wins: 0, losses: 0, roundDiff: 0 };
                     if (!teamStandings[teamB]) teamStandings[teamB] = { wins: 0, losses: 0, roundDiff: 0 };
 
@@ -509,21 +509,21 @@
 
             function createMatchCard(matchData, index) {
                 const card = document.createElement('div');
-                const stageType = (matchData['stage'] === '小组赛') ? '小组赛' : '淘汰赛';
-                card.className = `match-card stage-${stageType} ${matchData['stage'] === '决赛' ? 'stage-is-final' : ''}`;
-                card.dataset.stageName = matchData['stage'];
+                const stageType = (matchData.stage === '小组赛') ? '小组赛' : '淘汰赛';
+                card.className = `match-card stage-${stageType} ${matchData.stage === '决赛' ? 'stage-is-final' : ''}`;
+                card.dataset.stageName = matchData.stage;
                 card.dataset.matchIndex = index;
-                const score = String(matchData['score']).replace(/[/：]/, ' : ');
+                const score = String(matchData.score).replace(/[/：]/, ' : ');
                 card.innerHTML = `
                     <div class="match-header">
                         <div class="match-meta">
-                            <span class="map">${matchData['map']}</span>
-                            <span class="date">${matchData['match_date']}</span>
+                            <span class="map">${matchData.map}</span>
+                            <span class="date">${matchData.match_date}</span>
                         </div>
                         <div class="match-teams">
-                            <span class="team-name">${matchData['team_a']}</span>
+                            <span class="team-name">${matchData.team_a}</span>
                             <span class="score">${score}</span>
-                            <span class="team-name">${matchData['team_b']}</span>
+                            <span class="team-name">${matchData.team_b}</span>
                         </div>
                     </div>
                 `;
@@ -623,21 +623,60 @@
             }
             
             function showTeamRoster(teamName, groupName) {
-                const roster = new Set();
-                for(const key in allPlayerData) {
-                    const player = allPlayerData[key];
-                    if(player.team === teamName && player.group === groupName) {
-                        roster.add(player.id);
-                    }
-                }
+                const officialRoster = allPlayersData
+                    .filter(p => p.team === teamName && p.group === groupName)
+                    .map(p => p.id);
                 
+                const playedPlayers = {};
+                const teamMatches = allMatchesData.filter(m => m.group === groupName && (m.team_a === teamName || m.team_b === teamName));
+
+                const series = {};
+                teamMatches.forEach(m => {
+                    const opponent = m.team_a === teamName ? m.team_b : m.team_a;
+                    const seriesKey = `${m.match_date}-${m.stage}-${opponent}`;
+                    if (!series[seriesKey]) series[seriesKey] = [];
+                    series[seriesKey].push(m);
+                });
+
+                Object.values(series).forEach(matchesInSeries => {
+                    const playersInSeries = new Set();
+                    matchesInSeries.forEach(match => {
+                        const teamKey = match.team_a === teamName ? 'team_a' : 'team_b';
+                        for(let i = 1; i <= 5; i++) {
+                            const playerId = match[`${teamKey}_player${i}_id`];
+                            if(playerId) playersInSeries.add(playerId);
+                        }
+                    });
+                    playersInSeries.forEach(playerId => {
+                        if (!playedPlayers[playerId]) playedPlayers[playerId] = { count: 0 };
+                        playedPlayers[playerId].count++;
+                    });
+                });
+
+                const finalRoster = officialRoster.map(id => ({
+                    id, name: idNameMap[id] || id, isSub: false
+                }));
+                
+                Object.keys(playedPlayers).forEach(playerId => {
+                    if (!officialRoster.includes(playerId)) {
+                        finalRoster.push({
+                            id: playerId,
+                            name: idNameMap[playerId] || playerId,
+                            isSub: true,
+                            subCount: playedPlayers[playerId].count
+                        });
+                    }
+                });
+
                 const rosterHTML = `
                     <div class="modal-header">${teamName} (${groupName}) 成员列表</div>
                     <ul class="roster-list">
-                        ${roster.size > 0 ? Array.from(roster).map(playerId => {
-                            const realName = idNameMap[playerId] || playerId;
-                            return `<li>${realName} (${playerId})</li>`;
-                        }).join('') : '<li>暂无该队伍成员信息</li>'}
+                        ${finalRoster.length > 0 ? finalRoster.map(player => `
+                            <li>
+                                ${player.name} (${player.id})
+                                ${player.isSub ? `<span class="sub-label">(替补 ${player.subCount} 次)</span>` : ''}
+                            </li>
+                        `).join('') : '<li>暂无该队伍成员信息</li>'}
                     </ul>
                 `;
                 showModalWithContent(rosterHTML);
@@ -647,14 +686,17 @@
                 const clickedCard = e.target.closest('.match-card');
                 if (!clickedCard) return;
                 
+                const activeGroup = groupFilterButtons.querySelector('.active').dataset.group;
+                const groupMatches = allMatchesData.filter(m => m.group === activeGroup);
+
                 const matchIndex = parseInt(clickedCard.dataset.matchIndex, 10);
-                const clickedMatch = currentFilteredMatches[matchIndex];
+                const clickedMatch = groupMatches[matchIndex];
                 if (!clickedMatch) return;
 
                 if (mergeStatsCheckbox.checked) {
                     const { match_date, team_a, team_b, stage } = clickedMatch;
                     
-                    const relatedMatches = currentFilteredMatches.filter(m =>
+                    const relatedMatches = groupMatches.filter(m =>
                         m.match_date === match_date && m.stage === stage &&
                         ((m.team_a === team_a && m.team_b === team_b) || (m.team_a === team_b && m.team_b === team_a))
                     );
@@ -674,10 +716,8 @@
                 if (!clickedCell) return;
                 const teamName = clickedCell.dataset.team;
                 const activeGroup = groupFilterButtons.querySelector('.active').dataset.group;
-                if(teamName && activeGroup !== 'all') {
+                if(teamName) {
                     showTeamRoster(teamName, activeGroup);
-                } else if (teamName) {
-                    alert('请先在上方筛选一个具体的组别，再查看队伍成员。');
                 }
             });
 

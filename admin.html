@@ -230,7 +230,7 @@
                 <div style="overflow-x: auto;">
                     <table>
                         <thead>
-                            <tr><th>选手 ID (主键)</th><th>选手真名</th><th>组别</th><th>所属队伍</th><th>头像链接</th><th>选手荣誉 (用"、"分割)</th><th>操作</th></tr>
+                            <tr><th>选手 ID (主键)</th><th>选手真名</th><th>所属队伍</th><th>头像链接</th><th>选手荣誉 (用"、"分割)</th><th>操作</th></tr>
                         </thead>
                         <tbody id="ids-table-body"></tbody>
                     </table>
@@ -282,7 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupTabs();
         setupDynamicRows();
         setupGroupFilters();
-        loadIdsData();
+        loadIdsData(getCurrentGroup());
         document.getElementById('submit-matches').addEventListener('click', submitMatches);
         document.getElementById('submit-schedule').addEventListener('click', submitSchedule);
         document.getElementById('update-ids').addEventListener('click', updateIds);
@@ -296,7 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
         groupData = { '传奇组': { teams: new Set(), rosters: {} }, '中坚组': { teams: new Set(), rosters: {} }, '挑战组': { teams: new Set(), rosters: {} } };
 
         data.forEach(player => {
-            const playerGroup = player.group || '传奇组'; // Default to a group if null
+            const playerGroup = player.group;
             if (groupData[playerGroup]) {
                 if (player.team) {
                     groupData[playerGroup].teams.add(player.team);
@@ -311,11 +311,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateTeamDatalist() {
-        const allTeams = new Set();
-        Object.values(groupData).forEach(data => {
-            data.teams.forEach(team => allTeams.add(team));
-        });
-        const teamDatalistHTML = [...allTeams].sort().map(t => `<option value="${t}"></option>`).join('');
+        const currentGroup = getCurrentGroup();
+        const teams = groupData[currentGroup] ? [...groupData[currentGroup].teams].sort() : [];
+        const teamDatalistHTML = teams.map(t => `<option value="${t}"></option>`).join('');
         document.getElementById('teams-datalist').innerHTML = teamDatalistHTML;
     }
 
@@ -335,6 +333,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.target.tagName === 'BUTTON' && !e.target.classList.contains('active')) {
                 groupFilterButtons.querySelector('.active').classList.remove('active');
                 e.target.classList.add('active');
+                const newGroup = e.target.dataset.group;
+                updateTeamDatalist();
+                loadIdsData(newGroup);
+                // Clear dynamic forms on group change
+                document.getElementById('matches-form-container').innerHTML = '';
+                document.getElementById('schedule-table-body').innerHTML = '';
             }
         });
     }
@@ -372,7 +376,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const characterOptions = ['幻棱','钛狐','维斯','暮蝶','壹决','不死鸟','捷风','蝰蛇','雷兹','炼狱','猎枭','奇乐','芮娜','铁臂','贤者','幽影','尚勃勒','斯凯','霓虹','夜露','海神','星礈','盖可','钢锁','黑梦'].map(c => `<option value="${c}">${c}</option>`).join('');
     const mapOptions = ['源工重镇', '隐世修所', '霓虹町', '亚海悬城', '森寒冬港', '微风岛屿', '莲华古城', '裂变峡谷', '深海明珠', '盐海矿镇'].map(m => `<option value="${m}">${m}</option>`).join('');
     const scheduleMatchIdOptions = `<option value="S1-1">S1-1</option><option value="S1-2">S1-2</option><option value="S1-3">S1-3</option><option value="S1-4">S1-4</option><option value="S2-1W">S2-1W</option><option value="S2-2W">S2-2W</option><option value="S2-1L">S2-1L</option><option value="S2-2L">S2-2L</option><option value="S3-1M">S3-1M</option><option value="S3-2M">S3-2M</option><option value="P-WB1-1">P-WB1-1</option><option value="P-WB1-2">P-WB1-2</option><option value="P-WBF">P-WBF</option><option value="P-LB1">P-LB1</option><option value="P-LBF">P-LBF</option><option value="P-GF">P-GF</option>`;
-    const groupOptionsHTML = `<option value="传奇组">传奇组</option><option value="中坚组">中坚组</option><option value="挑战组">挑战组</option>`;
 
     function createDeleteButton(recordElement) {
         const deleteBtn = document.createElement('button');
@@ -421,19 +424,17 @@ document.addEventListener('DOMContentLoaded', () => {
             tr.querySelector('.actions').appendChild(createDeleteButton(tr));
             return tr;
         },
-        'ids-table-body': (isNew = true, data = { id: '', name: '', group: '', team: '', image: '', honor: '' }) => {
+        'ids-table-body': (isNew = true, data = { id: '', name: '', team: '', image: '', honor: '' }) => {
             const tr = document.createElement('tr');
             tr.dataset.isNew = isNew;
             tr.innerHTML = `
                 <td><input type="text" data-col="id" value="${data.id || ''}" ${!isNew ? 'readonly' : ''}></td>
                 <td><input type="text" data-col="name" value="${data.name || ''}"></td>
-                <td><select data-col="group">${groupOptionsHTML}</select></td>
                 <td><input type="text" data-col="team" value="${data.team || ''}" list="teams-datalist"></td>
                 <td><input type="text" data-col="image" value="${data.image || ''}"></td>
                 <td><input type="text" data-col="honor" value="${data.honor || ''}"></td>
                 <td class="actions"></td>`;
             tr.querySelector('.actions').appendChild(createDeleteButton(tr));
-            if(data.group) tr.querySelector('select[data-col="group"]').value = data.group;
             return tr;
         }
     };
@@ -523,10 +524,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const rowData = {};
             if (isIdsTable) {
                 rowData.isNew = row.dataset.isNew === 'true';
+                if(rowData.isNew) rowData.group = selectedGroup;
+            } else {
+                rowData.group = selectedGroup;
             }
-             if (containerId !== 'ids-table-body') {
-                 rowData.group = selectedGroup;
-             }
 
             row.querySelectorAll('input, select').forEach(input => {
                 if (input.dataset.col) {
@@ -537,7 +538,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             });
-            if (Object.keys(rowData).length > (isIdsTable ? 1 : 1)) data.push(rowData);
+            if (Object.keys(rowData).length > 1) data.push(rowData);
         });
         return data;
     }
@@ -585,14 +586,20 @@ document.addEventListener('DOMContentLoaded', () => {
         else { alert('赛程提交/更新成功！'); document.getElementById('schedule-table-body').innerHTML = ''; }
     }
 
-    async function loadIdsData() {
+    function loadIdsData(groupName) {
         const tableBody = document.getElementById('ids-table-body');
-        tableBody.innerHTML = '<tr><td colspan="7">正在加载...</td></tr>';
-        const { data, error } = await supabaseClient.from('player_ids').select('*').order('id');
-        if (error) { tableBody.innerHTML = `<tr><td colspan="7">加载失败: ${error.message}</td></tr>`; return; }
+        tableBody.innerHTML = '<tr><td colspan="6">正在加载...</td></tr>';
+        
+        const filteredData = allPlayersData.filter(p => p.group === groupName);
+
         tableBody.innerHTML = '';
-        data.forEach(player => tableBody.appendChild(rowTemplates['ids-table-body'](false, player)));
+        if (filteredData.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="6">该组别下没有选手数据。</td></tr>`;
+        } else {
+            filteredData.forEach(player => tableBody.appendChild(rowTemplates['ids-table-body'](false, player)));
+        }
     }
+
 
     async function updateIds() {
         const dataToUpsert = getTableData('ids-table-body', true).map(row => {
@@ -614,7 +621,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else { 
             alert('选手ID更新成功！'); 
             await loadInitialData();
-            loadIdsData(); 
+            loadIdsData(getCurrentGroup()); 
         }
     }
 });
