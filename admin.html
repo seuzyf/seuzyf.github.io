@@ -188,6 +188,7 @@
             <div class="controls-container">
                 <a href="index.html" class="nav-button">返回比赛中心</a>
                 <a href="summary.html" class="nav-button">查看选手数据</a>
+                <a href="draft.html" class="nav-button">进行分队</a>
             </div>
             <div class="controls-container">
                 <div class="filter-group" id="tab-filters">
@@ -289,7 +290,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function loadInitialData() {
-        // Corrected: Select all necessary fields including image and honor
         const { data, error } = await supabaseClient.from('player_ids').select('id, name, team, "group", image, honor');
         if (error) { console.error('无法加载选手数据:', error); return; }
         
@@ -337,7 +337,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const newGroup = e.target.dataset.group;
                 updateTeamDatalist();
                 loadIdsData(newGroup);
-                // Clear dynamic forms on group change
                 document.getElementById('matches-form-container').innerHTML = '';
                 document.getElementById('schedule-table-body').innerHTML = '';
             }
