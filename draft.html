@@ -426,7 +426,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await calculateAndSetStartPrices();
         };
 
-        reader.readAsText(file);
+        reader.readAsText(file, 'UTF-8');
         csvUpload.value = '';
     }
     
