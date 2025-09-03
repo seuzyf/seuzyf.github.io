@@ -170,7 +170,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let allPlayersData = [];
     const TEAM_BUDGET = 400;
-    const MAX_PLAYERS_PER_TEAM = 5;
 
     function setTheme(isLight) {
         document.body.classList.toggle('light-theme', isLight);
@@ -221,14 +220,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updatePlayersTable(players) {
         playersTableBody.innerHTML = '';
-        if (players.length === 0) {
-            playersTableBody.innerHTML = '<tr><td colspan="7">该组别下没有选手数据。</td></tr>';
+        
+        // 修改 1: 过滤掉 hwrank 为 0 或不存在的选手
+        const visiblePlayers = players.filter(p => p.hwrank && p.hwrank > 0);
+
+        if (visiblePlayers.length === 0) {
+            playersTableBody.innerHTML = '<tr><td colspan="7">该组别下没有符合条件的选手数据。</td></tr>';
             return;
         }
         
-        players.sort((a,b) => (b.hwrank || 0) - (a.hwrank || 0));
+        visiblePlayers.sort((a,b) => (b.hwrank || 0) - (a.hwrank || 0));
 
-        players.forEach(player => {
+        visiblePlayers.forEach(player => {
             const tr = document.createElement('tr');
             tr.dataset.playerId = player.id;
             tr.innerHTML = `
@@ -274,10 +277,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const remaining = TEAM_BUDGET - spending;
             
             const div = document.createElement('div');
+            // 修改 2: 更改人数显示格式
             div.innerHTML = `
                 <span>${team}</span>
                 <div style="display: flex; align-items: baseline; gap: 10px;">
-                    <span style="font-size: 0.8em; opacity: 0.7;">${playerCount}/${MAX_PLAYERS_PER_TEAM}</span>
+                    <span style="font-size: 0.8em; opacity: 0.7;">${playerCount} 人</span>
                     <strong>${remaining.toFixed(2)}</strong>
                 </div>
             `;
@@ -297,6 +301,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!playerId) return;
 
+        // 修改 2: 移除了队伍人数限制的检查
+        /*
         if (team) {
             const currentGroup = getCurrentGroup();
             const playersOnTeam = allPlayersData.filter(p => p.team === team && p.group === currentGroup).length;
@@ -309,6 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
         }
+        */
 
         const updateData = {
             final_price: finalPrice,
