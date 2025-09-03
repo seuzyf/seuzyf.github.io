@@ -524,7 +524,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const rowData = {};
             if (isIdsTable) {
                 rowData.isNew = row.dataset.isNew === 'true';
-                if(rowData.isNew) rowData.group = selectedGroup;
+                rowData.group = selectedGroup;
             } else {
                 rowData.group = selectedGroup;
             }
