@@ -376,15 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const characterOptions = ['幻棱','钛狐','维斯','暮蝶','壹决','不死鸟','捷风','蝰蛇','雷兹','炼狱','猎枭','奇乐','芮娜','铁臂','贤者','幽影','尚勃勒','斯凯','霓虹','夜露','海神','星礈','盖可','钢锁','黑梦'].map(c => `<option value="${c}">${c}</option>`).join('');
     const mapOptions = ['源工重镇', '隐世修所', '霓虹町', '亚海悬城', '森寒冬港', '微风岛屿', '莲华古城', '裂变峡谷', '深海明珠', '盐海矿镇'].map(m => `<option value="${m}">${m}</option>`).join('');
     const scheduleMatchIdOptions = `<option value="S1-1">S1-1</option><option value="S1-2">S1-2</option><option value="S1-3">S1-3</option><option value="S1-4">S1-4</option><option value="S2-1W">S2-1W</option><option value="S2-2W">S2-2W</option><option value="S2-1L">S2-1L</option><option value="S2-2L">S2-2L</option><option value="S3-1M">S3-1M</option><option value="S3-2M">S3-2M</option><option value="P-WB1-1">P-WB1-1</option><option value="P-WB1-2">P-WB1-2</option><option value="P-WBF">P-WBF</option><option value="P-LB1">P-LB1</option><option value="P-LBF">P-LBF</option><option value="P-GF">P-GF</option>`;
-
-    function createDeleteButton(recordElement) {
-        const deleteBtn = document.createElement('button');
-        deleteBtn.textContent = '删除该记录';
-        deleteBtn.className = 'delete-row-btn';
-        deleteBtn.onclick = () => recordElement.remove();
-        return deleteBtn;
-    }
-
+    
     const rowTemplates = {
         'matches-table-body': () => {
             const recordDiv = document.createElement('div');
@@ -403,17 +395,27 @@ document.addEventListener('DOMContentLoaded', () => {
             let teamA_Inputs = createTeamTable('A');
             let teamB_Inputs = createTeamTable('B');
             
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '删除该记录';
+            deleteBtn.className = 'delete-row-btn';
+            deleteBtn.onclick = () => recordDiv.remove();
+
             recordDiv.innerHTML = commonInputs + teamA_Inputs + teamB_Inputs;
             const deleteContainer = document.createElement('div');
             deleteContainer.style.textAlign = 'right';
             deleteContainer.style.padding = '10px';
-            deleteContainer.appendChild(createDeleteButton(recordDiv));
+            deleteContainer.appendChild(deleteBtn);
             recordDiv.appendChild(deleteContainer);
             
             return recordDiv;
         },
         'schedule-table-body': () => {
             const tr = document.createElement('tr');
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '删除该记录';
+            deleteBtn.className = 'delete-row-btn';
+            deleteBtn.onclick = () => tr.remove();
+
             tr.innerHTML = `<td><select data-col="match_id">${scheduleMatchIdOptions}</select></td>
                 <td><select data-col="team_a">${getTeamOptionsHTMLForCurrentGroup()}</select></td>
                 <td><select data-col="team_b">${getTeamOptionsHTMLForCurrentGroup()}</select></td>
@@ -421,7 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td><input type="number" data-col="score_b" placeholder="得分"></td>
                 <td><input type="text" data-col="link" placeholder="https://..."></td>
                 <td class="actions"></td>`;
-            tr.querySelector('.actions').appendChild(createDeleteButton(tr));
+            tr.querySelector('.actions').appendChild(deleteBtn);
             return tr;
         },
         'ids-table-body': (isNew = true, data = { id: '', name: '', team: '', image: '', honor: '' }) => {
@@ -433,8 +435,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td><input type="text" data-col="team" value="${data.team || ''}" list="teams-datalist"></td>
                 <td><input type="text" data-col="image" value="${data.image || ''}"></td>
                 <td><input type="text" data-col="honor" value="${data.honor || ''}"></td>
-                <td class="actions"></td>`;
-            tr.querySelector('.actions').appendChild(createDeleteButton(tr));
+                <td class="actions">
+                    <button class="delete-row-btn" onclick="handleDeleteId(this)">删除该记录</button>
+                </td>`;
             return tr;
         }
     };
@@ -524,6 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const rowData = {};
             if (isIdsTable) {
                 rowData.isNew = row.dataset.isNew === 'true';
+                // BUG FIX 1: Apply group to all rows, not just new ones
                 rowData.group = selectedGroup;
             } else {
                 rowData.group = selectedGroup;
@@ -600,7 +604,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-
     async function updateIds() {
         const dataToUpsert = getTableData('ids-table-body', true).map(row => {
             const { isNew, ...dbRow } = row;
@@ -624,6 +627,39 @@ document.addEventListener('DOMContentLoaded', () => {
             loadIdsData(getCurrentGroup()); 
         }
     }
+    
+    // BUG FIX 2: New function to handle deletion directly
+    async function handleDeleteId(deleteBtn) {
+        const tr = deleteBtn.closest('tr');
+        const playerId = tr.querySelector('input[data-col="id"]').value;
+        const isNewRow = tr.dataset.isNew === 'true';
+
+        // If it's a new row not yet saved, just remove it from the page
+        if (isNewRow || !playerId) {
+            tr.remove();
+            return;
+        }
+        
+        // For existing records, confirm before deleting from the database
+        if (confirm(`您确定要从数据库中永久删除选手 "${playerId}" 吗？此操作不可撤销。`)) {
+            const { error } = await supabaseClient
+                .from('player_ids')
+                .delete()
+                .eq('id', playerId);
+
+            if (error) {
+                alert(`删除失败: ${error.message}`);
+                console.error(error);
+            } else {
+                alert(`选手 "${playerId}" 已成功删除。`);
+                tr.remove(); // Remove the row from the table
+                // Also update the local cache of data
+                allPlayersData = allPlayersData.filter(p => p.id !== playerId);
+            }
+        }
+    }
+    // Make the function globally accessible for the onclick attribute
+    window.handleDeleteId = handleDeleteId;
 });
 </script>
 </body>
