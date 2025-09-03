@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HWVCTS4 - 选手分队中心</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary-color: #D64550;
+            --bg-color: rgba(15, 25, 35, 0.85);
+            --text-color: #ece8e1;
+            --card-bg-color: rgba(26, 40, 54, 0.8);
+            --header-bg-color: rgba(26, 40, 54, 0.85);
+            --border-color: #2a3a49;
+            --shadow-color: rgba(0,0,0,0.3);
+            --success-color: #4CAF50;
+            --control-height: 42px;
+        }
+        body.light-theme {
+            --primary-color: #D64550;
+            --bg-color: rgba(240, 242, 245, 0.85);
+            --text-color: #1c1e21;
+            --card-bg-color: rgba(255, 255, 255, 0.8);
+            --header-bg-color: rgba(255, 255, 255, 0.85);
+            --border-color: #dadde1;
+            --shadow-color: rgba(0,0,0,0.1);
+        }
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px 0;
+            background-image: url('https://cdna.artstation.com/p/assets/images/images/037/219/800/large/envar-studio-valorant-sketchbook-09a-bozenka.jpg?1619801297');
+            background-attachment: fixed;
+            background-size: cover;
+            background-position: center;
+        }
+        .container { width: 95%; max-width: 1600px; margin: 0 auto; }
+        .main-header-block {
+            background-color: var(--header-bg-color);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px var(--shadow-color);
+            text-align: center;
+            margin-bottom: 40px;
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+        .main-header-block h1 { color: var(--primary-color); margin: 0 0 10px 0; font-weight: 700; font-size: 2.5em; }
+        .controls-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 25px;
+        }
+        .filter-group, .nav-button, .upload-button {
+            height: var(--control-height);
+            display: inline-flex;
+            align-items: center;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+        }
+        .filter-group { background-color: var(--card-bg-color); padding: 5px; border: 1px solid var(--border-color); }
+        .filter-group button { padding: 0 15px; border: none; background-color: transparent; color: var(--text-color); opacity: 0.7; cursor: pointer; border-radius: 6px; font-size: 0.9em; height: 100%; }
+        .filter-group button.active { background-color: var(--primary-color); color: white; opacity: 1; }
+        .nav-button { padding: 0 25px; border: 2px solid var(--primary-color); color: var(--primary-color); text-decoration: none; }
+        .nav-button:hover { background-color: var(--primary-color); color: white; }
+        .upload-button { padding: 0 25px; border: 2px solid var(--success-color); color: var(--success-color); cursor: pointer; }
+        .upload-button:hover { background-color: var(--success-color); color: white; }
+        #csv-upload { display: none; }
+        .main-layout { display: flex; gap: 30px; align-items: flex-start; flex-wrap: wrap; }
+        #budget-card { flex: 1; min-width: 280px; position: sticky; top: 20px; }
+        #players-table-container { flex: 3; min-width: 600px; }
+        .data-section { background-color: var(--card-bg-color); backdrop-filter: blur(10px); border: 1px solid var(--border-color); border-radius: 12px; padding: 25px; box-shadow: 0 8px 16px var(--shadow-color); }
+        .data-section h2 { margin-top: 0; color: var(--primary-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        .budget-list { display: flex; flex-direction: column; gap: 15px; font-size: 1.1em; }
+        .budget-list div { background-color: var(--bg-color); padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: baseline; }
+        .budget-list strong { color: var(--primary-color); }
+        #players-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
+        #players-table thead { background-color: var(--primary-color); color: white; }
+        #players-table th, #players-table td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
+        #players-table tbody tr:hover { background-color: rgba(255,255,255,0.05); }
+        #players-table input { width: 80px; padding: 0.4rem; background-color: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 5px; }
+        #players-table .team-input { width: 100px; }
+        #players-table .confirm-btn { padding: 0.4rem 0.8rem; border: none; border-radius: 5px; background-color: var(--success-color); color: white; cursor: pointer; }
+        #players-table .confirm-btn:hover { opacity: 0.9; }
+        .theme-switch-wrapper { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 10px; }
+        #theme-text { font-size: 0.8em; opacity: 0.8; }
+        .theme-switch { display: inline-block; height: 24px; position: relative; width: 48px; }
+        .theme-switch input { display:none; }
+        .slider { background-color: var(--border-color); bottom: 0; cursor: pointer; left: 0; position: absolute; right: 0; top: 0; transition: .4s; border-radius: 24px; }
+        .slider:before { background-color: var(--text-color); bottom: 4px; content: ""; height: 16px; left: 4px; position: absolute; transition: .4s; width: 16px; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary-color); }
+        input:checked + .slider:before { transform: translateX(24px); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-header-block">
+            <div class="theme-switch-wrapper">
+                <span id="theme-text"></span>
+                <label class="theme-switch">
+                    <input type="checkbox" id="theme-toggle-checkbox">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <h1>选手分队中心</h1>
+            <div class="controls-container">
+                <div class="filter-group" id="group-filter-buttons">
+                    <button class="active" data-group="传奇组">传奇组</button>
+                    <button data-group="中坚组">中坚组</button>
+                    <button data-group="挑战组">挑战组</button>
+                </div>
+                <label for="csv-upload" class="upload-button">上传名单 (CSV)</label>
+                <input type="file" id="csv-upload" accept=".csv">
+                <a href="index.html" class="nav-button">返回比赛中心</a>
+            </div>
+        </div>
+
+        <main class="main-layout">
+            <section class="data-section" id="budget-card">
+                <h2>队伍实时预算</h2>
+                <div class="budget-list" id="budget-list-content"><p>正在加载数据...</p></div>
+            </section>
+            <div id="players-table-container" class="data-section">
+                <h2>选手池</h2>
+                <div style="overflow-x: auto;">
+                    <table id="players-table">
+                        <thead>
+                            <tr>
+                                <th>姓名</th>
+                                <th>ID</th>
+                                <th>华为分</th>
+                                <th>起拍价</th>
+                                <th>成交价</th>
+                                <th>所属队伍</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="players-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const SUPABASE_URL = 'https://vbyvolmtkjjyeiibpljf.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieXZvbG10a2pqeWVpaWJwbGpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzMxNDksImV4cCI6MjA3MjI0OTE0OX0.Tnot1kIVn8vJ-vggYaTGBGTkIBY7m6yIOquSjG5mSUM';
+    const { createClient } = supabase;
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const groupFilterButtons = document.getElementById('group-filter-buttons');
+    const playersTableBody = document.getElementById('players-table-body');
+    const budgetListContent = document.getElementById('budget-list-content');
+    const csvUpload = document.getElementById('csv-upload');
+    const themeToggle = document.getElementById('theme-toggle-checkbox');
+    const themeText = document.getElementById('theme-text');
+
+    let allPlayersData = [];
+    let allTeams = new Set();
+    const TEAM_BUDGET = 400;
+
+    function setTheme(isLight) {
+        document.body.classList.toggle('light-theme', isLight);
+        themeToggle.checked = isLight;
+        themeText.textContent = isLight ? '点击切换夜间模式' : '点击切换日间模式';
+        localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    }
+    const savedTheme = localStorage.getItem('theme');
+    setTheme((savedTheme === null) ? true : (savedTheme === 'dark'));
+    themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
+    
+    function getCurrentGroup() {
+        return document.querySelector('#group-filter-buttons button.active').dataset.group;
+    }
+    
+    async function loadData() {
+        playersTableBody.innerHTML = '<tr><td colspan="7">正在加载选手数据...</td></tr>';
+        const { data, error } = await supabaseClient.from('player_ids').select('*');
+        if (error) {
+            console.error('无法加载选手数据:', error);
+            playersTableBody.innerHTML = `<tr><td colspan="7" style="color:red;">加载失败: ${error.message}</td></tr>`;
+            return;
+        }
+        allPlayersData = data;
+        allTeams.clear();
+        data.forEach(p => { if (p.team) allTeams.add(p.team) });
+        
+        renderForCurrentGroup();
+    }
+
+    function renderForCurrentGroup() {
+        const currentGroup = getCurrentGroup();
+        const groupPlayers = allPlayersData.filter(p => p.group === currentGroup);
+        
+        // Find all teams within the current group to display budget
+        const groupTeams = new Set(groupPlayers.map(p => p.team).filter(Boolean));
+
+        updatePlayersTable(groupPlayers);
+        updateBudgets(groupPlayers, groupTeams);
+    }
+
+    function updatePlayersTable(players) {
+        playersTableBody.innerHTML = '';
+        if (players.length === 0) {
+            playersTableBody.innerHTML = '<tr><td colspan="7">该组别下没有选手数据。</td></tr>';
+            return;
+        }
+        
+        players.sort((a,b) => (b.hwrank || 0) - (a.hwrank || 0));
+
+        players.forEach(player => {
+            const tr = document.createElement('tr');
+            tr.dataset.playerId = player.id;
+            tr.innerHTML = `
+                <td>${player.name || ''}</td>
+                <td>${player.id}</td>
+                <td>${player.hwrank || 'N/A'}</td>
+                <td>${player.start_price || 'N/A'}</td>
+                <td><input type="number" class="final-price-input" value="${player.final_price || ''}"></td>
+                <td><input type="text" class="team-input" value="${player.team || ''}"></td>
+                <td><button class="confirm-btn">确定</button></td>
+            `;
+            playersTableBody.appendChild(tr);
+        });
+    }
+
+    function updateBudgets(groupPlayers, groupTeams) {
+        budgetListContent.innerHTML = '';
+        const teamSpending = {};
+
+        // Initialize all teams with 0 spending
+        groupTeams.forEach(team => teamSpending[team] = 0);
+
+        groupPlayers.forEach(player => {
+            if (player.team && typeof player.final_price === 'number') {
+                if (!teamSpending[player.team]) {
+                    teamSpending[player.team] = 0;
+                }
+                teamSpending[player.team] += player.final_price;
+            }
+        });
+
+        if (Object.keys(teamSpending).length === 0) {
+             budgetListContent.innerHTML = '<p>该组别暂无队伍信息。</p>';
+             return;
+        }
+
+        const sortedTeams = Object.keys(teamSpending).sort();
+
+        sortedTeams.forEach(team => {
+            const remaining = TEAM_BUDGET - teamSpending[team];
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <span>${team}</span>
+                <strong>${remaining.toFixed(2)}</strong>
+            `;
+            budgetListContent.appendChild(div);
+        });
+    }
+
+    async function handleConfirmUpdate(event) {
+        const btn = event.target;
+        if (!btn.classList.contains('confirm-btn')) return;
+
+        const tr = btn.closest('tr');
+        const playerId = tr.dataset.playerId;
+        const finalPrice = parseFloat(tr.querySelector('.final-price-input').value);
+        const team = tr.querySelector('.team-input').value.trim();
+
+        if (!playerId) return;
+
+        const updateData = {};
+        if (!isNaN(finalPrice)) updateData.final_price = finalPrice;
+        if (team) updateData.team = team;
+        
+        if (Object.keys(updateData).length === 0) {
+             alert('没有需要更新的内容。');
+             return;
+        }
+
+        btn.textContent = '...';
+        btn.disabled = true;
+
+        const { error } = await supabaseClient.from('player_ids').update(updateData).eq('id', playerId);
+
+        if (error) {
+            alert(`更新失败: ${error.message}`);
+            console.error(error);
+        } else {
+            // alert('更新成功！');
+            // Optimistically update local data to avoid full reload
+            const playerIndex = allPlayersData.findIndex(p => p.id === playerId);
+            if(playerIndex > -1) {
+                if(updateData.final_price !== undefined) allPlayersData[playerIndex].final_price = updateData.final_price;
+                if(updateData.team !== undefined) allPlayersData[playerIndex].team = updateData.team;
+            }
+            renderForCurrentGroup();
+        }
+        
+        btn.textContent = '确定';
+        btn.disabled = false;
+    }
+
+    async function handleCsvUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const text = e.target.result;
+            const lines = text.split(/\r?\n/).slice(1); // Skip header
+            const updates = [];
+
+            for (const line of lines) {
+                const [name, id, hwrank] = line.split(',');
+                if (id && hwrank) {
+                    updates.push({
+                        id: id.trim(),
+                        name: name ? name.trim() : undefined,
+                        hwrank: parseFloat(hwrank.trim())
+                    });
+                }
+            }
+
+            if (updates.length === 0) {
+                alert('未在文件中找到有效数据。请确保格式为: name,id,hwrank');
+                return;
+            }
+
+            alert(`即将更新 ${updates.length} 名选手的数据...`);
+            
+            const { error } = await supabaseClient.from('player_ids').upsert(updates, { onConflict: 'id' });
+            if (error) {
+                alert(`更新华为分失败: ${error.message}`);
+                return;
+            }
+            alert('华为分更新成功！现在开始计算起拍价...');
+            
+            await calculateAndSetStartPrices();
+        };
+        reader.readAsText(file);
+        csvUpload.value = ''; // Reset input
+    }
+    
+    async function calculateAndSetStartPrices() {
+        const { data, error } = await supabaseClient.from('player_ids').select('id, group, hwrank');
+        if (error) {
+            alert(`无法获取更新后的选手数据: ${error.message}`);
+            return;
+        }
+        
+        const groups = {};
+        data.forEach(p => {
+            if (!p.group || !p.hwrank) return;
+            if (!groups[p.group]) {
+                groups[p.group] = [];
+            }
+            groups[p.group].push(p.hwrank);
+        });
+        
+        const minHwranks = {};
+        for(const groupName in groups) {
+            minHwranks[groupName] = Math.min(...groups[groupName]);
+        }
+        
+        const priceUpdates = data.filter(p => p.group && p.hwrank && minHwranks[p.group] !== undefined)
+            .map(p => ({
+                id: p.id,
+                start_price: Math.round((p.hwrank - minHwranks[p.group]) / 10)
+            }));
+
+        if (priceUpdates.length > 0) {
+            const { error: priceError } = await supabaseClient.from('player_ids').upsert(priceUpdates, { onConflict: 'id' });
+             if (priceError) {
+                alert(`更新起拍价失败: ${priceError.message}`);
+                return;
+            }
+        }
+        
+        alert('起拍价计算并更新成功！页面将重新加载最新数据。');
+        loadData();
+    }
+
+    groupFilterButtons.addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON' && !e.target.classList.contains('active')) {
+            groupFilterButtons.querySelector('.active').classList.remove('active');
+e.target.classList.add('active');
+            renderForCurrentGroup();
+        }
+    });
+
+    playersTableBody.addEventListener('click', handleConfirmUpdate);
+    csvUpload.addEventListener('change', handleCsvUpload);
+
+    loadData();
+});
+</script>
+
+</body>
+</html>
