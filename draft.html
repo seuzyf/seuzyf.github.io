@@ -221,7 +221,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function updatePlayersTable(players) {
         playersTableBody.innerHTML = '';
         
-        // 修改 1: 过滤掉 hwrank 为 0 或不存在的选手
         const visiblePlayers = players.filter(p => p.hwrank && p.hwrank > 0);
 
         if (visiblePlayers.length === 0) {
@@ -277,7 +276,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const remaining = TEAM_BUDGET - spending;
             
             const div = document.createElement('div');
-            // 修改 2: 更改人数显示格式
             div.innerHTML = `
                 <span>${team}</span>
                 <div style="display: flex; align-items: baseline; gap: 10px;">
@@ -300,22 +298,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const team = tr.querySelector('.team-input').value.trim();
 
         if (!playerId) return;
-
-        // 修改 2: 移除了队伍人数限制的检查
-        /*
-        if (team) {
-            const currentGroup = getCurrentGroup();
-            const playersOnTeam = allPlayersData.filter(p => p.team === team && p.group === currentGroup).length;
-            const originalPlayer = allPlayersData.find(p => p.id === playerId);
-            const wasAlreadyOnTeam = originalPlayer && originalPlayer.team === team;
-
-            if (playersOnTeam >= MAX_PLAYERS_PER_TEAM && !wasAlreadyOnTeam) {
-                alert(`队伍 "${team}" 已满 (${MAX_PLAYERS_PER_TEAM}人)，无法添加更多选手！`);
-                tr.querySelector('.team-input').value = originalPlayer ? originalPlayer.team || '' : '';
-                return;
-            }
-        }
-        */
 
         const updateData = {
             final_price: finalPrice,
@@ -352,47 +334,68 @@ document.addEventListener('DOMContentLoaded', () => {
 
         reader.onload = async (e) => {
             const text = e.target.result;
-            const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-            if (lines.length <= 1) {
+            const dataLines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+            if (dataLines.length <= 1) {
                  alert('CSV文件为空或只有表头。');
                  return;
             }
-            const header = lines[0].split(',').map(h => h.trim());
+            const header = dataLines[0].split(',').map(h => h.trim());
+            const lines = dataLines.slice(1);
+            
             const colMap = { id: header.indexOf('id'), name: header.indexOf('name'), hwrank: header.indexOf('hwrank') };
 
-            if (colMap.id === -1 || colMap.hwrank === -1) {
-                alert('CSV文件必须包含 "id" 和 "hwrank" 列。');
+            if (colMap.id === -1 || colMap.name === -1 || colMap.hwrank === -1) {
+                alert('CSV文件必须包含 "id", "name" 和 "hwrank" 列。');
                 return;
             }
 
-            const playersFromCsv = lines.slice(1).map(line => {
+            // ================= 关键修改处 S T A R T =================
+            const nameMap = new Map();
+            const playersFromCsv = [];
+
+            lines.forEach((line, index) => {
                 const values = line.split(',');
-                return {
-                    id: values[colMap.id]?.trim(),
-                    name: values[colMap.name]?.trim(),
-                    hwrank: parseFloat(values[colMap.hwrank]?.trim()),
-                    group: currentGroup
-                };
-            }).filter(p => p.id && !isNaN(p.hwrank));
+                const name = values[colMap.name]?.trim();
+                const id = values[colMap.id]?.trim();
+                const hwrank = parseFloat(values[colMap.hwrank]?.trim());
+                const lineNumber = index + 2; // CSV数据从第2行开始
+
+                // 收集所有行的数据，以便后续处理
+                if (id && name && !isNaN(hwrank)) {
+                    playersFromCsv.push({ id, name, hwrank, group: currentGroup });
+                }
+
+                // 记录每个名字及其出现的行号
+                if (name) {
+                    if (!nameMap.has(name)) {
+                        nameMap.set(name, []);
+                    }
+                    nameMap.get(name).push(lineNumber);
+                }
+            });
+
+            // 找出所有重复的姓名
+            const duplicates = [];
+            for (const [name, lineNumbers] of nameMap.entries()) {
+                if (lineNumbers.length > 1) {
+                    duplicates.push({ name, lines: lineNumbers });
+                }
+            }
+
+            // 如果有重复项，构建详细的错误信息并中断操作
+            if (duplicates.length > 0) {
+                let errorMessage = '上传失败：CSV文件中存在重复的姓名。\n\n';
+                duplicates.forEach(dup => {
+                    errorMessage += `姓名 "${dup.name}" 在第 ${dup.lines.join(' 行、第 ')} 行重复。\n`;
+                });
+                alert(errorMessage);
+                csvUpload.value = '';
+                return;
+            }
+            // ================= 关键修改处 E N D =================
 
             if (playersFromCsv.length === 0) {
                 alert('未在文件中找到有效数据。');
-                return;
-            }
-
-            const idSet = new Set();
-            const duplicateIds = [];
-            for (const player of playersFromCsv) {
-                if (idSet.has(player.id)) {
-                    duplicateIds.push(player.id);
-                }
-                idSet.add(player.id);
-            }
-
-            if (duplicateIds.length > 0) {
-                const uniqueDuplicateIds = [...new Set(duplicateIds)];
-                alert(`上传失败：CSV文件中存在重复的ID，请修正后再试。\n重复ID: ${uniqueDuplicateIds.join(', ')}`);
-                csvUpload.value = '';
                 return;
             }
 
