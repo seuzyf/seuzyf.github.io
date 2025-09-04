@@ -339,7 +339,7 @@
                 localStorage.setItem('theme', isLight ? 'light' : 'dark');
             }
             const savedTheme = localStorage.getItem('theme');
-            setTheme((savedTheme === null) ? true : (savedTheme === 'dark'));
+            setTheme((savedTheme === null) ? true : (savedTheme === 'light'));
             themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
 
             async function loadDataFromSupabase() {
