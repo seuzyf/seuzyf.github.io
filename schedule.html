@@ -268,7 +268,6 @@
             const data = { ...rawData };
             const ensureNodeExists = (id) => { if (!data[id]) data[id] = {}; };
             
-            // Swiss results
             ensureNodeExists('S3-PROMO-A'); data['S3-PROMO-A'].result_team = getWinner(data['S2-1W']);
             ensureNodeExists('S3-PROMO-B'); data['S3-PROMO-B'].result_team = getWinner(data['S2-2W']);
             ensureNodeExists('S3-ELIM-A'); data['S3-ELIM-A'].result_team = getLoser(data['S2-1L']);
@@ -278,7 +277,6 @@
             ensureNodeExists('S4-ELIM-A'); data['S4-ELIM-A'].result_team = getLoser(data['S3-1M']);
             ensureNodeExists('S4-ELIM-B'); data['S4-ELIM-B'].result_team = getLoser(data['S3-2M']);
 
-            // Playoff advancements that can be determined without saving
             const w_wb1_1 = getWinner(data['P-WB1-1']); const l_wb1_1 = getLoser(data['P-WB1-1']);
             const w_wb1_2 = getWinner(data['P-WB1-2']); const l_wb1_2 = getLoser(data['P-WB1-2']);
             if (w_wb1_1 && w_wb1_2) { ensureNodeExists('P-WBF'); data['P-WBF'].team_a = w_wb1_1; data['P-WBF'].team_b = w_wb1_2; }
@@ -406,7 +404,6 @@
 
         async function randomlyAssignTeams() {
             const groupName = groupFilters.querySelector('.active').dataset.group;
-            // FIX: Initialize groupData safely to avoid TypeError
             const groupData = allMatchesData[groupName] || {};
             const processedData = processResultNodes(groupData);
             
@@ -415,6 +412,7 @@
             const randomFunc = seededRandom(seed);
             
             let dataToUpsert = [];
+            let idsToDelete = [];
             let operationMessage = '没有可生成的对战。请确保队伍池正确或所有必需的比赛已完成。';
 
             const isMatchEmpty = (matchId) => {
@@ -426,7 +424,6 @@
                  return match && typeof match.score_a === 'number' && typeof match.score_b === 'number' && (match.score_a > 0 || match.score_b > 0);
             };
             
-            // NEW: Helper to check if a round can be re-generated
             const canRegenerateRound = (matchIds) => {
                 return matchIds.every(id => {
                     const match = processedData[id];
@@ -454,11 +451,10 @@
                 const promo2_1 = [getTeamFromResult('S4-PROMO-A'), getTeamFromResult('S4-PROMO-B')].filter(Boolean);
                 if (promo2_0.length === 2 && promo2_1.length === 2) {
                     shuffleArray(promo2_1, randomFunc);
-                    if (isMatchEmpty('P-WB1-1') || canRegenerateRound(['P-WB1-1', 'P-WB1-2'])) {
-                        dataToUpsert.push({ group: groupName, match_id: 'P-WB1-1', team_a: promo2_0[0], team_b: promo2_1[0], score_a: 0, score_b: 0 });
-                        dataToUpsert.push({ group: groupName, match_id: 'P-WB1-2', team_a: promo2_0[1], team_b: promo2_1[1], score_a: 0, score_b: 0 });
-                        operationMessage = '已从小组赛晋级队伍生成淘汰赛第一轮对阵！';
-                    }
+                    idsToDelete.push('P-WB1-1', 'P-WB1-2');
+                    dataToUpsert.push({ group: groupName, match_id: 'P-WB1-1', team_a: promo2_0[0], team_b: promo2_1[0], score_a: 0, score_b: 0 });
+                    dataToUpsert.push({ group: groupName, match_id: 'P-WB1-2', team_a: promo2_0[1], team_b: promo2_1[1], score_a: 0, score_b: 0 });
+                    operationMessage = '已从小组赛晋级队伍生成淘汰赛第一轮对阵！';
                 }
             }
             
@@ -469,7 +465,7 @@
                     const teamRecords = {};
                     allTeamsInGroup.forEach(team => { teamRecords[team] = { wins: 0, losses: 0, played: 0 }; });
 
-                    Object.values(groupData).filter(m => m.match_id.startsWith('S')).forEach(match => {
+                    Object.values(groupData).filter(m => m.match_id && m.match_id.startsWith('S')).forEach(match => {
                         if (typeof match.score_a === 'number' && typeof match.score_b === 'number' && (match.score_a > 0 || match.score_b > 0)) {
                              const winner = getWinner(match); const loser = getLoser(match);
                              if (winner && teamRecords[winner]) { teamRecords[winner].wins++; teamRecords[winner].played++; }
@@ -492,6 +488,7 @@
                         const teams = teamsByRecord[record] || [];
                         const matchIds = assignments[record];
                         if (teams.length >= 2 && (matchIds.some(isMatchEmpty) || canRegenerateRound(matchIds))) {
+                             idsToDelete.push(...matchIds);
                              let teamIndex = 0;
                              for (const matchId of matchIds) {
                                  let teamA = teams[teamIndex++] || 'TBD';
@@ -504,24 +501,39 @@
                         }
                     }
                  } else {
-                     operationMessage = `在 "${groupName}" 中没有找到任何队伍信息。请先在后台维护选手ID和队伍。`;
+                     operationMessage = `在 "${groupName}" 中没有找到任何队伍信息。`;
                  }
             }
 
             // --- Final Step: Save to DB and Re-render ---
             if (dataToUpsert.length > 0) {
-                dataToUpsert.forEach(match => {
-                    if (!allMatchesData[groupName]) allMatchesData[groupName] = {}; // Ensure group exists
-                    if (!allMatchesData[groupName][match.match_id]) allMatchesData[groupName][match.match_id] = {};
-                    allMatchesData[groupName][match.match_id] = {...allMatchesData[groupName][match.match_id], ...match};
-                });
-                
-                const { error } = await supabaseClient.from('match_schedule').upsert(dataToUpsert, { onConflict: 'group, match_id' });
+                // To handle potential primary key conflicts when re-generating, we delete the old rows first.
+                if(idsToDelete.length > 0) {
+                    const { error: deleteError } = await supabaseClient
+                        .from('match_schedule')
+                        .delete()
+                        .eq('group', groupName)
+                        .in('match_id', idsToDelete);
+                    if (deleteError) {
+                         alert('清除旧赛程失败: ' + deleteError.message);
+                         return;
+                    }
+                }
+
+                const { error } = await supabaseClient.from('match_schedule').insert(dataToUpsert);
+
                 if (error) {
                     alert('自动保存赛程失败: ' + error.message);
                     console.error(error);
                     return;
                 }
+
+                // Update local data for instant UI feedback
+                dataToUpsert.forEach(match => {
+                    if (!allMatchesData[groupName]) allMatchesData[groupName] = {};
+                    allMatchesData[groupName][match.match_id] = {...allMatchesData[groupName][match.match_id], ...match};
+                });
+                
                 alert(`使用种子 ${seed} 操作成功: ${operationMessage}`);
             } else {
                 alert(operationMessage);
