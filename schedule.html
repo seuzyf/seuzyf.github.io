@@ -227,6 +227,7 @@
         const themeText = document.getElementById('theme-text');
         const randomDrawBtn = document.getElementById('random-draw-btn');
         let allMatchesData = {};
+        let allTeamsByGroup = {};
         
         function setTheme(isLight) {
             document.body.classList.toggle('light-theme', isLight);
@@ -266,6 +267,8 @@
         function processResultNodes(rawData) {
             const data = JSON.parse(JSON.stringify(rawData));
             const ensureNodeExists = (id) => { if (!data[id]) data[id] = {}; };
+            
+            // Swiss results
             ensureNodeExists('S3-PROMO-A'); data['S3-PROMO-A'].result_team = getWinner(data['S2-1W']);
             ensureNodeExists('S3-PROMO-B'); data['S3-PROMO-B'].result_team = getWinner(data['S2-2W']);
             ensureNodeExists('S3-ELIM-A'); data['S3-ELIM-A'].result_team = getLoser(data['S2-1L']);
@@ -274,17 +277,37 @@
             ensureNodeExists('S4-PROMO-B'); data['S4-PROMO-B'].result_team = getWinner(data['S3-2M']);
             ensureNodeExists('S4-ELIM-A'); data['S4-ELIM-A'].result_team = getLoser(data['S3-1M']);
             ensureNodeExists('S4-ELIM-B'); data['S4-ELIM-B'].result_team = getLoser(data['S3-2M']);
+
+            // Playoff advancements
+            ensureNodeExists('P-WBF'); data['P-WBF'].team_a = getWinner(data['P-WB1-1']); data['P-WBF'].team_b = getWinner(data['P-WB1-2']);
+            ensureNodeExists('P-LB1'); data['P-LB1'].team_a = getLoser(data['P-WB1-1']); data['P-LB1'].team_b = getLoser(data['P-WB1-2']);
+            ensureNodeExists('P-LBF'); data['P-LBF'].team_a = getLoser(data['P-WBF']); data['P-LBF'].team_b = getWinner(data['P-LB1']);
+            ensureNodeExists('P-GF'); data['P-GF'].team_a = getWinner(data['P-WBF']); data['P-GF'].team_b = getWinner(data['P-LBF']);
             ensureNodeExists('P-CHAMPION'); data['P-CHAMPION'].result_team = getWinner(data['P-GF']);
+            
             return data;
         }
 
         async function loadData() {
             try {
-                const { data, error } = await supabaseClient.from('match_schedule').select('*');
-                if (error) throw error;
+                 const [{ data: scheduleData, error: scheduleError }, { data: playersData, error: playersError }] = await Promise.all([
+                    supabaseClient.from('match_schedule').select('*'),
+                    supabaseClient.from('player_ids').select('team, "group"')
+                ]);
+                if (scheduleError || playersError) throw scheduleError || playersError;
 
-                allMatchesData = {}; // Clear previous data
-                data.forEach(row => {
+                allTeamsByGroup = {};
+                playersData.forEach(player => {
+                    if (player.group && player.team) {
+                        if (!allTeamsByGroup[player.group]) {
+                            allTeamsByGroup[player.group] = new Set();
+                        }
+                        allTeamsByGroup[player.group].add(player.team);
+                    }
+                });
+
+                allMatchesData = {};
+                scheduleData.forEach(row => {
                     if (!allMatchesData[row.group]) {
                         allMatchesData[row.group] = {};
                     }
@@ -295,15 +318,14 @@
 
                 renderBrackets('传奇组');
             } catch (error) {
-                console.error("加载或解析赛程数据失败:", error);
-                document.getElementById('swiss-bracket').innerHTML = `<p style="color:red; text-align:center;">无法加载赛程数据: ${error.message}</p>`;
+                console.error("加载或解析数据失败:", error);
+                document.getElementById('swiss-bracket').innerHTML = `<p style="color:red; text-align:center;">无法加载数据: ${error.message}</p>`;
             }
         }
         
         function createMatchCard(data) {
             const teamA = data?.team_a || 'TBD';
             const teamB = data?.team_b || 'TBD';
-            // Use ?? to handle null or undefined scores, defaulting to 0
             const scoreA = data?.score_a ?? 0;
             const scoreB = data?.score_b ?? 0;
             const winnerA = Number(scoreA) > Number(scoreB);
@@ -364,8 +386,6 @@
             buildBracket(document.getElementById('playoff-bracket'), playoffBracketLayout, processedData);
         }
 
-        // --- New Functionality Starts Here ---
-
         function seededRandom(seed) {
             let state = seed;
             return function() {
@@ -384,106 +404,124 @@
         async function randomlyAssignTeams() {
             const groupName = groupFilters.querySelector('.active').dataset.group;
             const groupData = allMatchesData[groupName] || {};
-
-            // 1. Calculate team records
-            const teamRecords = {};
-            const allTeams = new Set();
+            const processedData = processResultNodes(groupData);
             
-            Object.values(groupData).forEach(match => {
-                if (match.team_a && match.team_a !== 'TBD') allTeams.add(match.team_a);
-                if (match.team_b && match.team_b !== 'TBD') allTeams.add(match.team_b);
-            });
-            allTeams.forEach(team => {
-                teamRecords[team] = { wins: 0, losses: 0 };
-            });
-
-            Object.values(groupData).forEach(match => {
-                 if (typeof match.score_a !== 'undefined' && typeof match.score_b !== 'undefined' && match.score_a !== null && match.score_b !== null) {
-                    const winner = getWinner(match);
-                    const loser = getLoser(match);
-                    if (winner && teamRecords[winner]) teamRecords[winner].wins++;
-                    if (loser && teamRecords[loser]) teamRecords[loser].losses++;
-                }
-            });
-            
-            // 2. Group teams by record
-            const teamsByRecord = {};
-            for (const team in teamRecords) {
-                const record = `${teamRecords[team].wins}-${teamRecords[team].losses}`;
-                if (!teamsByRecord[record]) teamsByRecord[record] = [];
-                teamsByRecord[record].push(team);
-            }
-
-            // 3. Get seed and shuffle
             const seedInput = document.getElementById('seed-input').value;
             const seed = seedInput ? parseInt(seedInput) : new Date().getTime();
             const randomFunc = seededRandom(seed);
-            for (const record in teamsByRecord) {
-                shuffleArray(teamsByRecord[record], randomFunc);
+            
+            let dataToUpsert = [];
+            let operationMessage = '没有可生成的对战。请确保队伍池正确或所有必需的比赛已完成。';
+
+            const isMatchEmpty = (matchId) => !processedData[matchId]?.team_a || processedData[matchId]?.team_a === 'TBD';
+            const getTeam = (obj, key) => obj?.[key] && obj[key] !== 'TBD' ? obj[key] : null;
+
+            // --- Playoff Advancement Logic ---
+            const w_wb1_1 = getTeam(processedData, 'P-WB1-1') ? getWinner(processedData['P-WB1-1']) : null;
+            const l_wb1_1 = getTeam(processedData, 'P-WB1-1') ? getLoser(processedData['P-WB1-1']) : null;
+            const w_wb1_2 = getTeam(processedData, 'P-WB1-2') ? getWinner(processedData['P-WB1-2']) : null;
+            const l_wb1_2 = getTeam(processedData, 'P-WB1-2') ? getLoser(processedData['P-WB1-2']) : null;
+            
+            const w_wbf = getTeam(processedData, 'P-WBF') ? getWinner(processedData['P-WBF']) : null;
+            const l_wbf = getTeam(processedData, 'P-WBF') ? getLoser(processedData['P-WBF']) : null;
+            const w_lb1 = getTeam(processedData, 'P-LB1') ? getWinner(processedData['P-LB1']) : null;
+            const w_lbf = getTeam(processedData, 'P-LBF') ? getWinner(processedData['P-LBF']) : null;
+
+            if (isMatchEmpty('P-WBF') && isMatchEmpty('P-LB1') && w_wb1_1 && w_wb1_2 && l_wb1_1 && l_wb1_2) {
+                dataToUpsert.push({ group: groupName, match_id: 'P-WBF', team_a: w_wb1_1, team_b: w_wb1_2, score_a: 0, score_b: 0 });
+                dataToUpsert.push({ group: groupName, match_id: 'P-LB1', team_a: l_wb1_1, team_b: l_wb1_2, score_a: 0, score_b: 0 });
+                operationMessage = '已生成胜者组决赛和败者组第一轮对阵！';
+            } else if (isMatchEmpty('P-LBF') && w_lb1 && l_wbf) {
+                dataToUpsert.push({ group: groupName, match_id: 'P-LBF', team_a: l_wbf, team_b: w_lb1, score_a: 0, score_b: 0 });
+                operationMessage = '已生成败者组决赛对阵！';
+            } else if (isMatchEmpty('P-GF') && w_wbf && w_lbf) {
+                dataToUpsert.push({ group: groupName, match_id: 'P-GF', team_a: w_wbf, team_b: w_lbf, score_a: 0, score_b: 0 });
+                operationMessage = '已生成总决赛对阵！';
             }
-
-            // 4. Assign teams to the next round's matches
-            const assignments = {
-                '1-0': ['S2-1W', 'S2-2W'],
-                '0-1': ['S2-1L', 'S2-2L'],
-                '1-1': ['S3-1M', 'S3-2M']
-            };
-            const dataToUpsert = [];
-
-            for (const record in assignments) {
-                const teams = teamsByRecord[record] || [];
-                const matchIds = assignments[record];
-                
-                if (teams.length >= 2) {
-                     let teamIndex = 0;
-                     for (const matchId of matchIds) {
-                         if (!groupData[matchId] || groupData[matchId].team_a === 'TBD' || !groupData[matchId].team_a) {
-                            if (!groupData[matchId]) groupData[matchId] = { match_id: matchId, group: groupName };
-                            
-                            let teamA = 'TBD', teamB = 'TBD';
-                            if (teamIndex < teams.length) teamA = teams[teamIndex++];
-                            if (teamIndex < teams.length) teamB = teams[teamIndex++];
-                            
-                            // Update local data for immediate re-render
-                            groupData[matchId].team_a = teamA;
-                            groupData[matchId].team_b = teamB;
-                            groupData[matchId].score_a = 0;
-                            groupData[matchId].score_b = 0;
-
-                            // Add this matchup to the upsert array
-                            dataToUpsert.push({
-                                group: groupName,
-                                match_id: matchId,
-                                team_a: teamA,
-                                team_b: teamB,
-                                score_a: 0,
-                                score_b: 0
-                            });
-                         }
-                     }
+            // --- Playoff Seeding from Swiss ---
+            else if (isMatchEmpty('P-WB1-1') && isMatchEmpty('P-WB1-2')) {
+                const promo2_0 = [getTeam(processedData['S3-PROMO-A'], 'result_team'), getTeam(processedData['S3-PROMO-B'], 'result_team')].filter(Boolean);
+                const promo2_1 = [getTeam(processedData['S4-PROMO-A'], 'result_team'), getTeam(processedData['S4-PROMO-B'], 'result_team')].filter(Boolean);
+                if (promo2_0.length === 2 && promo2_1.length === 2) {
+                    shuffleArray(promo2_1, randomFunc); // Randomize which 2-1 team plays which 2-0 team
+                    dataToUpsert.push({ group: groupName, match_id: 'P-WB1-1', team_a: promo2_0[0], team_b: promo2_1[0], score_a: 0, score_b: 0 });
+                    dataToUpsert.push({ group: groupName, match_id: 'P-WB1-2', team_a: promo2_0[1], team_b: promo2_1[1], score_a: 0, score_b: 0 });
+                    operationMessage = '已从小组赛晋级队伍生成淘汰赛第一轮对阵！';
                 }
             }
             
-            // 5. Call Supabase to save the data
+            // --- Swiss Stage Seeding ---
+            if (dataToUpsert.length === 0) {
+                 const allTeamsInGroup = Array.from(allTeamsByGroup[groupName] || []);
+                 if (allTeamsInGroup.length > 0) {
+                    const teamRecords = {};
+                    allTeamsInGroup.forEach(team => { teamRecords[team] = { wins: 0, losses: 0, played: 0 }; });
+
+                    Object.values(groupData).forEach(match => {
+                        if (match.score_a !== null && match.score_b !== null) {
+                             const winner = getWinner(match); const loser = getLoser(match);
+                             if (winner && loser && (Number(match.score_a) > 0 || Number(match.score_b) > 0)) {
+                                  if (teamRecords[winner]) { teamRecords[winner].wins++; teamRecords[winner].played++; }
+                                  if (teamRecords[loser]) { teamRecords[loser].losses++; teamRecords[loser].played++; }
+                             }
+                        }
+                    });
+                    
+                    const teamsByRecord = {};
+                    for (const team in teamRecords) {
+                        const recordKey = teamRecords[team].played === 0 ? '0-0' : `${teamRecords[team].wins}-${teamRecords[team].losses}`;
+                        if (!teamsByRecord[recordKey]) teamsByRecord[recordKey] = [];
+                        teamsByRecord[recordKey].push(team);
+                    }
+
+                    for (const record in teamsByRecord) shuffleArray(teamsByRecord[record], randomFunc);
+
+                    const assignments = { '0-0': ['S1-1', 'S1-2', 'S1-3', 'S1-4'], '1-0': ['S2-1W', 'S2-2W'], '0-1': ['S2-1L', 'S2-2L'], '1-1': ['S3-1M', 'S3-2M'] };
+
+                    for (const record in assignments) {
+                        if (teamsByRecord[record] && teamsByRecord[record].length >= 2) {
+                             let teamIndex = 0;
+                             for (const matchId of assignments[record]) {
+                                 if (isMatchEmpty(matchId)) {
+                                     let teamA = 'TBD', teamB = 'TBD';
+                                     if (teamIndex < teamsByRecord[record].length) teamA = teamsByRecord[record][teamIndex++];
+                                     if (teamIndex < teamsByRecord[record].length) teamB = teamsByRecord[record][teamIndex++];
+                                     if (teamA !== 'TBD' && teamB !== 'TBD') {
+                                         dataToUpsert.push({ group: groupName, match_id: matchId, team_a: teamA, team_b: teamB, score_a: 0, score_b: 0 });
+                                         operationMessage = `已为 ${record} 组生成对阵！`;
+                                     }
+                                 }
+                             }
+                        }
+                    }
+                 } else {
+                     operationMessage = `在 "${groupName}" 中没有找到任何队伍信息。请先在后台维护选手ID和队伍。`;
+                 }
+            }
+
+            // --- Final Step: Save to DB and Re-render ---
             if (dataToUpsert.length > 0) {
+                // Update local data immediately for instant UI feedback
+                dataToUpsert.forEach(match => {
+                    if (!allMatchesData[groupName][match.match_id]) allMatchesData[groupName][match.match_id] = {};
+                    allMatchesData[groupName][match.match_id] = {...allMatchesData[groupName][match.match_id], ...match};
+                });
+                
                 const { error } = await supabaseClient.from('match_schedule').upsert(dataToUpsert, { onConflict: 'group, match_id' });
                 if (error) {
                     alert('自动保存赛程失败: ' + error.message);
                     console.error(error);
-                    return;
+                    return; // Don't re-render if save failed
                 }
-                alert(`使用种子 ${seed} 生成对战成功！赛程已自动保存。`);
+                alert(`使用种子 ${seed} 操作成功: ${operationMessage}`);
             } else {
-                alert(`没有可生成的对战，请确保上一轮比赛已完成或队伍池正确。`);
+                alert(operationMessage);
             }
             
-            // 6. Re-render the bracket with updated local data
             renderBrackets(groupName);
         }
 
         randomDrawBtn.addEventListener('click', randomlyAssignTeams);
-
-        // --- New Functionality Ends Here ---
 
         document.querySelectorAll('.bracket').forEach(bracket => {
             bracket.addEventListener('click', e => {
