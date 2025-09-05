@@ -215,6 +215,7 @@
                 localStorage.setItem('theme', isLight ? 'light' : 'dark');
             }
             const savedTheme = localStorage.getItem('theme');
+            // FIX: Corrected theme loading logic
             setTheme((savedTheme === null) ? true : (savedTheme === 'light'));
             themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
 
@@ -318,7 +319,9 @@
                     if (matchStats) {
                         const stats = matchStats.total_stats;
                         return {
+                            // FIX: Added 'name' property to the returned object
                             id: player.id,
+                            name: player.name,
                             group: player.group,
                             team: player.team,
                             matches_played: stats.matchCount,
@@ -339,7 +342,9 @@
                     } else {
                         // Player exists but has no match data
                         return {
+                            // FIX: Added 'name' property here as well
                             id: player.id,
+                            name: player.name,
                             group: player.group,
                             team: player.team,
                             matches_played: 0, avg_acs: 0, kda: 0,
@@ -403,8 +408,9 @@
 
                 data.forEach(player => {
                     const row = document.createElement('tr');
+                    // FIX: Changed link to use player.name instead of player.id
                     row.innerHTML = `
-                        <td><a href="player.html?id=${encodeURIComponent(player.id)}&group=${encodeURIComponent(player.group)}" target="_blank">${player.id}</a></td>
+                        <td><a href="player.html?name=${encodeURIComponent(player.name)}&group=${encodeURIComponent(player.group)}" target="_blank">${player.id}</a></td>
                         <td>${player.group || '—'}</td>
                         <td>${player.team || '—'}</td>
                         <td>${player.topChars}</td>
