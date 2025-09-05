@@ -255,17 +255,17 @@
         ];
 
         function getWinner(match) {
-            if (!match || typeof match.score_a === 'undefined' || typeof match.score_b === 'undefined' || match.score_a === null || match.score_b === null) return null;
-            return Number(match.score_a) > Number(match.score_b) ? match.team_a : match.team_b;
+            if (!match || typeof match.score_a !== 'number' || typeof match.score_b !== 'number') return null;
+            return match.score_a > match.score_b ? match.team_a : match.team_b;
         }
 
         function getLoser(match) {
-            if (!match || typeof match.score_a === 'undefined' || typeof match.score_b === 'undefined' || match.score_a === null || match.score_b === null) return null;
-            return Number(match.score_a) < Number(match.score_b) ? match.team_a : match.team_b;
+            if (!match || typeof match.score_a !== 'number' || typeof match.score_b !== 'number') return null;
+            return match.score_a < match.score_b ? match.team_a : match.team_b;
         }
         
         function processResultNodes(rawData) {
-            const data = JSON.parse(JSON.stringify(rawData));
+            const data = { ...rawData };
             const ensureNodeExists = (id) => { if (!data[id]) data[id] = {}; };
             
             // Swiss results
@@ -278,11 +278,19 @@
             ensureNodeExists('S4-ELIM-A'); data['S4-ELIM-A'].result_team = getLoser(data['S3-1M']);
             ensureNodeExists('S4-ELIM-B'); data['S4-ELIM-B'].result_team = getLoser(data['S3-2M']);
 
-            // Playoff advancements
-            ensureNodeExists('P-WBF'); data['P-WBF'].team_a = getWinner(data['P-WB1-1']); data['P-WBF'].team_b = getWinner(data['P-WB1-2']);
-            ensureNodeExists('P-LB1'); data['P-LB1'].team_a = getLoser(data['P-WB1-1']); data['P-LB1'].team_b = getLoser(data['P-WB1-2']);
-            ensureNodeExists('P-LBF'); data['P-LBF'].team_a = getLoser(data['P-WBF']); data['P-LBF'].team_b = getWinner(data['P-LB1']);
-            ensureNodeExists('P-GF'); data['P-GF'].team_a = getWinner(data['P-WBF']); data['P-GF'].team_b = getWinner(data['P-LBF']);
+            // Playoff advancements that can be determined without saving
+            const w_wb1_1 = getWinner(data['P-WB1-1']); const l_wb1_1 = getLoser(data['P-WB1-1']);
+            const w_wb1_2 = getWinner(data['P-WB1-2']); const l_wb1_2 = getLoser(data['P-WB1-2']);
+            if (w_wb1_1 && w_wb1_2) { ensureNodeExists('P-WBF'); data['P-WBF'].team_a = w_wb1_1; data['P-WBF'].team_b = w_wb1_2; }
+            if (l_wb1_1 && l_wb1_2) { ensureNodeExists('P-LB1'); data['P-LB1'].team_a = l_wb1_1; data['P-LB1'].team_b = l_wb1_2; }
+            
+            const w_wbf = getWinner(data['P-WBF']); const l_wbf = getLoser(data['P-WBF']);
+            const w_lb1 = getWinner(data['P-LB1']);
+            if (l_wbf && w_lb1) { ensureNodeExists('P-LBF'); data['P-LBF'].team_a = l_wbf; data['P-LBF'].team_b = w_lb1; }
+
+            const w_lbf = getWinner(data['P-LBF']);
+            if (w_wbf && w_lbf) { ensureNodeExists('P-GF'); data['P-GF'].team_a = w_wbf; data['P-GF'].team_b = w_lbf; }
+            
             ensureNodeExists('P-CHAMPION'); data['P-CHAMPION'].result_team = getWinner(data['P-GF']);
             
             return data;
@@ -299,21 +307,15 @@
                 allTeamsByGroup = {};
                 playersData.forEach(player => {
                     if (player.group && player.team) {
-                        if (!allTeamsByGroup[player.group]) {
-                            allTeamsByGroup[player.group] = new Set();
-                        }
+                        if (!allTeamsByGroup[player.group]) allTeamsByGroup[player.group] = new Set();
                         allTeamsByGroup[player.group].add(player.team);
                     }
                 });
 
                 allMatchesData = {};
                 scheduleData.forEach(row => {
-                    if (!allMatchesData[row.group]) {
-                        allMatchesData[row.group] = {};
-                    }
-                    if (row.match_id) {
-                        allMatchesData[row.group][String(row.match_id).trim()] = row;
-                    }
+                    if (!allMatchesData[row.group]) allMatchesData[row.group] = {};
+                    if (row.match_id) allMatchesData[row.group][String(row.match_id).trim()] = row;
                 });
 
                 renderBrackets('传奇组');
@@ -328,8 +330,9 @@
             const teamB = data?.team_b || 'TBD';
             const scoreA = data?.score_a ?? 0;
             const scoreB = data?.score_b ?? 0;
-            const winnerA = Number(scoreA) > Number(scoreB);
-            const winnerB = Number(scoreB) > Number(scoreA);
+            const isFinished = typeof scoreA === 'number' && typeof scoreB === 'number' && (scoreA > 0 || scoreB > 0);
+            const winnerA = isFinished && scoreA > scoreB;
+            const winnerB = isFinished && scoreB > scoreA;
             const card = document.createElement('div');
             card.className = 'match-card';
             if (data && data.link) {
@@ -413,40 +416,38 @@
             let dataToUpsert = [];
             let operationMessage = '没有可生成的对战。请确保队伍池正确或所有必需的比赛已完成。';
 
-            const isMatchEmpty = (matchId) => !processedData[matchId]?.team_a || processedData[matchId]?.team_a === 'TBD';
-            const getTeam = (obj, key) => obj?.[key] && obj[key] !== 'TBD' ? obj[key] : null;
+            const isMatchEmpty = (matchId) => {
+                const match = processedData[matchId];
+                return !match || !match.team_a || match.team_a === 'TBD' || match.team_a === '';
+            };
+            const isMatchFinished = (matchId) => {
+                 const match = processedData[matchId];
+                 return match && typeof match.score_a === 'number' && typeof match.score_b === 'number' && (match.score_a > 0 || match.score_b > 0);
+            };
+
+            const getTeamFromResult = (resultId) => processedData[resultId]?.result_team;
 
             // --- Playoff Advancement Logic ---
-            const w_wb1_1 = getTeam(processedData, 'P-WB1-1') ? getWinner(processedData['P-WB1-1']) : null;
-            const l_wb1_1 = getTeam(processedData, 'P-WB1-1') ? getLoser(processedData['P-WB1-1']) : null;
-            const w_wb1_2 = getTeam(processedData, 'P-WB1-2') ? getWinner(processedData['P-WB1-2']) : null;
-            const l_wb1_2 = getTeam(processedData, 'P-WB1-2') ? getLoser(processedData['P-WB1-2']) : null;
-            
-            const w_wbf = getTeam(processedData, 'P-WBF') ? getWinner(processedData['P-WBF']) : null;
-            const l_wbf = getTeam(processedData, 'P-WBF') ? getLoser(processedData['P-WBF']) : null;
-            const w_lb1 = getTeam(processedData, 'P-LB1') ? getWinner(processedData['P-LB1']) : null;
-            const w_lbf = getTeam(processedData, 'P-LBF') ? getWinner(processedData['P-LBF']) : null;
-
-            if (isMatchEmpty('P-WBF') && isMatchEmpty('P-LB1') && w_wb1_1 && w_wb1_2 && l_wb1_1 && l_wb1_2) {
-                dataToUpsert.push({ group: groupName, match_id: 'P-WBF', team_a: w_wb1_1, team_b: w_wb1_2, score_a: 0, score_b: 0 });
-                dataToUpsert.push({ group: groupName, match_id: 'P-LB1', team_a: l_wb1_1, team_b: l_wb1_2, score_a: 0, score_b: 0 });
+            if (isMatchFinished('P-WB1-1') && isMatchFinished('P-WB1-2') && (isMatchEmpty('P-WBF') || isMatchEmpty('P-LB1'))) {
+                dataToUpsert.push({ group: groupName, match_id: 'P-WBF', team_a: getWinner(processedData['P-WB1-1']), team_b: getWinner(processedData['P-WB1-2']), score_a: 0, score_b: 0 });
+                dataToUpsert.push({ group: groupName, match_id: 'P-LB1', team_a: getLoser(processedData['P-WB1-1']), team_b: getLoser(processedData['P-WB1-2']), score_a: 0, score_b: 0 });
                 operationMessage = '已生成胜者组决赛和败者组第一轮对阵！';
-            } else if (isMatchEmpty('P-LBF') && w_lb1 && l_wbf) {
-                dataToUpsert.push({ group: groupName, match_id: 'P-LBF', team_a: l_wbf, team_b: w_lb1, score_a: 0, score_b: 0 });
+            } else if (isMatchFinished('P-WBF') && isMatchFinished('P-LB1') && isMatchEmpty('P-LBF')) {
+                dataToUpsert.push({ group: groupName, match_id: 'P-LBF', team_a: getLoser(processedData['P-WBF']), team_b: getWinner(processedData['P-LB1']), score_a: 0, score_b: 0 });
                 operationMessage = '已生成败者组决赛对阵！';
-            } else if (isMatchEmpty('P-GF') && w_wbf && w_lbf) {
-                dataToUpsert.push({ group: groupName, match_id: 'P-GF', team_a: w_wbf, team_b: w_lbf, score_a: 0, score_b: 0 });
+            } else if (isMatchFinished('P-WBF') && isMatchFinished('P-LBF') && isMatchEmpty('P-GF')) {
+                dataToUpsert.push({ group: groupName, match_id: 'P-GF', team_a: getWinner(processedData['P-WBF']), team_b: getWinner(processedData['P-LBF']), score_a: 0, score_b: 0 });
                 operationMessage = '已生成总决赛对阵！';
             }
             // --- Playoff Seeding from Swiss ---
-            else if (isMatchEmpty('P-WB1-1') && isMatchEmpty('P-WB1-2')) {
-                const promo2_0 = [getTeam(processedData['S3-PROMO-A'], 'result_team'), getTeam(processedData['S3-PROMO-B'], 'result_team')].filter(Boolean);
-                const promo2_1 = [getTeam(processedData['S4-PROMO-A'], 'result_team'), getTeam(processedData['S4-PROMO-B'], 'result_team')].filter(Boolean);
+            else if (isMatchEmpty('P-WB1-1') || isMatchEmpty('P-WB1-2')) {
+                const promo2_0 = [getTeamFromResult('S3-PROMO-A'), getTeamFromResult('S3-PROMO-B')].filter(Boolean);
+                const promo2_1 = [getTeamFromResult('S4-PROMO-A'), getTeamFromResult('S4-PROMO-B')].filter(Boolean);
                 if (promo2_0.length === 2 && promo2_1.length === 2) {
-                    shuffleArray(promo2_1, randomFunc); // Randomize which 2-1 team plays which 2-0 team
-                    dataToUpsert.push({ group: groupName, match_id: 'P-WB1-1', team_a: promo2_0[0], team_b: promo2_1[0], score_a: 0, score_b: 0 });
-                    dataToUpsert.push({ group: groupName, match_id: 'P-WB1-2', team_a: promo2_0[1], team_b: promo2_1[1], score_a: 0, score_b: 0 });
-                    operationMessage = '已从小组赛晋级队伍生成淘汰赛第一轮对阵！';
+                    shuffleArray(promo2_1, randomFunc);
+                    if (isMatchEmpty('P-WB1-1')) dataToUpsert.push({ group: groupName, match_id: 'P-WB1-1', team_a: promo2_0[0], team_b: promo2_1[0], score_a: 0, score_b: 0 });
+                    if (isMatchEmpty('P-WB1-2')) dataToUpsert.push({ group: groupName, match_id: 'P-WB1-2', team_a: promo2_0[1], team_b: promo2_1[1], score_a: 0, score_b: 0 });
+                    if(dataToUpsert.length > 0) operationMessage = '已从小组赛晋级队伍生成淘汰赛第一轮对阵！';
                 }
             }
             
@@ -457,13 +458,11 @@
                     const teamRecords = {};
                     allTeamsInGroup.forEach(team => { teamRecords[team] = { wins: 0, losses: 0, played: 0 }; });
 
-                    Object.values(groupData).forEach(match => {
-                        if (match.score_a !== null && match.score_b !== null) {
+                    Object.values(groupData).filter(m => m.match_id.startsWith('S')).forEach(match => {
+                        if (typeof match.score_a === 'number' && typeof match.score_b === 'number' && (match.score_a > 0 || match.score_b > 0)) {
                              const winner = getWinner(match); const loser = getLoser(match);
-                             if (winner && loser && (Number(match.score_a) > 0 || Number(match.score_b) > 0)) {
-                                  if (teamRecords[winner]) { teamRecords[winner].wins++; teamRecords[winner].played++; }
-                                  if (teamRecords[loser]) { teamRecords[loser].losses++; teamRecords[loser].played++; }
-                             }
+                             if (winner && teamRecords[winner]) { teamRecords[winner].wins++; teamRecords[winner].played++; }
+                             if (loser && teamRecords[loser]) { teamRecords[loser].losses++; teamRecords[loser].played++; }
                         }
                     });
                     
@@ -479,13 +478,13 @@
                     const assignments = { '0-0': ['S1-1', 'S1-2', 'S1-3', 'S1-4'], '1-0': ['S2-1W', 'S2-2W'], '0-1': ['S2-1L', 'S2-2L'], '1-1': ['S3-1M', 'S3-2M'] };
 
                     for (const record in assignments) {
-                        if (teamsByRecord[record] && teamsByRecord[record].length >= 2) {
+                        const teams = teamsByRecord[record] || [];
+                        if (teams.length >= 2) {
                              let teamIndex = 0;
                              for (const matchId of assignments[record]) {
                                  if (isMatchEmpty(matchId)) {
-                                     let teamA = 'TBD', teamB = 'TBD';
-                                     if (teamIndex < teamsByRecord[record].length) teamA = teamsByRecord[record][teamIndex++];
-                                     if (teamIndex < teamsByRecord[record].length) teamB = teamsByRecord[record][teamIndex++];
+                                     let teamA = teams[teamIndex++] || 'TBD';
+                                     let teamB = teams[teamIndex++] || 'TBD';
                                      if (teamA !== 'TBD' && teamB !== 'TBD') {
                                          dataToUpsert.push({ group: groupName, match_id: matchId, team_a: teamA, team_b: teamB, score_a: 0, score_b: 0 });
                                          operationMessage = `已为 ${record} 组生成对阵！`;
@@ -501,7 +500,6 @@
 
             // --- Final Step: Save to DB and Re-render ---
             if (dataToUpsert.length > 0) {
-                // Update local data immediately for instant UI feedback
                 dataToUpsert.forEach(match => {
                     if (!allMatchesData[groupName][match.match_id]) allMatchesData[groupName][match.match_id] = {};
                     allMatchesData[groupName][match.match_id] = {...allMatchesData[groupName][match.match_id], ...match};
@@ -511,7 +509,7 @@
                 if (error) {
                     alert('自动保存赛程失败: ' + error.message);
                     console.error(error);
-                    return; // Don't re-render if save failed
+                    return;
                 }
                 alert(`使用种子 ${seed} 操作成功: ${operationMessage}`);
             } else {
