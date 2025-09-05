@@ -255,12 +255,14 @@
         ];
 
         function getWinner(match) {
-            if (!match || typeof match.score_a !== 'number' || typeof match.score_b !== 'number') return null;
+            if (!match || typeof match.score_a !== 'number' || typeof match.score_b !== 'number' || (match.score_a === 0 && match.score_b === 0)) return null;
+            if (match.score_a === match.score_b) return null;
             return match.score_a > match.score_b ? match.team_a : match.team_b;
         }
 
         function getLoser(match) {
-            if (!match || typeof match.score_a !== 'number' || typeof match.score_b !== 'number') return null;
+            if (!match || typeof match.score_a !== 'number' || typeof match.score_b !== 'number' || (match.score_a === 0 && match.score_b === 0)) return null;
+            if (match.score_a === match.score_b) return null;
             return match.score_a < match.score_b ? match.team_a : match.team_b;
         }
         
@@ -425,6 +427,7 @@
             };
             
             const canRegenerateRound = (matchIds) => {
+                if(matchIds.some(id => !processedData[id] || !processedData[id].team_a)) return false;
                 return matchIds.every(id => {
                     const match = processedData[id];
                     return match && match.team_a && match.team_a !== 'TBD' && match.score_a === 0 && match.score_b === 0;
@@ -507,7 +510,6 @@
 
             // --- Final Step: Save to DB and Re-render ---
             if (dataToUpsert.length > 0) {
-                // To handle potential primary key conflicts when re-generating, we delete the old rows first.
                 if(idsToDelete.length > 0) {
                     const { error: deleteError } = await supabaseClient
                         .from('match_schedule')
@@ -524,14 +526,12 @@
 
                 if (error) {
                     alert('自动保存赛程失败: ' + error.message);
-                    console.error(error);
                     return;
                 }
 
-                // Update local data for instant UI feedback
                 dataToUpsert.forEach(match => {
                     if (!allMatchesData[groupName]) allMatchesData[groupName] = {};
-                    allMatchesData[groupName][match.match_id] = {...allMatchesData[groupName][match.match_id], ...match};
+                    allMatchesData[groupName][match.match_id] = {...(allMatchesData[groupName][match.match_id] || {}), ...match};
                 });
                 
                 alert(`使用种子 ${seed} 操作成功: ${operationMessage}`);
