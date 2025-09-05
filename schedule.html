@@ -406,6 +406,7 @@
 
         async function randomlyAssignTeams() {
             const groupName = groupFilters.querySelector('.active').dataset.group;
+            // FIX: Initialize groupData safely to avoid TypeError
             const groupData = allMatchesData[groupName] || {};
             const processedData = processResultNodes(groupData);
             
@@ -418,11 +419,19 @@
 
             const isMatchEmpty = (matchId) => {
                 const match = processedData[matchId];
-                return !match || !match.team_a || match.team_a === 'TBD' || match.team_a === '';
+                return !match || !match.team_a || match.team_a === 'TBD' || match.team_a.trim() === '';
             };
             const isMatchFinished = (matchId) => {
                  const match = processedData[matchId];
                  return match && typeof match.score_a === 'number' && typeof match.score_b === 'number' && (match.score_a > 0 || match.score_b > 0);
+            };
+            
+            // NEW: Helper to check if a round can be re-generated
+            const canRegenerateRound = (matchIds) => {
+                return matchIds.every(id => {
+                    const match = processedData[id];
+                    return match && match.team_a && match.team_a !== 'TBD' && match.score_a === 0 && match.score_b === 0;
+                });
             };
 
             const getTeamFromResult = (resultId) => processedData[resultId]?.result_team;
@@ -440,14 +449,16 @@
                 operationMessage = '已生成总决赛对阵！';
             }
             // --- Playoff Seeding from Swiss ---
-            else if (isMatchEmpty('P-WB1-1') || isMatchEmpty('P-WB1-2')) {
+            else if (isMatchEmpty('P-WB1-1') || isMatchEmpty('P-WB1-2') || canRegenerateRound(['P-WB1-1', 'P-WB1-2'])) {
                 const promo2_0 = [getTeamFromResult('S3-PROMO-A'), getTeamFromResult('S3-PROMO-B')].filter(Boolean);
                 const promo2_1 = [getTeamFromResult('S4-PROMO-A'), getTeamFromResult('S4-PROMO-B')].filter(Boolean);
                 if (promo2_0.length === 2 && promo2_1.length === 2) {
                     shuffleArray(promo2_1, randomFunc);
-                    if (isMatchEmpty('P-WB1-1')) dataToUpsert.push({ group: groupName, match_id: 'P-WB1-1', team_a: promo2_0[0], team_b: promo2_1[0], score_a: 0, score_b: 0 });
-                    if (isMatchEmpty('P-WB1-2')) dataToUpsert.push({ group: groupName, match_id: 'P-WB1-2', team_a: promo2_0[1], team_b: promo2_1[1], score_a: 0, score_b: 0 });
-                    if(dataToUpsert.length > 0) operationMessage = '已从小组赛晋级队伍生成淘汰赛第一轮对阵！';
+                    if (isMatchEmpty('P-WB1-1') || canRegenerateRound(['P-WB1-1', 'P-WB1-2'])) {
+                        dataToUpsert.push({ group: groupName, match_id: 'P-WB1-1', team_a: promo2_0[0], team_b: promo2_1[0], score_a: 0, score_b: 0 });
+                        dataToUpsert.push({ group: groupName, match_id: 'P-WB1-2', team_a: promo2_0[1], team_b: promo2_1[1], score_a: 0, score_b: 0 });
+                        operationMessage = '已从小组赛晋级队伍生成淘汰赛第一轮对阵！';
+                    }
                 }
             }
             
@@ -479,16 +490,15 @@
 
                     for (const record in assignments) {
                         const teams = teamsByRecord[record] || [];
-                        if (teams.length >= 2) {
+                        const matchIds = assignments[record];
+                        if (teams.length >= 2 && (matchIds.some(isMatchEmpty) || canRegenerateRound(matchIds))) {
                              let teamIndex = 0;
-                             for (const matchId of assignments[record]) {
-                                 if (isMatchEmpty(matchId)) {
-                                     let teamA = teams[teamIndex++] || 'TBD';
-                                     let teamB = teams[teamIndex++] || 'TBD';
-                                     if (teamA !== 'TBD' && teamB !== 'TBD') {
-                                         dataToUpsert.push({ group: groupName, match_id: matchId, team_a: teamA, team_b: teamB, score_a: 0, score_b: 0 });
-                                         operationMessage = `已为 ${record} 组生成对阵！`;
-                                     }
+                             for (const matchId of matchIds) {
+                                 let teamA = teams[teamIndex++] || 'TBD';
+                                 let teamB = teams[teamIndex++] || 'TBD';
+                                 if (teamA !== 'TBD' && teamB !== 'TBD') {
+                                     dataToUpsert.push({ group: groupName, match_id: matchId, team_a: teamA, team_b: teamB, score_a: 0, score_b: 0 });
+                                     operationMessage = `已为 ${record} 组生成对阵！`;
                                  }
                              }
                         }
@@ -501,6 +511,7 @@
             // --- Final Step: Save to DB and Re-render ---
             if (dataToUpsert.length > 0) {
                 dataToUpsert.forEach(match => {
+                    if (!allMatchesData[groupName]) allMatchesData[groupName] = {}; // Ensure group exists
                     if (!allMatchesData[groupName][match.match_id]) allMatchesData[groupName][match.match_id] = {};
                     allMatchesData[groupName][match.match_id] = {...allMatchesData[groupName][match.match_id], ...match};
                 });
