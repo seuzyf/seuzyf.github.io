@@ -295,7 +295,14 @@
         .settings-form { display: none; flex-direction: column; gap: 1rem; }
         .settings-form.active { display: flex; }
         .settings-form .form-group { display: flex; flex-direction: column; }
-        .settings-form label { margin-bottom: 0.5rem; opacity: 0.8; }
+        /* NEW: Styles for label with tooltip */
+        .settings-form label {
+            margin-bottom: 0.5rem;
+            opacity: 0.8;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
         .settings-form input {
             padding: 0.8rem; background-color: var(--bg-color);
             border: 1px solid var(--border-color); color: var(--text-color);
@@ -307,6 +314,44 @@
             font-weight: 500; cursor: pointer; transition: opacity 0.2s; margin-top: 1rem;
         }
         .settings-form button:hover { opacity: 0.9; }
+
+        /* NEW: Tooltip CSS */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+            border: 1px solid var(--text-color);
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 14px;
+            line-height: 18px;
+            text-align: center;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 280px;
+            background-color: #333;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1;
+            bottom: 150%;
+            left: 50%;
+            margin-left: -140px; /* Use half of the width to center the tooltip */
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.85em;
+            line-height: 1.5;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -381,7 +426,20 @@
 
             <form id="profile-form" class="settings-form active">
                 <div class="form-group">
-                    <label for="image-url-input">头像链接</label>
+                    <label for="id-input">游戏ID</label>
+                    <input type="text" id="id-input" placeholder="输入新的游戏ID">
+                </div>
+                <div class="form-group">
+                    <label for="image-url-input">
+                        设置头像 URL
+                        <span class="tooltip">?
+                            <span class="tooltiptext">
+                                1. 打开图床网址 https://imgloc.com/ <br>
+                                2. 上传照片后点击图片进入地址详情页 <br>
+                                3. 将第二行的URL地址复制填入
+                            </span>
+                        </span>
+                    </label>
                     <input type="url" id="image-url-input" placeholder="输入新的图片URL">
                 </div>
                 <div class="form-group">
@@ -655,46 +713,37 @@
         });
     }
 
-    // NEW: Settings Modal Logic
     function setupSettingsModal(playerData) {
         const modal = document.getElementById('settings-modal');
         const settingsBtn = document.getElementById('settings-btn');
         const profileForm = document.getElementById('profile-form');
         const passwordForm = document.getElementById('password-form');
-        const profileTab = document.getElementById('profile-tab');
-        const passwordTab = document.getElementById('password-tab');
-
+        
         settingsBtn.addEventListener('click', () => {
-            // Pre-fill form with current data
+            document.getElementById('id-input').value = playerData.id || '';
             document.getElementById('image-url-input').value = playerData.image || '';
             document.getElementById('honor-input').value = playerData.honor || '';
             modal.classList.add('visible');
         });
 
         modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.classList.remove('visible');
-            }
+            if (e.target === modal) modal.classList.remove('visible');
         });
         
         document.querySelectorAll('input[name="settings-tab"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
-                if (e.target.id === 'profile-tab') {
-                    profileForm.classList.add('active');
-                    passwordForm.classList.remove('active');
-                } else {
-                    profileForm.classList.remove('active');
-                    passwordForm.classList.add('active');
-                }
+                profileForm.classList.toggle('active', e.target.id === 'profile-tab');
+                passwordForm.classList.toggle('active', e.target.id === 'password-tab');
             });
         });
 
-        profileForm.addEventListener('submit', (e) => handleUpdateProfile(e, playerData.id));
-        passwordForm.addEventListener('submit', (e) => handleChangePassword(e, playerData.id));
+        profileForm.addEventListener('submit', (e) => handleUpdateProfile(e, playerData.name));
+        passwordForm.addEventListener('submit', (e) => handleChangePassword(e, playerData.name));
     }
 
-    async function handleUpdateProfile(event, playerId) {
+    async function handleUpdateProfile(event, playerName) {
         event.preventDefault();
+        const newId = document.getElementById('id-input').value.trim();
         const imageUrl = document.getElementById('image-url-input').value.trim();
         const honor = document.getElementById('honor-input').value.trim();
         const password = document.getElementById('profile-password-input').value;
@@ -707,7 +756,7 @@
         const { data: playerData, error: fetchError } = await supabaseClient
             .from('player_ids')
             .select('pwd')
-            .eq('id', playerId)
+            .eq('name', playerName)
             .single();
 
         if (fetchError || !playerData) {
@@ -723,8 +772,8 @@
 
         const { error: updateError } = await supabaseClient
             .from('player_ids')
-            .update({ image: imageUrl, honor: honor })
-            .eq('id', playerId);
+            .update({ id: newId, image: imageUrl, honor: honor })
+            .eq('name', playerName);
 
         if (updateError) {
             alert('更新资料失败: ' + updateError.message);
@@ -734,7 +783,7 @@
         }
     }
 
-    async function handleChangePassword(event, playerId) {
+    async function handleChangePassword(event, playerName) {
         event.preventDefault();
         const oldPassword = document.getElementById('old-password-input').value;
         const newPassword = document.getElementById('new-password-input').value;
@@ -752,7 +801,7 @@
         const { data: playerData, error: fetchError } = await supabaseClient
             .from('player_ids')
             .select('pwd')
-            .eq('id', playerId)
+            .eq('name', playerName)
             .single();
         
         if (fetchError) {
@@ -768,7 +817,7 @@
         const { error: updateError } = await supabaseClient
             .from('player_ids')
             .update({ pwd: newPassword })
-            .eq('id', playerId);
+            .eq('name', playerName);
             
         if (updateError) {
             alert('密码更新失败: ' + updateError.message);
@@ -782,15 +831,12 @@
 
     async function main() {
         const params = new URLSearchParams(window.location.search);
-        const playerId = params.get('id');
+        const playerName = params.get('name');
         const groupName = params.get('group');
 
-        if (!playerId || !groupName) { document.body.innerHTML = '<h1>错误：缺少选手ID或组别信息</h1>'; return; }
-
-        const uniquePlayerKeyForComments = `${playerId}::${groupName}`;
+        if (!playerName || !groupName) { document.body.innerHTML = '<h1>错误：缺少选手真名或组别信息</h1>'; return; }
+        
         setupStarRating();
-        loadComments(uniquePlayerKeyForComments);
-        document.getElementById('comment-form').addEventListener('submit', (event) => handleCommentSubmit(event, uniquePlayerKeyForComments));
         
         const themeToggle = document.getElementById('theme-toggle-checkbox');
         const themeText = document.getElementById('theme-text');
@@ -812,14 +858,20 @@
 
         if(matchesError || idError) { document.body.innerHTML = `<h1>错误：加载数据失败</h1><p>${(matchesError || idError).message}</p>`; return; }
 
-        const idMap = idData.reduce((map, row) => { map[row.id] = row; return map; }, {});
+        const nameMap = idData.reduce((map, row) => { map[row.name] = row; return map; }, {});
         const allPlayerData = processAllPlayerData(matches);
-        const currentPlayerInfo = idMap[playerId];
-        
-        // Setup settings modal as soon as we have the player info
-        if(currentPlayerInfo) {
-            setupSettingsModal(currentPlayerInfo);
+        const currentPlayerInfo = nameMap[playerName];
+
+        if(!currentPlayerInfo) {
+             document.body.innerHTML = `<h1>错误：未找到选手 ${playerName} 的信息</h1>`; return;
         }
+        
+        const playerId = currentPlayerInfo.id;
+        const uniquePlayerKeyForComments = `${playerId}::${groupName}`;
+        loadComments(uniquePlayerKeyForComments);
+        document.getElementById('comment-form').addEventListener('submit', (event) => handleCommentSubmit(event, uniquePlayerKeyForComments));
+
+        setupSettingsModal(currentPlayerInfo);
 
         const realName = currentPlayerInfo?.name || '';
         const imageUrl = currentPlayerInfo?.image;
@@ -835,12 +887,7 @@
             header.parentNode.insertBefore(avatarContainer, header);
         }
         
-        if (realName) {
-            header.innerHTML = `<span class="player-id">${playerId}</span><span class="player-real-name">${realName}</span>`;
-        } else {
-            header.innerHTML = `<span class="player-id">${playerId}</span>`;
-        }
-
+        header.innerHTML = `<span class="player-id">${playerId}</span><span class="player-real-name">${realName}</span>`;
 
         const honors = currentPlayerInfo?.honor;
         if (honors) {
@@ -865,8 +912,8 @@
         else if (groupName === '挑战组') groupClass = 'challenger';
         document.getElementById('group-badge-container').innerHTML = `<div class="group-badge ${groupClass}">${groupName}</div>`;
 
-        const uniquePlayerKey = `${playerId}::${groupName}`;
-        const playerDataForStats = allPlayerData[uniquePlayerKey];
+        const uniquePlayerKeyForStats = `${playerId}::${groupName}`;
+        const playerDataForStats = allPlayerData[uniquePlayerKeyForStats];
         if (!playerDataForStats) { 
             document.getElementById('summary-list-content').innerHTML = '<p>暂无比赛数据</p>';
             document.getElementById('character-stats-body').innerHTML = '<tr><td colspan="9">暂无比赛数据</td></tr>';
