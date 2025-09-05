@@ -254,12 +254,12 @@
         ];
 
         function getWinner(match) {
-            if (!match || typeof match.score_a === 'undefined' || typeof match.score_b === 'undefined') return null;
+            if (!match || typeof match.score_a === 'undefined' || typeof match.score_b === 'undefined' || match.score_a === null || match.score_b === null) return null;
             return Number(match.score_a) > Number(match.score_b) ? match.team_a : match.team_b;
         }
 
         function getLoser(match) {
-            if (!match || typeof match.score_a === 'undefined' || typeof match.score_b === 'undefined') return null;
+            if (!match || typeof match.score_a === 'undefined' || typeof match.score_b === 'undefined' || match.score_a === null || match.score_b === null) return null;
             return Number(match.score_a) < Number(match.score_b) ? match.team_a : match.team_b;
         }
         
@@ -301,9 +301,13 @@
         }
         
         function createMatchCard(data) {
-            const teamA = data?.team_a || 'TBD', teamB = data?.team_b || 'TBD';
-            const scoreA = data?.score_a ?? 0, scoreB = data?.score_b ?? 0;
-            const winnerA = Number(scoreA) > Number(scoreB), winnerB = Number(scoreB) > Number(scoreA);
+            const teamA = data?.team_a || 'TBD';
+            const teamB = data?.team_b || 'TBD';
+            // Use ?? to handle null or undefined scores, defaulting to 0
+            const scoreA = data?.score_a ?? 0;
+            const scoreB = data?.score_b ?? 0;
+            const winnerA = Number(scoreA) > Number(scoreB);
+            const winnerB = Number(scoreB) > Number(scoreA);
             const card = document.createElement('div');
             card.className = 'match-card';
             if (data && data.link) {
@@ -377,7 +381,7 @@
             }
         }
 
-        function randomlyAssignTeams() {
+        async function randomlyAssignTeams() {
             const groupName = groupFilters.querySelector('.active').dataset.group;
             const groupData = allMatchesData[groupName] || {};
 
@@ -385,16 +389,14 @@
             const teamRecords = {};
             const allTeams = new Set();
             
-            // First pass: identify all teams and initialize records
-             Object.values(groupData).forEach(match => {
-                if (match.team_a) allTeams.add(match.team_a);
-                if (match.team_b) allTeams.add(match.team_b);
+            Object.values(groupData).forEach(match => {
+                if (match.team_a && match.team_a !== 'TBD') allTeams.add(match.team_a);
+                if (match.team_b && match.team_b !== 'TBD') allTeams.add(match.team_b);
             });
             allTeams.forEach(team => {
                 teamRecords[team] = { wins: 0, losses: 0 };
             });
 
-            // Second pass: calculate wins and losses from completed matches
             Object.values(groupData).forEach(match => {
                  if (typeof match.score_a !== 'undefined' && typeof match.score_b !== 'undefined' && match.score_a !== null && match.score_b !== null) {
                     const winner = getWinner(match);
@@ -408,9 +410,7 @@
             const teamsByRecord = {};
             for (const team in teamRecords) {
                 const record = `${teamRecords[team].wins}-${teamRecords[team].losses}`;
-                if (!teamsByRecord[record]) {
-                    teamsByRecord[record] = [];
-                }
+                if (!teamsByRecord[record]) teamsByRecord[record] = [];
                 teamsByRecord[record].push(team);
             }
 
@@ -418,7 +418,6 @@
             const seedInput = document.getElementById('seed-input').value;
             const seed = seedInput ? parseInt(seedInput) : new Date().getTime();
             const randomFunc = seededRandom(seed);
-
             for (const record in teamsByRecord) {
                 shuffleArray(teamsByRecord[record], randomFunc);
             }
@@ -429,6 +428,7 @@
                 '0-1': ['S2-1L', 'S2-2L'],
                 '1-1': ['S3-1M', 'S3-2M']
             };
+            const dataToUpsert = [];
 
             for (const record in assignments) {
                 const teams = teamsByRecord[record] || [];
@@ -437,17 +437,47 @@
                 if (teams.length >= 2) {
                      let teamIndex = 0;
                      for (const matchId of matchIds) {
-                         // Only update if the match is currently TBD
-                         if (groupData[matchId]?.team_a === 'TBD' || !groupData[matchId]?.team_a) {
+                         if (!groupData[matchId] || groupData[matchId].team_a === 'TBD' || !groupData[matchId].team_a) {
                             if (!groupData[matchId]) groupData[matchId] = { match_id: matchId, group: groupName };
-                             if (teamIndex < teams.length) groupData[matchId].team_a = teams[teamIndex++];
-                             if (teamIndex < teams.length) groupData[matchId].team_b = teams[teamIndex++];
+                            
+                            let teamA = 'TBD', teamB = 'TBD';
+                            if (teamIndex < teams.length) teamA = teams[teamIndex++];
+                            if (teamIndex < teams.length) teamB = teams[teamIndex++];
+                            
+                            // Update local data for immediate re-render
+                            groupData[matchId].team_a = teamA;
+                            groupData[matchId].team_b = teamB;
+                            groupData[matchId].score_a = 0;
+                            groupData[matchId].score_b = 0;
+
+                            // Add this matchup to the upsert array
+                            dataToUpsert.push({
+                                group: groupName,
+                                match_id: matchId,
+                                team_a: teamA,
+                                team_b: teamB,
+                                score_a: 0,
+                                score_b: 0
+                            });
                          }
                      }
                 }
             }
-             alert(`使用种子 ${seed} 生成对战成功！`);
-            // 5. Re-render the bracket
+            
+            // 5. Call Supabase to save the data
+            if (dataToUpsert.length > 0) {
+                const { error } = await supabaseClient.from('match_schedule').upsert(dataToUpsert, { onConflict: 'group, match_id' });
+                if (error) {
+                    alert('自动保存赛程失败: ' + error.message);
+                    console.error(error);
+                    return;
+                }
+                alert(`使用种子 ${seed} 生成对战成功！赛程已自动保存。`);
+            } else {
+                alert(`没有可生成的对战，请确保上一轮比赛已完成或队伍池正确。`);
+            }
+            
+            // 6. Re-render the bracket with updated local data
             renderBrackets(groupName);
         }
 
