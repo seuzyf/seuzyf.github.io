@@ -124,7 +124,7 @@
             font-size: 1em;
             min-width: 60px;
         }
-        input[readonly] { background-color: #333; cursor: not-allowed; }
+        input[readonly] { background-color: #333; opacity: 0.7; cursor: not-allowed; }
         td.actions { text-align: center; }
         button {
             padding: 0.6rem 1.2rem;
@@ -211,17 +211,30 @@
 
         <div id="schedule-tab" class="tab-content">
             <div class="form-section">
-                <h3>新增赛程</h3>
-                <button class="add-row-btn" data-table="schedule-table-body">新增记录</button>
-                <div style="overflow-x: auto;">
-                    <table>
-                        <thead>
-                            <tr><th>比赛ID</th><th>队伍A</th><th>队伍B</th><th>A队得分</th><th>B队得分</th><th>回放链接</th><th>操作</th></tr>
-                        </thead>
-                        <tbody id="schedule-table-body"></tbody>
-                    </table>
+                <h3>更新赛程比分</h3>
+                <div style="display: flex; gap: 15px; margin-bottom: 1rem;">
+                    <select id="match-selector" style="flex: 2;"></select>
+                    <button id="load-match-btn" style="flex: 1;">加载比赛</button>
                 </div>
-                <button class="success" style="margin-top: 1rem;" id="submit-schedule">提交赛程</button>
+                <div id="schedule-update-form" style="display: none;">
+                     <div style="overflow-x: auto;">
+                        <table>
+                            <thead>
+                                <tr><th>队伍A</th><th>A队得分</th><th>B队得分</th><th>队伍B</th><th>回放链接</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><input type="text" id="schedule-team-a" readonly></td>
+                                    <td><input type="number" id="schedule-score-a" placeholder="得分"></td>
+                                    <td><input type="number" id="schedule-score-b" placeholder="得分"></td>
+                                    <td><input type="text" id="schedule-team-b" readonly></td>
+                                    <td><input type="text" id="schedule-link" placeholder="https://..."></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <button class="success" style="margin-top: 1rem;" id="submit-schedule">更新赛程</button>
+                </div>
             </div>
         </div>
 
@@ -263,6 +276,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let allPlayersData = [];
     let groupData = { '传奇组': { teams: new Set(), rosters: {} }, '中坚组': { teams: new Set(), rosters: {} }, '挑战组': { teams: new Set(), rosters: {} } };
+    let currentScheduleData = [];
+
+    const matchIdToName = {
+        'S1-1': '0-0组-第1场', 'S1-2': '0-0组-第2场', 'S1-3': '0-0组-第3场', 'S1-4': '0-0组-第4场',
+        'S2-1W': '1-0组-第1场', 'S2-2W': '1-0组-第2场',
+        'S2-1L': '0-1组-第1场', 'S2-2L': '0-1组-第2场',
+        'S3-1M': '1-1组-第1场', 'S3-2M': '1-1组-第2场',
+        'P-WB1-1': '胜者组-第一轮-第1场', 'P-WB1-2': '胜者组-第一轮-第2场',
+        'P-WBF': '胜者组-决赛',
+        'P-LB1': '败者组-第一轮',
+        'P-LBF': '败者组-决赛',
+        'P-GF': '总决赛'
+    };
+
 
     async function checkPassword() {
         const inputPassword = passwordInput.value;
@@ -292,7 +319,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setupDynamicRows();
         setupGroupFilters();
         loadIdsData(getCurrentGroup());
+        await loadScheduleForGroup(getCurrentGroup());
+
         document.getElementById('submit-matches').addEventListener('click', submitMatches);
+        document.getElementById('load-match-btn').addEventListener('click', loadSelectedMatch);
         document.getElementById('submit-schedule').addEventListener('click', submitSchedule);
         document.getElementById('update-ids').addEventListener('click', updateIds);
     }
@@ -309,14 +339,60 @@ document.addEventListener('DOMContentLoaded', () => {
             if (groupData[playerGroup]) {
                 if (player.team) {
                     groupData[playerGroup].teams.add(player.team);
-                    if (!groupData[playerGroup].rosters[player.team]) {
-                        groupData[playerGroup].rosters[player.team] = [];
-                    }
+                    if (!groupData[playerGroup].rosters[player.team]) groupData[playerGroup].rosters[player.team] = [];
                     groupData[playerGroup].rosters[player.team].push({ id: player.id, name: player.name });
                 }
             }
         });
         updateTeamDatalist();
+    }
+
+    async function loadScheduleForGroup(groupName) {
+        const { data, error } = await supabaseClient
+            .from('match_schedule')
+            .select('*')
+            .eq('group', groupName)
+            .order('match_id');
+        if (error) {
+            console.error(`加载 ${groupName} 赛程失败:`, error);
+            currentScheduleData = [];
+        } else {
+            currentScheduleData = data.filter(m => m.team_a && m.team_a !== 'TBD');
+        }
+        populateMatchSelector();
+    }
+
+    function populateMatchSelector() {
+        const selector = document.getElementById('match-selector');
+        selector.innerHTML = '<option value="">-- 请选择一场比赛 --</option>';
+        if (currentScheduleData.length > 0) {
+            currentScheduleData.forEach(match => {
+                const option = document.createElement('option');
+                option.value = match.match_id;
+                option.textContent = `${matchIdToName[match.match_id] || match.match_id}: ${match.team_a} vs ${match.team_b}`;
+                selector.appendChild(option);
+            });
+        }
+    }
+
+    function loadSelectedMatch() {
+        const selector = document.getElementById('match-selector');
+        const matchId = selector.value;
+        const form = document.getElementById('schedule-update-form');
+        if (!matchId) {
+            form.style.display = 'none';
+            return;
+        }
+
+        const matchData = currentScheduleData.find(m => m.match_id === matchId);
+        if (matchData) {
+            document.getElementById('schedule-team-a').value = matchData.team_a || '';
+            document.getElementById('schedule-team-b').value = matchData.team_b || '';
+            document.getElementById('schedule-score-a').value = matchData.score_a ?? '';
+            document.getElementById('schedule-score-b').value = matchData.score_b ?? '';
+            document.getElementById('schedule-link').value = matchData.link || '';
+            form.style.display = 'block';
+        }
     }
 
     function updateTeamDatalist() {
@@ -338,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setupGroupFilters() {
         const groupFilterButtons = document.getElementById('group-filter-buttons');
-        groupFilterButtons.addEventListener('click', (e) => {
+        groupFilterButtons.addEventListener('click', async (e) => {
             if (e.target.tagName === 'BUTTON' && !e.target.classList.contains('active')) {
                 groupFilterButtons.querySelector('.active').classList.remove('active');
                 e.target.classList.add('active');
@@ -346,7 +422,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateTeamDatalist();
                 loadIdsData(newGroup);
                 document.getElementById('matches-form-container').innerHTML = '';
-                document.getElementById('schedule-table-body').innerHTML = '';
+                document.getElementById('schedule-update-form').style.display = 'none';
+                await loadScheduleForGroup(newGroup);
             }
         });
     }
@@ -383,7 +460,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const stageOptions = `<option value="小组赛">小组赛</option><option value="淘汰赛第一轮">淘汰赛第一轮</option><option value="胜者组决赛">胜者组决赛</option><option value="败者组第一轮">败者组第一轮</option><option value="败者组决赛">败者组决赛</option><option value="决赛">决赛</option>`;
     const characterOptions = ['幻棱','钛狐','维斯','暮蝶','壹决','不死鸟','捷风','蝰蛇','雷兹','炼狱','猎枭','奇乐','芮娜','铁臂','贤者','幽影','尚勃勒','斯凯','霓虹','夜露','海神','星礈','盖可','钢锁','黑梦'].map(c => `<option value="${c}">${c}</option>`).join('');
     const mapOptions = ['源工重镇', '隐世修所', '霓虹町', '亚海悬城', '森寒冬港', '微风岛屿', '莲华古城', '裂变峡谷', '深海明珠', '盐海矿镇'].map(m => `<option value="${m}">${m}</option>`).join('');
-    const scheduleMatchIdOptions = `<option value="S1-1">S1-1</option><option value="S1-2">S1-2</option><option value="S1-3">S1-3</option><option value="S1-4">S1-4</option><option value="S2-1W">S2-1W</option><option value="S2-2W">S2-2W</option><option value="S2-1L">S2-1L</option><option value="S2-2L">S2-2L</option><option value="S3-1M">S3-1M</option><option value="S3-2M">S3-2M</option><option value="P-WB1-1">P-WB1-1</option><option value="P-WB1-2">P-WB1-2</option><option value="P-WBF">P-WBF</option><option value="P-LB1">P-LB1</option><option value="P-LBF">P-LBF</option><option value="P-GF">P-GF</option>`;
     
     const rowTemplates = {
         'matches-table-body': () => {
@@ -417,24 +493,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             return recordDiv;
         },
-        'schedule-table-body': () => {
-            const tr = document.createElement('tr');
-            const deleteBtn = document.createElement('button');
-            deleteBtn.textContent = '删除该记录';
-            deleteBtn.className = 'delete-row-btn';
-            deleteBtn.onclick = () => tr.remove();
-
-            tr.innerHTML = `<td><select data-col="match_id">${scheduleMatchIdOptions}</select></td>
-                <td><select data-col="team_a">${getTeamOptionsHTMLForCurrentGroup()}</select></td>
-                <td><select data-col="team_b">${getTeamOptionsHTMLForCurrentGroup()}</select></td>
-                <td><input type="number" data-col="score_a" placeholder="得分"></td>
-                <td><input type="number" data-col="score_b" placeholder="得分"></td>
-                <td><input type="text" data-col="link" placeholder="https://..."></td>
-                <td class="actions"></td>`;
-            tr.querySelector('.actions').appendChild(deleteBtn);
-            return tr;
-        },
-        // CHANGE: Template for ID maintenance table updated
         'ids-table-body': (isNew = true, data = { id: '', name: '', team: '', image: '', honor: '' }) => {
             const tr = document.createElement('tr');
             tr.dataset.isNew = isNew;
@@ -591,11 +649,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function submitSchedule() {
-        const data = getTableData('schedule-table-body');
-        if (data.length === 0) return alert('没有要提交的数据。');
-        const { error } = await supabaseClient.from('match_schedule').upsert(data, { onConflict: 'group, match_id' });
-        if (error) { alert('提交赛程失败: ' + error.message); }
-        else { alert('赛程提交/更新成功！'); document.getElementById('schedule-table-body').innerHTML = ''; }
+        const matchId = document.getElementById('match-selector').value;
+        if (!matchId) return alert('请先选择一场比赛。');
+        
+        const scoreA_input = document.getElementById('schedule-score-a').value;
+        const scoreB_input = document.getElementById('schedule-score-b').value;
+        
+        const dataToUpdate = {
+            score_a: scoreA_input === '' ? null : parseInt(scoreA_input),
+            score_b: scoreB_input === '' ? null : parseInt(scoreB_input),
+            link: document.getElementById('schedule-link').value.trim()
+        };
+        
+        const { error } = await supabaseClient
+            .from('match_schedule')
+            .update(dataToUpdate)
+            .eq('group', getCurrentGroup())
+            .eq('match_id', matchId);
+
+        if (error) {
+            alert('更新赛程失败: ' + error.message);
+        } else {
+            alert('赛程更新成功！');
+            document.getElementById('schedule-update-form').style.display = 'none';
+            await loadScheduleForGroup(getCurrentGroup()); // Refresh the data
+        }
     }
 
     function loadIdsData(groupName) {
@@ -616,7 +694,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const dataToUpsert = getTableData('ids-table-body', true);
         if (dataToUpsert.length === 0) return alert('没有要更新或添加的数据。');
         
-        // CHANGE: Prevent adding users with duplicate names
         const existingNames = new Set(allPlayersData.map(p => p.name));
         for (const row of dataToUpsert) {
             if (row.isNew) {
@@ -627,13 +704,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        // Prepare data for Supabase (remove isNew flag)
         const dbData = dataToUpsert.map(row => {
             const { isNew, ...dbRow } = row;
             return dbRow;
         });
 
-        // CHANGE: Upsert on 'name' conflict
         const { error } = await supabaseClient.from('player_ids').upsert(dbData, { onConflict: 'name' });
 
         if (error) { 
@@ -641,12 +716,11 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error(error);
         } else { 
             alert('选手数据更新成功！'); 
-            await loadInitialData(); // Reload all data from DB
-            loadIdsData(getCurrentGroup()); // Re-render the table for the current group
+            await loadInitialData();
+            loadIdsData(getCurrentGroup());
         }
     }
     
-    // CHANGE: Delete logic now uses name
     async function handleDeleteId(deleteBtn) {
         const tr = deleteBtn.closest('tr');
         const playerName = tr.querySelector('input[data-col="name"]').value;
@@ -665,7 +739,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (error) {
                 alert(`删除失败: ${error.message}`);
-                console.error(error);
             } else {
                 alert(`选手 "${playerName}" 已成功删除。`);
                 tr.remove();
