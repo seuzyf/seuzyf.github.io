@@ -404,11 +404,13 @@
                 await loadMatchesAndBets(); 
             }
 
+            // **【最终版余额计算函数】**
             async function recalculateBalance() {
                 if (!currentUser) return;
 
                 const userBets = allBetsData.filter(b => b.user_id === currentUser.id);
                 
+                // 1. 构建所有比赛的最终奖池
                 const matchPools = {};
                 allBetsData.forEach(bet => {
                     const matchId = bet.match_id;
@@ -425,9 +427,12 @@
                     }
                 });
 
-                let totalProfit = 0;
+                // 2. 计算总利润
+                let totalStaked = 0;
+                let totalWinnings = 0;
 
                 userBets.forEach(bet => {
+                    totalStaked += bet.amount;
                     const match = allMatchesData.find(m => m.id === bet.match_id);
                     if (match) {
                         const isFinished = (match.score_a !== null && match.score_b !== null) && 
@@ -438,31 +443,25 @@
                             if (bet.predicted_winner === winner) {
                                 const finalPools = matchPools[bet.match_id];
                                 if (winner === match.team_a) {
-                                    const winnerTotalBets = finalPools.betsOnA;
-                                    const loserTotalBets = finalPools.betsOnB;
-                                    const winnerPool = 100 + winnerTotalBets;
-                                    const loserPool = 100 + loserTotalBets;
-                                    const profit = winnerTotalBets > 0 ? (bet.amount / winnerTotalBets) * loserPool : 0;
-                                    totalProfit += profit;
+                                    const winnerPool = 100 + finalPools.betsOnA;
+                                    const loserPool = 100 + finalPools.betsOnB;
+                                    // 按比例瓜分输家奖池，这就是利润
+                                    const profit = (bet.amount / winnerPool) * loserPool;
+                                    totalWinnings += bet.amount + profit; // 回报 = 本金 + 利润
                                 } else { // winner is team_b
-                                    const winnerTotalBets = finalPools.betsOnB;
-                                    const loserTotalBets = finalPools.betsOnA;
-                                    const winnerPool = 100 + winnerTotalBets;
-                                    const loserPool = 100 + loserTotalBets;
-                                    const profit = winnerTotalBets > 0 ? (bet.amount / winnerTotalBets) * loserPool : 0;
-                                    totalProfit += profit;
+                                    const winnerPool = 100 + finalPools.betsOnB;
+                                    const loserPool = 100 + finalPools.betsOnA;
+                                    const profit = (bet.amount / winnerPool) * loserPool;
+                                    totalWinnings += bet.amount + profit;
                                 }
-                            } else {
-                                // 猜错了，利润为负的下注额
-                                totalProfit -= bet.amount;
                             }
                         }
                     }
                 });
                 
-                const initialBalance = 100;
-                // 最终余额 = 初始分数 + 总利润
-                const finalBalance = initialBalance + totalProfit;
+                const initialBalance = 100; // 假设初始分数为100
+                // 最终余额 = 初始分 - 总下注额 + 总回报
+                const finalBalance = initialBalance - totalStaked + totalWinnings;
                 
                 currentUser.balance = finalBalance;
                 updateUserDisplay();
@@ -527,21 +526,8 @@
                     const poolA = 100 + betsOnA;
                     const poolB = 100 + betsOnB;
 
-                    // **【赔率显示修正】显示净利润率**
-                    const profitMultiplierA = poolA > 0 ? poolB / betsOnA : 0;
-                    const profitMultiplierB = poolB > 0 ? poolA / betsOnB : 0;
-                    
-                    // 为了让显示更直观，我们将净利润率 + 1，变回总回报率进行显示，但核心计算已分离
-                    const displayOddsA = 1 + (betsOnA > 0 ? poolB / betsOnA : 1);
-                    const displayOddsB = 1 + (betsOnB > 0 ? poolA / betsOnB : 1);
-                    if (betsOnA === 0 && betsOnB === 0) { // 特殊处理无人下注的情况
-                        // This logic is flawed, let's fix it.
-                        // The odds should reflect the potential return.
-                        // The TOTAL return factor is (poolA+poolB)/poolA. Let's stick to that for display.
-                    }
-
-                    const oddsA = poolA > 0 ? (poolA + poolB) / poolA : 2.00;
-                    const oddsB = poolB > 0 ? (poolA + poolB) / poolB : 2.00;
+                    const oddsA = poolA > 0 ? (poolA + poolB) / poolA : 1.00;
+                    const oddsB = poolB > 0 ? (poolA + poolB) / poolB : 1.00;
 
                     const isFinished = (match.score_a !== null && match.score_b !== null) && (parseInt(match.score_a) > 0 || parseInt(match.score_b) > 0);
 
@@ -603,6 +589,7 @@
                  
                  document.getElementById('bet-modal-header').textContent = `${match.team_a} vs ${match.team_b}`;
                  document.getElementById('modal-user-balance').textContent = currentUser.balance.toFixed(2);
+                 // ... rest of the modal setup
                  document.getElementById('bet-controls-section').style.display = 'block';
                  document.getElementById('bet-confirm-btn').style.display = 'inline-flex';
                  document.getElementById('bet-amount-input').value = '';
@@ -627,12 +614,14 @@
                         betConfirmBtn.disabled = false; betConfirmBtn.textContent = '确认预测'; return;
                      }
                      
+                     // **【最终版下注逻辑】不再计算和储存赔率，只记录必要信息**
                      const { error: betError } = await supabaseClient.from('bet_bets').insert([{
                          user_id: currentUser.id, 
                          match_id: match.id, 
                          amount, 
                          predicted_winner: selectedTeam, 
                          status: 'pending' 
+                         // odds_at_bet is no longer used or stored
                      }]);
 
                      if(betError) {
@@ -685,6 +674,7 @@
             }
 
             async function showHistory(userId, username) {
+                // ... (This function now needs to dynamically calculate profit for display)
                 const historyModal = document.getElementById('history-modal');
                 const historyHeader = document.getElementById('history-modal-header');
                 const historyBody = document.getElementById('history-table-body');
@@ -704,32 +694,29 @@
                     let statusText = '待结算';
                     let settlement = 'N/A';
                     let settlementColor = 'var(--text-color)';
-                    let finalOddsForDisplay = 'N/A';
+                    let finalOdds = 'N/A';
                     
                     if (match) {
                         const isFinished = (match.score_a !== null && match.score_b !== null) && (match.score_a > 0 || match.score_b > 0) && (match.score_a !== match.score_b);
                         if (isFinished) {
                             const winner = match.score_a > match.score_b ? match.team_a : match.team_b;
-                            
+                            // Recalculate final odds for display
                             const betsForMatch = allBetsData.filter(b => b.match_id === match.id);
                             const betsOnA = betsForMatch.filter(b => b.predicted_winner === match.team_a).reduce((sum, b) => sum + b.amount, 0);
                             const betsOnB = betsForMatch.filter(b => b.predicted_winner === match.team_b).reduce((sum, b) => sum + b.amount, 0);
                             const poolA = 100 + betsOnA;
                             const poolB = 100 + betsOnB;
-                            
                             const oddsA = poolA > 0 ? (poolA+poolB)/poolA : 1;
                             const oddsB = poolB > 0 ? (poolA+poolB)/poolB : 1;
 
                             if(bet.predicted_winner === winner) {
                                 statusText = '胜利';
-                                finalOddsForDisplay = (winner === match.team_a ? oddsA : oddsB).toFixed(2);
-                                const profit = (bet.amount / (winner === match.team_a ? betsOnA : betsOnB)) * (winner === match.team_a ? poolB : poolA);
-                                const totalReturn = bet.amount + profit;
-                                settlement = `+${totalReturn.toFixed(2)}`;
+                                finalOdds = (winner === match.team_a ? oddsA : oddsB).toFixed(2);
+                                settlement = `+${(bet.amount * parseFloat(finalOdds)).toFixed(2)}`;
                                 settlementColor = 'var(--win-color)';
                             } else {
                                 statusText = '失败';
-                                finalOddsForDisplay = (bet.predicted_winner === match.team_a ? oddsA : oddsB).toFixed(2);
+                                finalOdds = (bet.predicted_winner === match.team_a ? oddsA : oddsB).toFixed(2);
                                 settlement = `-${bet.amount.toFixed(2)}`;
                                 settlementColor = 'var(--loss-color)';
                             }
@@ -741,7 +728,7 @@
                         <td>${match ? `${match.team_a} vs ${match.team_b}`: '比赛信息丢失'}</td>
                         <td>${bet.predicted_winner}</td>
                         <td>${bet.amount.toFixed(2)}</td>
-                        <td>${finalOddsForDisplay}</td>
+                        <td>${finalOdds}</td>
                         <td>${statusText}</td>
                         <td style="color: ${settlementColor};">${settlement}</td>`;
                     historyBody.appendChild(tr);
