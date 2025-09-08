@@ -40,7 +40,7 @@
             background-size: cover;
             background-position: center center;
         }
-        .container { width: 90%; max-width: 1400px; margin: 0 auto; }
+        .container { width: 90%; max-width: 1600px; margin: 0 auto; }
         .main-header-block {
             background-color: var(--header-bg-color);
             backdrop-filter: blur(10px);
@@ -73,15 +73,23 @@
             text-decoration: none;
             transition: background-color 0.3s, color 0.3s;
             background-color: transparent;
+            font-size: 1em; /* Ensure consistent font size */
         }
         .nav-button:hover { background-color: var(--primary-color); color: white; }
 
+        #main-content {
+             display: flex;
+             gap: 20px;
+             align-items: flex-start;
+        }
+
         .group-section {
-            margin-bottom: 40px;
+            flex: 1;
             background: var(--card-bg-color);
             border-radius: 12px;
             padding: 20px;
             border: 1px solid var(--border-color);
+            min-width: 320px;
         }
 
         .group-header {
@@ -93,10 +101,10 @@
             border-bottom: 2px solid var(--border-color);
         }
 
-        #betting-matches-view {
+        .betting-matches-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
+            grid-template-columns: 1fr;
+            gap: 15px;
         }
 
         .betting-card {
@@ -176,7 +184,7 @@
             border-collapse: collapse;
         }
         .history-table th, .history-table td, .leaderboard-table th, .leaderboard-table td {
-            padding: 8px;
+            padding: 12px 8px;
             border-bottom: 1px solid var(--border-color);
             text-align: center;
         }
@@ -184,6 +192,7 @@
             cursor: pointer;
             text-decoration: underline;
             color: var(--primary-color);
+            font-weight: bold;
         }
 
 
@@ -222,6 +231,14 @@
         .bet-record .cancel-bet-btn:hover {
             opacity: 0.8;
         }
+
+        #leaderboard-section {
+            display: none;
+            background: var(--card-bg-color);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+        }
     </style>
 </head>
 <body>
@@ -235,15 +252,32 @@
                 <button id="login-btn" class="nav-button">登录/注册</button>
                 <button id="history-btn" class="nav-button" style="margin-top: 10px; display:none;">我的预测记录</button>
             </div>
-            <h1>赛事预测</h1>
+            <h1 id="main-title">赛事预测</h1>
             <div class="controls-container">
                  <a href="index.html" class="nav-button">返回比赛中心</a>
                  <a href="summary.html" class="nav-button">查看选手数据</a>
-                 <button id="leaderboard-btn" class="nav-button">预测积分排名</button>
+                 <button id="toggle-view-btn" class="nav-button">预测积分排名</button>
             </div>
         </div>
 
-        <main id="betting-matches-view"></main>
+        <main>
+            <div id="main-content"></div>
+            <section id="leaderboard-section">
+                <h2 class="group-header">预测积分排名</h2>
+                <div style="max-height: 60vh; overflow-y: auto;">
+                    <table class="leaderboard-table">
+                        <thead>
+                            <tr>
+                                <th>排名</th>
+                                <th>ID</th>
+                                <th>当前分数</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
     </div>
 
     <div id="login-modal" class="modal-backdrop">
@@ -305,29 +339,11 @@
         </div>
     </div>
 
-    <div id="leaderboard-modal" class="modal-backdrop">
-        <div class="modal-content" style="max-width: 600px;">
-            <h3 class="modal-header">预测积分排名</h3>
-            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
-                <table class="leaderboard-table">
-                    <thead>
-                        <tr>
-                            <th>排名</th>
-                            <th>ID</th>
-                            <th>当前分数</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leaderboard-table-body"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const SUPABASE_URL = 'https://vbyvolmtkjjyeiibpljf.supabase.co';
-            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieXZvbG10a2pqeWVpaWJwbGpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzMxNDksImV4cCI6MjA3MjI0OTE0OX0.Tnot1kIVn8vJ-vggYaTGBGTkIBY7m6yIOquSjG5mSUM';
+            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieXZvbG10a2pqeWVpaWJwbGpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzMxNDksImV4cCI6MjA3MjI0OTE0OX0.Tnot1kiv-vggYaTGBGTkIBY7m6yIOquSjG5mSUM';
             const { createClient } = supabase;
             const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -338,15 +354,18 @@
             const logoutBtn = document.getElementById('logout-btn');
             const loginModal = document.getElementById('login-modal');
             const loginConfirmBtn = document.getElementById('login-confirm-btn');
-            const bettingMatchesView = document.getElementById('betting-matches-view');
+            const mainContent = document.getElementById('main-content');
             const betModal = document.getElementById('bet-modal');
             const betConfirmBtn = document.getElementById('bet-confirm-btn');
-            const leaderboardBtn = document.getElementById('leaderboard-btn');
+            const toggleViewBtn = document.getElementById('toggle-view-btn');
+            const leaderboardSection = document.getElementById('leaderboard-section');
+            const mainTitle = document.getElementById('main-title');
+
 
             loginBtn.addEventListener('click', () => loginModal.classList.add('visible'));
             loginConfirmBtn.addEventListener('click', handleLoginOrRegister);
             logoutBtn.addEventListener('click', handleLogout);
-            leaderboardBtn.addEventListener('click', showLeaderboard);
+            toggleViewBtn.addEventListener('click', toggleView);
 
 
             async function handleLoginOrRegister() {
@@ -420,7 +439,7 @@
                 
                 if(error){
                     console.error("加载比赛失败:", error);
-                    bettingMatchesView.innerHTML = '<p>加载比赛失败，请刷新页面重试。</p>';
+                    mainContent.innerHTML = '<p>加载比赛失败，请刷新页面重试。</p>';
                     return;
                 }
                 
@@ -457,7 +476,7 @@
             }
             
             function renderMatches(){
-                bettingMatchesView.innerHTML = '';
+                mainContent.innerHTML = '';
                 const groups = ['传奇组', '中坚组', '挑战组'];
 
                 groups.forEach(group => {
@@ -473,10 +492,6 @@
 
                         const grid = document.createElement('div');
                         grid.className = 'betting-matches-grid';
-                        grid.style.display = 'grid';
-                        grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(300px, 1fr))';
-                        grid.style.gap = '20px';
-
 
                         groupMatches.forEach(match => {
                             const card = document.createElement('div');
@@ -502,7 +517,7 @@
                             grid.appendChild(card);
                         });
                         section.appendChild(grid);
-                        bettingMatchesView.appendChild(section);
+                        mainContent.appendChild(section);
                     }
                 });
             }
@@ -716,10 +731,8 @@
             }
 
             async function showLeaderboard() {
-                const leaderboardModal = document.getElementById('leaderboard-modal');
                 const leaderboardBody = document.getElementById('leaderboard-table-body');
                 leaderboardBody.innerHTML = '<tr><td colspan="3">加载中...</td></tr>';
-                leaderboardModal.classList.add('visible');
 
                 const { data: users, error } = await supabaseClient.from('bet_users').select('id, username, balance').order('balance', { ascending: false });
 
@@ -746,6 +759,22 @@
                         showHistory(userId, username);
                     });
                 });
+            }
+
+            function toggleView() {
+                const isLeaderboardVisible = leaderboardSection.style.display === 'block';
+                if (isLeaderboardVisible) {
+                    leaderboardSection.style.display = 'none';
+                    mainContent.style.display = 'flex';
+                    toggleViewBtn.textContent = '预测积分排名';
+                    mainTitle.textContent = '赛事预测';
+                } else {
+                    leaderboardSection.style.display = 'block';
+                    mainContent.style.display = 'none';
+                    toggleViewBtn.textContent = '返回赛事预测';
+                    mainTitle.textContent = '积分排行榜';
+                    showLeaderboard();
+                }
             }
             
             document.getElementById('history-btn').addEventListener('click', () => showHistory());
