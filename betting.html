@@ -71,7 +71,7 @@
         .filter-group { background-color: var(--card-bg-color); padding: 5px; border: 1px solid var(--border-color); }
         .filter-group button { padding: 0 15px; border: none; background-color: transparent; color: var(--text-color); opacity: 0.7; cursor: pointer; border-radius: 6px; font-size: 0.9em; height: 100%; }
         .filter-group button.active { background-color: var(--primary-color); color: white; opacity: 1; }
-        .nav-button { padding: 0 25px; border: 2px solid var(--primary-color); color: var(--primary-color); text-decoration: none; transition: background-color 0.3s, color 0.3s; }
+        .nav-button { padding: 0 25px; border: 2px solid var(--primary-color); color: var(--primary-color); text-decoration: none; transition: background-color 0.3s, color 0.3s; background-color: transparent;}
         .nav-button:hover { background-color: var(--primary-color); color: white; }
 
         #betting-matches-view {
@@ -81,35 +81,26 @@
         }
 
         .betting-card {
-            background-color: var(--card-bg-color);
-            border-radius: 12px;
-            box-shadow: 0 4px 12px var(--shadow-color);
-            overflow: hidden;
-            transition: transform 0.3s, box-shadow 0.3s;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 2px 8px var(--shadow-color);
+        }
+        .betting-card.bettable {
+            border-color: var(--win-color);
             cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-        .betting-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 20px var(--shadow-color);
+        .betting-card.bettable:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px var(--shadow-color);
         }
-        .betting-card-header {
-            padding: 15px;
-            text-align: center;
-        }
-        .betting-card-teams {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 1.3em;
-            font-weight: bold;
-        }
-        .odds {
-            color: var(--primary-color);
-            padding: 0 15px;
-        }
-        .odds.high-odds {
-            color: var(--win-color);
-        }
+        .team { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+        .team-name { font-size: 1.1em; }
+        .team-odds { font-weight: bold; }
+        .team-odds.high-odds { color: var(--win-color); }
+        hr { border-color: var(--border-color); opacity: 0.5; margin: 5px 0; }
 
         /* Modal Styles */
         .modal-backdrop {
@@ -138,11 +129,34 @@
         }
         .modal-footer { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem; }
         .modal-footer button {
-            padding: 0.6rem 1.2rem; border: none; border-radius: 5px;
-            cursor: pointer; font-weight: 500;
+            height: var(--control-height);
+            display: inline-flex;
+            align-items: center;
+            border-radius: 8px;
+            font-weight: 500;
+            padding: 0 25px;
+            cursor: pointer;
+            border: 2px solid;
+            transition: background-color 0.3s, color 0.3s;
         }
-        .modal-footer .confirm-btn { background-color: var(--win-color); color: white; }
-        .modal-footer .cancel-btn { background-color: var(--loss-color); color: white; }
+        .modal-footer .confirm-btn { 
+            background-color: var(--win-color); 
+            color: white; 
+            border-color: var(--win-color);
+        }
+        .modal-footer .confirm-btn:hover {
+             background-color: transparent;
+             color: var(--win-color);
+        }
+        .modal-footer .cancel-btn { 
+            background-color: transparent; 
+            color: var(--loss-color); 
+            border-color: var(--loss-color);
+        }
+        .modal-footer .cancel-btn:hover {
+            background-color: var(--loss-color);
+            color: white;
+        }
         
         .user-info {
             position: absolute;
@@ -196,8 +210,8 @@
                 <input type="password" id="password-input" placeholder="请输入您的密码" required>
             </div>
             <div class="modal-footer">
-                <button id="login-confirm-btn" class="confirm-btn">确认</button>
                 <button class="cancel-btn" onclick="document.getElementById('login-modal').classList.remove('visible')">取消</button>
+                <button id="login-confirm-btn" class="confirm-btn">确认</button>
             </div>
         </div>
     </div>
@@ -215,8 +229,8 @@
             </div>
             <div class="modal-footer">
                  <div style="margin-right: auto;">您的余额: <span id="modal-user-balance"></span></div>
-                <button id="bet-confirm-btn" class="confirm-btn">确认</button>
                 <button class="cancel-btn" onclick="document.getElementById('bet-modal').classList.remove('visible')">撤销</button>
+                <button id="bet-confirm-btn" class="confirm-btn">确认</button>
             </div>
         </div>
     </div>
@@ -321,7 +335,7 @@
             function handleLogout() {
                 currentUser = null;
                 updateUserDisplay();
-                bettingMatchesView.innerHTML = '<p>请先登录以查看可竞猜的比赛。</p>';
+                loadMatches();
             }
 
             function updateUserDisplay() {
@@ -344,20 +358,16 @@
             }
             
             async function loadMatches(){
-                if(!currentUser) {
-                    bettingMatchesView.innerHTML = '<p>请先登录以查看可竞猜的比赛。</p>';
-                    return;
-                };
-                
                 const activeGroup = groupFilterButtons.querySelector('.active').dataset.group;
                 let {data: matches, error} = await supabaseClient.from('match_schedule').select('*').eq('group', activeGroup);
                 
                 if(error){
                     console.error("加载比赛失败:", error);
+                    bettingMatchesView.innerHTML = '<p>加载比赛失败，请刷新页面重试。</p>';
                     return;
                 }
                 
-                const upcomingMatches = matches.filter(m => !m.score_a && !m.score_b && m.team_a && m.team_b);
+                const upcomingMatches = matches.filter(m => m.team_a && m.team_b);
                 
                 const matchIds = upcomingMatches.map(m => m.id);
                 if (matchIds.length === 0) {
@@ -381,36 +391,38 @@
                     const oddsA = totalPool > 0 ? (totalPool / poolA) : 1.00;
                     const oddsB = totalPool > 0 ? (totalPool / poolB) : 1.00;
                     
-                    return {...match, odds_a: oddsA, odds_b: oddsB};
+                    const isFinished = match.score_a !== null && match.score_b !== null && (match.score_a > 0 || match.score_b > 0);
+
+                    return {...match, odds_a: oddsA, odds_b: oddsB, is_finished: isFinished};
                 });
                 
                 renderMatches();
             }
             
             function renderMatches(){
-                if (currentMatches.length === 0) {
-                    bettingMatchesView.innerHTML = '<p>当前分组暂无可竞猜的比赛。</p>';
+                 if (currentMatches.length === 0) {
+                    bettingMatchesView.innerHTML = '<p>当前分组暂无比赛。</p>';
                     return;
                 }
                 bettingMatchesView.innerHTML = '';
                 currentMatches.forEach(match => {
                     const card = document.createElement('div');
-                    card.className = 'betting-card';
+                    const canBet = currentUser && !match.is_finished;
+                    card.className = `betting-card ${canBet ? 'bettable' : 'not-bettable'}`;
                     card.dataset.matchId = match.id;
                     
                     const oddsAHigh = match.odds_a > match.odds_b;
+                    const oddsBHigh = match.odds_b > match.odds_a;
 
                     card.innerHTML = `
-                        <div class="betting-card-header">
-                            <div class="betting-card-teams">
-                                <span class="team-name">${match.team_a}</span>
-                                <span class="odds">
-                                    <span class="${oddsAHigh ? 'high-odds' : ''}">${match.odds_a.toFixed(2)}</span>
-                                    vs
-                                    <span class="${!oddsAHigh ? 'high-odds' : ''}">${match.odds_b.toFixed(2)}</span>
-                                </span>
-                                <span class="team-name">${match.team_b}</span>
-                            </div>
+                        <div class="team">
+                            <span class="team-name">${match.team_a}</span>
+                            <span class="team-odds ${oddsAHigh ? 'high-odds' : ''}">${match.odds_a.toFixed(2)}</span>
+                        </div>
+                        <hr>
+                        <div class="team">
+                            <span class="team-name">${match.team_b}</span>
+                            <span class="team-odds ${oddsBHigh ? 'high-odds' : ''}">${match.odds_b.toFixed(2)}</span>
                         </div>
                     `;
                     card.addEventListener('click', () => openBetModal(match.id));
@@ -421,6 +433,15 @@
             function openBetModal(matchId){
                  const match = currentMatches.find(m => m.id === matchId);
                  if(!match) return;
+
+                 if (!currentUser) {
+                     loginModal.classList.add('visible');
+                     return;
+                 }
+                 if (match.is_finished) {
+                     alert("本场比赛已结束，无法投注。");
+                     return;
+                 }
 
                  document.getElementById('bet-modal-header').textContent = `${match.team_a} vs ${match.team_b}`;
                  const teamABtn = document.getElementById('bet-team-a-btn');
@@ -510,11 +531,11 @@
                 historyBody.innerHTML = '';
                 bets.forEach(bet => {
                     const match = bet.match_schedule;
-                    let status = '未开赛';
+                    let status = '待结算';
                     let settlement = 'N/A';
                     let settlementColor = 'var(--text-color)';
 
-                    if (match && match.score_a !== null && match.score_b !== null) {
+                    if (match && match.score_a !== null && match.score_b !== null && (match.score_a > 0 || match.score_b > 0)) {
                          const winner = match.score_a > match.score_b ? match.team_a : match.team_b;
                          if (bet.predicted_winner === winner) {
                              status = '胜利';
@@ -541,6 +562,9 @@
             }
             
             document.getElementById('history-btn').addEventListener('click', showHistory);
+            
+            // Initial load
+            loadMatches();
         });
     </script>
 </body>
