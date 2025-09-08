@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HWVCTS4 - 赛事竞猜</title>
+    <title>HWVCTS4 - 赛事预测</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -202,13 +202,13 @@
         <div class="main-header-block">
             <div class="user-info">
                 <div id="user-display" style="display: none;">
-                    <span id="username-display"></span> | 余额: <span id="user-balance"></span>
+                    <span id="username-display"></span> | 剩余分数: <span id="user-balance"></span>
                     <button id="logout-btn" class="nav-button" style="height: auto; padding: 5px 10px; margin-left: 10px;">登出</button>
                 </div>
                 <button id="login-btn" class="nav-button">登录/注册</button>
-                <button id="history-btn" class="nav-button" style="margin-top: 10px; display:none;">竞猜记录</button>
+                <button id="history-btn" class="nav-button" style="margin-top: 10px; display:none;">预测记录</button>
             </div>
-            <h1>赛事竞猜</h1>
+            <h1>赛事预测</h1>
             <div class="controls-container">
                 <div class="filter-group" id="group-filter-buttons">
                     <button class="active" data-group="传奇组">传奇组</button>
@@ -242,39 +242,39 @@
             <h3 class="modal-header" id="bet-modal-header"></h3>
             <div class="modal-body">
                 <div>
-                    <p>请选择您要投注的队伍:</p>
+                    <p>请选择您要支持的队伍:</p>
                     <div style="display: flex; gap: 1rem; justify-content: center;">
                         <button id="bet-team-a-btn" class="nav-button"></button>
                         <button id="bet-team-b-btn" class="nav-button"></button>
                     </div>
                 </div>
-                <input type="number" id="bet-amount-input" placeholder="请输入投注分数 (最小为1)">
+                <input type="number" id="bet-amount-input" placeholder="请输入支持分数 (最小为1)">
 
                 <div id="existing-bets-section">
-                    <h4>您在本场的投注记录</h4>
+                    <h4>您在本场的预测记录</h4>
                     <div id="existing-bets-list"></div>
                 </div>
             </div>
             <div class="modal-footer">
-                 <div style="margin-right: auto;">您的余额: <span id="modal-user-balance"></span></div>
-                <button id="bet-confirm-btn" class="confirm-btn">确认投注</button>
+                 <div style="margin-right: auto;">您的剩余分数: <span id="modal-user-balance"></span></div>
+                <button id="bet-confirm-btn" class="confirm-btn">确认预测</button>
             </div>
         </div>
     </div>
     
     <div id="history-modal" class="modal-backdrop">
         <div class="modal-content" style="max-width: 800px;">
-            <h3 class="modal-header">竞猜记录</h3>
+            <h3 class="modal-header">预测记录</h3>
             <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
                 <table class="history-table">
                     <thead>
                         <tr>
                             <th>比赛</th>
-                            <th>投注队伍</th>
-                            <th>投注金额</th>
-                            <th>赔率</th>
+                            <th>支持队伍</th>
+                            <th>支持分数</th>
+                            <th>回报指数</th>
                             <th>状态</th>
-                            <th>结算金额</th>
+                            <th>分数结算</th>
                         </tr>
                     </thead>
                     <tbody id="history-table-body"></tbody>
@@ -337,7 +337,7 @@
                         return;
                     }
                     currentUser = newUser;
-                    alert('注册成功，初始积分为100！');
+                    alert('注册成功，初始分数为100！');
 
                 } else if (error) { // Other select error
                     alert('数据库查询失败: ' + error.message);
@@ -402,7 +402,7 @@
 
                 let {data: bets, error: betsError} = await supabaseClient.from('bet_bets').select('*').in('match_id', matchIds);
                 if(betsError) {
-                    console.error("加载投注数据失败:", betsError);
+                    console.error("加载预测数据失败:", betsError);
                     bets = [];
                 }
 
@@ -463,11 +463,12 @@
                      return;
                  }
                  if (match.is_finished) {
-                     alert("本场比赛已结束，无法投注或撤销。");
+                     alert("本场比赛已结束，无法参与预测或撤销。");
                      return;
                  }
 
                 document.getElementById('bet-modal-header').textContent = `${match.team_a} vs ${match.team_b}`;
+                betModal.dataset.currentMatchId = matchId; // Store current match ID on the modal
                 const teamABtn = document.getElementById('bet-team-a-btn');
                 const teamBBtn = document.getElementById('bet-team-b-btn');
                 teamABtn.textContent = match.team_a;
@@ -495,13 +496,13 @@
                 betConfirmBtn.onclick = async () => {
                      const amount = parseInt(document.getElementById('bet-amount-input').value);
                      if(!selectedTeam) { alert("请选择一支队伍"); return; }
-                     if(isNaN(amount) || amount < 1) { alert("请输入有效的投注分数 (至少为1)"); return; }
-                     if(amount > currentUser.balance) { alert("您的余额不足"); return; }
+                     if(isNaN(amount) || amount < 1) { alert("请输入有效的支持分数 (至少为1)"); return; }
+                     if(amount > currentUser.balance) { alert("您的分数不足"); return; }
 
                      const newBalance = currentUser.balance - amount;
                      
                      const { error: balanceError } = await supabaseClient.from('bet_users').update({ balance: newBalance }).eq('id', currentUser.id);
-                     if(balanceError) { alert("投注失败，请重试: " + balanceError.message); return; }
+                     if(balanceError) { alert("预测失败，请重试: " + balanceError.message); return; }
                      
                      const odds = selectedTeam === match.team_a ? match.odds_a : match.odds_b;
 
@@ -515,12 +516,12 @@
                      
                      if(betError) {
                          await supabaseClient.from('bet_users').update({ balance: currentUser.balance }).eq('id', currentUser.id);
-                         alert("投注记录失败，请重试: " + betError.message);
+                         alert("预测记录失败，请重试: " + betError.message);
                          return;
                      }
 
                      currentUser.balance = newBalance;
-                     alert("投注成功!");
+                     alert("预测成功!");
                      updateUserDisplay();
                      document.getElementById('modal-user-balance').textContent = currentUser.balance.toFixed(2);
                      document.getElementById('bet-amount-input').value = '';
@@ -543,12 +544,12 @@
                     .eq('match_id', matchId);
 
                 if (error) {
-                    listContainer.innerHTML = '<p style="color:var(--loss-color)">加载投注记录失败</p>';
+                    listContainer.innerHTML = '<p style="color:var(--loss-color)">加载预测记录失败</p>';
                     return;
                 }
 
                 if (bets.length === 0) {
-                    listContainer.innerHTML = '<p>暂无投注记录</p>';
+                    listContainer.innerHTML = '<p>暂无预测记录</p>';
                     return;
                 }
 
@@ -557,7 +558,7 @@
                     const recordDiv = document.createElement('div');
                     recordDiv.className = 'bet-record';
                     recordDiv.innerHTML = `
-                        <span>${new Date(bet.created_at).toLocaleTimeString()} - 投注 ${bet.predicted_winner} ${bet.amount}分</span>
+                        <span>${new Date(bet.created_at).toLocaleTimeString()} - 支持 ${bet.predicted_winner} ${bet.amount}分</span>
                         <button class="cancel-bet-btn" data-bet-id="${bet.id}" data-amount="${bet.amount}">撤销</button>
                     `;
                     listContainer.appendChild(recordDiv);
@@ -571,10 +572,9 @@
             async function handleCancelBet(event) {
                 const betId = parseInt(event.target.dataset.betId);
                 const amount = parseFloat(event.target.dataset.amount);
-                const matchId = betModal.querySelector('.cancel-bet-btn').closest('.modal-content').querySelector('#existing-bets-list .bet-record .cancel-bet-btn').closest('.bet-record').parentElement.parentElement.parentElement.parentElement.querySelector('.betting-card').dataset.matchId;
+                const matchId = parseInt(betModal.dataset.currentMatchId);
 
-
-                if (!confirm(`您确定要撤销这笔 ${amount} 分的投注吗？`)) return;
+                if (!confirm(`您确定要撤销这笔 ${amount} 分的预测吗？`)) return;
 
                 const { error: deleteError } = await supabaseClient.from('bet_bets').delete().eq('id', betId);
                 if (deleteError) {
@@ -586,8 +586,8 @@
                 const { error: balanceError } = await supabaseClient.from('bet_users').update({ balance: newBalance }).eq('id', currentUser.id);
 
                 if (balanceError) {
-                    alert('退款失败，请联系管理员！');
-                    // Here you might want to try re-inserting the bet to avoid data inconsistency
+                    alert('退还分数失败，请联系管理员！');
+                    // In a real app, you'd re-insert the bet to avoid data inconsistency
                     return;
                 }
                 
