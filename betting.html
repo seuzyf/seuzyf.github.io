@@ -162,7 +162,6 @@
             border-bottom: 1px solid var(--border-color);
         }
 
-        /* New styles for bet records in modal */
         #existing-bets-section {
             margin-top: 1.5rem;
             border-top: 1px solid var(--border-color);
@@ -468,7 +467,7 @@
                  }
 
                 document.getElementById('bet-modal-header').textContent = `${match.team_a} vs ${match.team_b}`;
-                betModal.dataset.currentMatchId = matchId; // Store current match ID on the modal
+                betModal.dataset.currentMatchId = matchId;
                 const teamABtn = document.getElementById('bet-team-a-btn');
                 const teamBBtn = document.getElementById('bet-team-b-btn');
                 teamABtn.textContent = match.team_a;
@@ -527,7 +526,7 @@
                      document.getElementById('bet-amount-input').value = '';
                      
                      await loadAndRenderExistingBets(match.id);
-                     loadMatches(); // Reload main page to update odds
+                     await loadMatches(); 
                 };
 
                 betModal.classList.add('visible');
@@ -596,8 +595,8 @@
                 updateUserDisplay();
                 document.getElementById('modal-user-balance').textContent = currentUser.balance.toFixed(2);
                 
-                await loadAndRenderExistingBets(matchId); // Refresh list in modal
-                loadMatches(); // Refresh main page to update odds
+                await loadAndRenderExistingBets(matchId); 
+                await loadMatches(); 
             }
             
             async function showHistory() {
