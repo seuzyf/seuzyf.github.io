@@ -276,6 +276,8 @@
                                 <th>排名</th>
                                 <th>ID</th>
                                 <th>当前分数</th>
+                                <th>预测次数</th>
+                                <th>正确率</th>
                             </tr>
                         </thead>
                         <tbody id="leaderboard-table-body"></tbody>
@@ -428,10 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
             loginBtn.style.display = 'none';
             historyBtn.style.display = 'inline-flex';
             usernameDisplay.textContent = currentUser.username;
-            // ==================== FIX START ====================
-            // Changed the condition to correctly handle a balance of 0
             userBalance.textContent = typeof currentUser.balance === 'number' ? currentUser.balance.toFixed(2) : '100.00';
-            // ===================== FIX END =====================
         } else {
             userDisplay.style.display = 'none';
             loginBtn.style.display = 'block';
@@ -617,9 +616,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         alert('撤销成功！');
         await initializePage();
-        // Re-open the modal if it was open
-        const betModalHeader = document.getElementById('bet-modal-header');
-        if (betModal.classList.contains('visible') && betModalHeader.textContent) {
+        
+        if (betModal.classList.contains('visible')) {
+            const betModalHeader = document.getElementById('bet-modal-header');
             const matchId = allMatchesData.find(m => `${m.team_a} vs ${m.team_b}` === betModalHeader.textContent)?.id;
             if (matchId) {
                 loadAndRenderExistingBets(matchId);
@@ -674,11 +673,35 @@ document.addEventListener('DOMContentLoaded', () => {
     function showLeaderboard() {
         const leaderboardBody = document.getElementById('leaderboard-table-body');
         const sortedUsers = [...allUsersData].sort((a,b) => b.balance - a.balance);
-        leaderboardBody.innerHTML = sortedUsers.map((user, index) => `
+
+        const usersWithStats = sortedUsers.map(user => {
+            const userBets = allBetsData.filter(b => b.user_id === user.id);
+            const totalPredictions = userBets.length;
+            let correctPredictions = 0;
+            let settledPredictions = 0;
+
+            userBets.forEach(bet => {
+                const match = allMatchesData.find(m => m.id === bet.match_id);
+                if (match && match.score_a !== null && match.score_b !== null && match.score_a !== match.score_b) {
+                    settledPredictions++;
+                    const winner = match.score_a > match.score_b ? match.team_a : match.team_b;
+                    if (bet.predicted_winner === winner) {
+                        correctPredictions++;
+                    }
+                }
+            });
+
+            const accuracy = settledPredictions > 0 ? ((correctPredictions / settledPredictions) * 100) : 0;
+            return { ...user, predictionCount: totalPredictions, accuracy };
+        });
+
+        leaderboardBody.innerHTML = usersWithStats.map((user, index) => `
             <tr>
                 <td>${index + 1}</td>
                 <td class="username-cell" data-user-id="${user.id}" data-username="${user.username}">${user.username}</td>
                 <td>${user.balance.toFixed(2)}</td>
+                <td>${user.predictionCount}</td>
+                <td>${user.accuracy.toFixed(1)}%</td>
             </tr>
         `).join('');
 
