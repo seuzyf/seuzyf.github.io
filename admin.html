@@ -653,30 +653,29 @@ document.addEventListener('DOMContentLoaded', () => {
         else { alert('赛果提交成功！'); document.getElementById('matches-form-container').innerHTML = ''; }
     }
     
-    // ================= 关键修正处 S T A R T =================
     async function submitSchedule() {
-        // 1. 从下拉框中获取选中比赛的唯一主键 ID
-        const matchId = document.getElementById('match-selector').value;
-        if (!matchId) {
+        const matchIdString = document.getElementById('match-selector').value;
+        if (!matchIdString) {
             alert('请先选择一场比赛。');
             return;
         }
 
-        const scoreA_input = document.getElementById('schedule-score-a').value;
-        const scoreB_input = document.getElementById('schedule-score-b').value;
+        // **关键修正：将从下拉菜单获取的字符串 ID 转换为整数**
+        const matchId = parseInt(matchIdString, 10);
+
+        const scoreA = document.getElementById('schedule-score-a').value;
+        const scoreB = document.getElementById('schedule-score-b').value;
         
-        // 2. 准备要更新的数据，将空字符串转换为 null，确保数据类型正确
         const dataToUpdate = {
-            score_a: scoreA_input === '' ? null : parseInt(scoreA_input, 10),
-            score_b: scoreB_input === '' ? null : parseInt(scoreB_input, 10),
+            score_a: scoreA === '' ? null : parseInt(scoreA, 10),
+            score_b: scoreB === '' ? null : parseInt(scoreB, 10),
             link: document.getElementById('schedule-link').value.trim()
         };
 
-        // 3. 使用从下拉菜单获取的唯一 'id' 作为查询条件，精确定位要更新的行
         const { data, error } = await supabaseClient
             .from('match_schedule')
             .update(dataToUpdate)
-            .eq('id', matchId) // 使用 'id' 列进行匹配
+            .eq('id', matchId) // 现在使用整数 ID 进行精确匹配
             .select();
 
         if (error) {
@@ -684,10 +683,11 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error(error);
         } else if (data && data.length > 0) {
             alert('赛程比分已成功写入数据库！');
-            // 成功后刷新当前组别的赛程数据
-            await loadScheduleForGroup(getCurrentGroup()); 
+            await loadScheduleForGroup(getCurrentGroup()); // 成功后刷新数据
         } else {
-            alert('更新失败：未找到匹配的比赛记录。');
+            // 添加了更详细的错误提示，以防还有其他问题（如数据库权限）
+            alert('更新失败：未找到匹配的比赛记录。请检查数据库的行级安全(RLS)策略是否允许本次更新操作。');
+            console.error("Update failed. No matching record found for ID:", matchId);
         }
     }
 
