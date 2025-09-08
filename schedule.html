@@ -76,6 +76,17 @@
         .filter-group button.active { background-color: var(--primary-color); color: white; opacity: 1; }
         .nav-button { padding: 0 25px; border: 2px solid var(--primary-color); color: var(--primary-color); text-decoration: none; transition: background-color 0.3s, color 0.3s; }
         .nav-button:hover { background-color: var(--primary-color); color: white; }
+        .submit-button {
+            padding: 0 25px; 
+            border: 2px solid var(--winner-color); 
+            background-color: var(--winner-color);
+            color: white; 
+            text-decoration: none;
+            cursor: pointer;
+        }
+         .submit-button:hover {
+            opacity: 0.9;
+        }
 
         .content-block {
             background-color: var(--card-bg-color);
@@ -200,6 +211,7 @@
                     <input type="text" id="seed-input" placeholder="输入随机种子" style="height: calc(var(--control-height) - 12px); border-radius: 6px; border: 1px solid var(--border-color); background-color: var(--bg-color); color: var(--text-color); padding: 0 10px;">
                     <button id="random-draw-btn" style="padding: 0 15px; border: none; background-color: transparent; color: var(--text-color); cursor: pointer; border-radius: 6px; font-size: 0.9em; height: 100%;">随机生成对战</button>
                 </div>
+                <button id="submit-changes-btn" class="nav-button submit-button" style="display: none;">提交赛程</button>
             </div>
         </div>
 
@@ -238,10 +250,14 @@
         const passwordModal = document.getElementById('password-modal');
         const passwordInputModal = document.getElementById('password-input-modal');
         const passwordSubmitModal = document.getElementById('password-submit-modal');
+        const submitChangesBtn = document.getElementById('submit-changes-btn');
 
         let allMatchesData = {};
         let allTeamsByGroup = {};
-        let isPasswordVerified = false; // Flag to track password verification
+        let isPasswordVerified = false; 
+        
+        let pendingDataToUpsert = [];
+        let pendingIdsToDelete = [];
 
         async function verifyPassword() {
             const inputPassword = passwordInputModal.value;
@@ -257,7 +273,7 @@
                     isPasswordVerified = true;
                     passwordModal.style.display = 'none';
                     passwordInputModal.value = '';
-                    randomlyAssignTeams(); // Proceed with the action after successful verification
+                    generateAndDisplaySchedule(); 
                 } else {
                     alert('口令错误！');
                 }
@@ -269,10 +285,10 @@
 
         function handleRandomDrawClick() {
             if (isPasswordVerified) {
-                randomlyAssignTeams();
+                generateAndDisplaySchedule();
             } else {
                 passwordModal.style.display = 'flex';
-                 passwordInputModal.focus();
+                passwordInputModal.focus();
             }
         }
 
@@ -303,13 +319,13 @@
 
         function getWinner(match) {
             if (!match || typeof match.score_a !== 'number' || typeof match.score_b !== 'number' || (match.score_a === 0 && match.score_b === 0)) return null;
-            if (match.score_a === match.score_b) return null; // A draw is not a win
+            if (match.score_a === match.score_b) return null;
             return match.score_a > match.score_b ? match.team_a : match.team_b;
         }
 
         function getLoser(match) {
             if (!match || typeof match.score_a !== 'number' || typeof match.score_b !== 'number' || (match.score_a === 0 && match.score_b === 0)) return null;
-            if (match.score_a === match.score_b) return null; // A draw is not a loss
+            if (match.score_a === match.score_b) return null;
             return match.score_a < match.score_b ? match.team_a : match.team_b;
         }
         
@@ -451,9 +467,9 @@
             }
         }
 
-        async function randomlyAssignTeams() {
+        function generateAndDisplaySchedule() {
             const groupName = groupFilters.querySelector('.active').dataset.group;
-            const groupData = allMatchesData[groupName] || {};
+            const groupData = { ...allMatchesData[groupName] } || {};
             const processedData = processResultNodes(groupData);
             
             const seedInput = document.getElementById('seed-input').value;
@@ -555,52 +571,84 @@
                  }
             }
 
-            // --- Final Step: Save to DB and Re-render ---
-            if (dataToUpsert.length > 0) {
-                if(idsToDelete.length > 0) {
+            // --- Store changes instead of executing them ---
+            pendingDataToUpsert = dataToUpsert;
+            pendingIdsToDelete = idsToDelete;
+
+            if (pendingDataToUpsert.length > 0) {
+                alert(`已生成新的对阵! \n${operationMessage}\n\n请点击 '提交赛程' 按钮以保存更改。`);
+                const tempGroupData = { ...allMatchesData[groupName] };
+                pendingIdsToDelete.forEach(id => delete tempGroupData[id]);
+                pendingDataToUpsert.forEach(match => {
+                    tempGroupData[match.match_id] = { ...tempGroupData[match.match_id], ...match };
+                });
+                // Render with temporary changes
+                const tempRenderData = { ...allMatchesData, [groupName]: tempGroupData };
+                renderBrackets(groupName, tempRenderData); // Pass the temporary data to render function
+                submitChangesBtn.style.display = 'inline-flex';
+            } else {
+                alert(operationMessage);
+            }
+        }
+        
+        // Overload renderBrackets to accept optional data source
+        function renderBrackets(groupName, dataSource = allMatchesData) {
+            const rawData = dataSource[groupName] || {};
+            const processedData = processResultNodes(rawData);
+            document.getElementById('current-group-name').textContent = `${groupName}赛程`;
+            buildBracket(document.getElementById('swiss-bracket'), swissBracketLayout, processedData);
+            buildBracket(document.getElementById('playoff-bracket'), playoffBracketLayout, processedData);
+        }
+
+        submitChangesBtn.addEventListener('click', async () => {
+            if (!isPasswordVerified) {
+                alert('请先通过点击“随机生成对战”并输入密码来授权。');
+                passwordModal.style.display = 'flex';
+                passwordInputModal.focus();
+                return;
+            }
+
+            if (pendingDataToUpsert.length === 0 && pendingIdsToDelete.length === 0) {
+                alert('没有待提交的更改。');
+                return;
+            }
+
+            const groupName = groupFilters.querySelector('.active').dataset.group;
+            submitChangesBtn.disabled = true;
+            submitChangesBtn.textContent = '提交中...';
+
+            try {
+                if (pendingIdsToDelete.length > 0) {
                     const { error: deleteError } = await supabaseClient
                         .from('match_schedule')
                         .delete()
                         .eq('group', groupName)
-                        .in('match_id', idsToDelete);
-                    if (deleteError) {
-                         alert('清除旧赛程失败: ' + deleteError.message);
-                         return;
-                    }
+                        .in('match_id', pendingIdsToDelete);
+                    if (deleteError) throw deleteError;
                 }
 
-                const { error } = await supabaseClient.from('match_schedule').insert(dataToUpsert);
-
-                if (error) {
-                    alert('自动保存赛程失败: ' + error.message);
-                    return;
+                if (pendingDataToUpsert.length > 0) {
+                    const { error: insertError } = await supabaseClient.from('match_schedule').upsert(pendingDataToUpsert);
+                    if (insertError) throw insertError;
                 }
 
-                dataToUpsert.forEach(match => {
-                    if (!allMatchesData[groupName]) allMatchesData[groupName] = {};
-                    allMatchesData[groupName][match.match_id] = {...(allMatchesData[groupName][match.match_id] || {}), ...match};
-                });
-                
-                alert(`使用种子 ${seed} 操作成功: ${operationMessage}`);
-            } else {
-                alert(operationMessage);
+                alert('赛程已成功更新到数据库！');
+                pendingDataToUpsert = [];
+                pendingIdsToDelete = [];
+                submitChangesBtn.style.display = 'none';
+                await loadData();
+            } catch (error) {
+                alert('提交赛程失败: ' + error.message);
+            } finally {
+                submitChangesBtn.disabled = false;
+                submitChangesBtn.textContent = '提交赛程';
             }
-            
-            renderBrackets(groupName);
-        }
+        });
 
         randomDrawBtn.addEventListener('click', handleRandomDrawClick);
         passwordSubmitModal.addEventListener('click', verifyPassword);
-        passwordInputModal.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                verifyPassword();
-            }
-        });
-        passwordModal.addEventListener('click', (e) => {
-            if (e.target === passwordModal) {
-                passwordModal.style.display = 'none';
-            }
-        });
+        passwordInputModal.addEventListener('keypress', (e) => { if (e.key === 'Enter') verifyPassword(); });
+        passwordModal.addEventListener('click', (e) => { if (e.target === passwordModal) passwordModal.style.display = 'none'; });
 
         document.querySelectorAll('.bracket').forEach(bracket => {
             bracket.addEventListener('click', e => {
@@ -616,6 +664,9 @@
                 groupFilters.querySelector('.active').classList.remove('active');
                 e.target.classList.add('active');
                 renderBrackets(e.target.dataset.group);
+                submitChangesBtn.style.display = 'none'; // Hide submit button when changing group
+                pendingDataToUpsert = [];
+                pendingIdsToDelete = [];
             }
         });
 
