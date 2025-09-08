@@ -443,17 +443,39 @@
                 }
             }
             
-            async function settleBets() {
-                if (!currentUser) return;
-                
-                const pendingBets = allBetsData.filter(b => b.user_id === currentUser.id && b.status === 'pending');
-                if (pendingBets.length === 0) return;
+            async function settleAllBets() {
+                const pendingBets = allBetsData.filter(b => b.status === 'pending');
+                if (pendingBets.length === 0) return false;
 
-                let payout = 0;
-                let betsToUpdate = [];
+                const betsToUpdate = [];
+                for (const bet of pendingBets) {
+                    const match = allMatchesData.find(m => m.id === bet.match_id);
+                    if (match) {
+                        const isFinished = (match.score_a !== null && match.score_b !== null) && (parseInt(match.score_a) !== parseInt(match.score_b));
+                        if (isFinished) {
+                            const winner = parseInt(match.score_a) > parseInt(match.score_b) ? match.team_a : match.team_b;
+                            const newStatus = bet.predicted_winner === winner ? 'won' : 'lost';
+                            betsToUpdate.push({ id: bet.id, status: newStatus });
+                        }
+                    }
+                }
 
+                if (betsToUpdate.length > 0) {
+                    const { error } = await supabaseClient.from('bet_bets').upsert(betsToUpdate);
+                    if (error) {
+                        console.error("Error updating bet statuses:", error);
+                        return false;
+                    }
+                    return true;
+                }
+                return false;
+            }
+
+            function calculateBalanceFromHistory(userId, allUserBets) {
+                let profitLoss = 0;
                 const matchPools = {};
-                 allBetsData.forEach(bet => {
+
+                allBetsData.forEach(bet => {
                     const matchId = bet.match_id;
                     if (!matchPools[matchId]) matchPools[matchId] = { betsOnA: 0, betsOnB: 0 };
                     const matchInfo = allMatchesData.find(m => m.id === matchId);
@@ -462,40 +484,28 @@
                         else matchPools[matchId].betsOnB += bet.amount;
                     }
                 });
+                
+                const userPlacedBets = allBetsData.filter(b => b.user_id === userId);
 
-                for (const bet of pendingBets) {
-                    const match = allMatchesData.find(m => m.id === bet.match_id);
-                    if (match) {
-                        const isFinished = (match.score_a !== null && match.score_b !== null) && (parseInt(match.score_a) !== parseInt(match.score_b));
-                        if (isFinished) {
-                            const winner = parseInt(match.score_a) > parseInt(match.score_b) ? match.team_a : match.team_b;
-                            if (bet.predicted_winner === winner) {
-                                const finalPools = matchPools[bet.match_id];
-                                const winnerPool = (winner === match.team_a) ? (100 + finalPools.betsOnA) : (100 + finalPools.betsOnB);
-                                const loserPool = (winner === match.team_a) ? (100 + finalPools.betsOnB) : (100 + finalPools.betsOnA);
-                                payout += bet.amount + ((bet.amount / winnerPool) * loserPool);
-                                betsToUpdate.push({ ...bet, status: 'won' });
-                            } else {
-                                betsToUpdate.push({ ...bet, status: 'lost' });
-                            }
+                userPlacedBets.forEach(bet => {
+                     if (bet.status === 'won') {
+                        const match = allMatchesData.find(m => m.id === bet.match_id);
+                        if (match) {
+                            const finalPools = matchPools[bet.match_id];
+                            const winnerPool = (bet.predicted_winner === match.team_a) ? (100 + finalPools.betsOnA) : (100 + finalPools.betsOnB);
+                            const loserPool = (bet.predicted_winner === match.team_a) ? (100 + finalPools.betsOnB) : (100 + finalPools.betsOnA);
+                            const profit = (bet.amount / winnerPool) * loserPool;
+                            profitLoss += profit;
                         }
+                    } else if (bet.status === 'lost') {
+                        profitLoss -= bet.amount;
+                    } else { // pending
+                         profitLoss -= bet.amount;
                     }
-                }
+                });
 
-                if (betsToUpdate.length > 0) {
-                    const newBalance = currentUser.balance + payout;
-                    const { error: updateBetsError } = await supabaseClient.from('bet_bets').upsert(betsToUpdate);
-                    const { error: updateUserError } = await supabaseClient.from('bet_users').update({ balance: newBalance }).eq('id', currentUser.id);
-
-                    if (updateBetsError || updateUserError) {
-                        console.error("Error settling bets:", updateBetsError || updateUserError);
-                    } else {
-                        currentUser.balance = newBalance;
-                        sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
-                    }
-                }
+                return 100 + profitLoss;
             }
-
 
             async function loadInitialData(){
                 mainContent.innerHTML = '<p>正在加载最新赛程和数据...</p>';
@@ -513,7 +523,21 @@
                 allMatchesData = matches;
                 allBetsData = bets;
 
-                await settleBets();
+                const betsWereUpdated = await settleAllBets();
+                if (betsWereUpdated) {
+                    const { data: newBets } = await supabaseClient.from('bet_bets').select('*');
+                    if (newBets) allBetsData = newBets;
+                }
+
+                if (currentUser) {
+                    const newBalance = calculateBalanceFromHistory(currentUser.id);
+                    if (currentUser.balance !== newBalance) {
+                        currentUser.balance = newBalance;
+                        sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+                        await supabaseClient.from('bet_users').update({ balance: newBalance }).eq('id', currentUser.id);
+                    }
+                }
+                
                 updateUserDisplay();
                 renderMatches();
             }
@@ -530,7 +554,7 @@
 
                     const profitRateA = poolA > 0 ? poolB / poolA : 0;
                     const profitRateB = poolB > 0 ? poolA / poolB : 0;
-
+                    
                     const isFinished = (match.score_a !== null && match.score_b !== null) && (parseInt(match.score_a) !== parseInt(match.score_b));
                     return {...match, profit_rate_a: profitRateA, profit_rate_b: profitRateB, is_finished: isFinished};
                 });
@@ -581,7 +605,7 @@
                     return;
                  }
                  
-                 const { data: latestUser, error } = await supabaseClient.from('bet_users').select('balance').eq('id', currentUser.id).single();
+                 const { data: latestUser } = await supabaseClient.from('bet_users').select('balance').eq('id', currentUser.id).single();
                  if (latestUser) {
                     currentUser.balance = latestUser.balance;
                     updateUserDisplay();
@@ -623,21 +647,16 @@
                     
                     if (betError) {
                         alert("预测失败，请重试: " + betError.message);
-                        betConfirmBtn.disabled = false;
-                        betConfirmBtn.textContent = "确认预测";
-                        return;
-                    }
-                    
-                    const { error: updateError } = await supabaseClient.from('bet_users').update({ balance: newBalance }).eq('id', currentUser.id);
-
-                    if (updateError) {
-                        alert('扣除分数失败，请联系管理员！');
-                        // Attempt to delete the bet we just inserted for consistency
-                        await supabaseClient.from('bet_bets').delete().match({ user_id: currentUser.id, match_id: match.id, amount: amount });
                     } else {
-                        alert("预测成功!");
-                        currentUser.balance = newBalance;
-                        sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+                        const { error: updateError } = await supabaseClient.from('bet_users').update({ balance: newBalance }).eq('id', currentUser.id);
+                        if (updateError) {
+                            alert('扣除分数失败，请联系管理员！');
+                            await supabaseClient.from('bet_bets').delete().match({ user_id: currentUser.id, match_id: match.id, amount: amount });
+                        } else {
+                            alert("预测成功!");
+                            currentUser.balance = newBalance;
+                            sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+                        }
                     }
                     
                     betConfirmBtn.disabled = false;
@@ -678,7 +697,6 @@
                 if (!confirm(`您确定要撤销这笔 ${betAmount} 分的预测吗？分数将返还到您的账户。`)) return;
 
                 const newBalance = currentUser.balance + betAmount;
-
                 const { error: deleteError } = await supabaseClient.from('bet_bets').delete().eq('id', betId);
                 if (deleteError) { alert('撤销失败: ' + deleteError.message); return; }
 
