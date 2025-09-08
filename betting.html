@@ -192,8 +192,7 @@
         <div class="modal-content">
             <h3 class="modal-header">登录或注册</h3>
             <div class="modal-body">
-                <p style="font-size: 0.9em; opacity: 0.8; text-align: center;">为简化流程，您的用户名将作为登录邮箱。如果账户不存在，将自动为您注册。</p>
-                <input type="text" id="username-input" placeholder="请输入您的用户名" required>
+                <input type="text" id="username-input" placeholder="请输入您的用户名（人名）" required>
                 <input type="password" id="password-input" placeholder="请输入您的密码" required>
             </div>
             <div class="modal-footer">
@@ -285,73 +284,41 @@
                     alert('请输入用户名和密码');
                     return;
                 }
-                // Supabase requires an email format, we'll append a dummy domain
-                const email = `${username}@example.com`;
 
-                // 1. Try to sign in
-                let { data: loginData, error: loginError } = await supabaseClient.auth.signInWithPassword({
-                    email: email,
-                    password: password,
-                });
+                let { data: user, error } = await supabaseClient.from('bet_users').select('*').eq('username', username).single();
 
-                if (loginError) {
-                    // 2. If login fails because user doesn't exist, try to sign up
-                    if (loginError.message.includes("Invalid login credentials") || loginError.message.includes("User not found")) {
-                        let { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
-                            email: email,
-                            password: password,
-                            options: {
-                                // Pass username in metadata, trigger will pick it up
-                                data: {
-                                    username: username
-                                }
-                            }
-                        });
-
-                        if (signUpError) {
-                            // Handle cases like "User already registered" if they used a different password
-                            if (signUpError.message.includes("User already registered")) {
-                                alert("登录失败：密码错误。");
-                            } else {
-                                alert('注册失败: ' + signUpError.message);
-                            }
-                            return;
-                        }
-                        
-                        if (signUpData.user) {
-                            // The database trigger (we'll create next) handles creating the profile.
-                            // We just need to fetch it after a short delay.
-                            alert('注册成功，初始积分为100！');
-                            await new Promise(r => setTimeout(r, 500)); // Wait for trigger
-                            await fetchUserProfile(signUpData.user.id);
-                        }
-                    } else {
-                        alert('登录失败: ' + loginError.message);
+                if (error && error.code === 'PGRST116') { // User not found, so register
+                    const { data: newUser, error: insertError } = await supabaseClient
+                        .from('bet_users')
+                        .insert([{ username, password, balance: 100 }])
+                        .select()
+                        .single();
+                    
+                    if(insertError) {
+                        alert('注册失败: ' + insertError.message);
                         return;
                     }
-                } else if (loginData.user) {
-                    // Login was successful, fetch their profile
-                    await fetchUserProfile(loginData.user.id);
-                }
+                    currentUser = newUser;
+                    alert('注册成功，初始积分为100！');
 
+                } else if (error) { // Other select error
+                    alert('数据库查询失败: ' + error.message);
+                    return;
+                
+                } else { // User found, check password
+                    if (user.password !== password) {
+                        alert('密码错误！');
+                        return;
+                    }
+                    currentUser = user;
+                }
+                
                 loginModal.classList.remove('visible');
                 updateUserDisplay();
                 loadMatches();
             }
-
-            async function fetchUserProfile(userId) {
-                let { data: userProfile, error: profileError } = await supabaseClient.from('bet_users').select('*').eq('id', userId).single();
-                if (profileError) {
-                    alert('获取用户信息失败，请稍后重试。');
-                    console.error("Profile fetch error:", profileError);
-                    currentUser = null;
-                    return;
-                }
-                currentUser = userProfile;
-            }
             
-            async function handleLogout() {
-                await supabaseClient.auth.signOut();
+            function handleLogout() {
                 currentUser = null;
                 updateUserDisplay();
                 bettingMatchesView.innerHTML = '<p>请先登录以查看可竞猜的比赛。</p>';
