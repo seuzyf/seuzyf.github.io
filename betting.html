@@ -368,75 +368,58 @@
             toggleViewBtn.addEventListener('click', toggleView);
 
             // ================= 关键修改处 S T A R T =================
-            async function settleBets() {
-                // 1. 获取所有已结束但有未结算预测的比赛
-                const { data: finishedMatches, error: matchError } = await supabaseClient
-                    .from('match_schedule')
-                    .select('id, team_a, team_b, score_a, score_b')
-                    .not('score_a', 'is', null)
-                    .not('score_b', 'is', null);
-
-                if (matchError) {
-                    console.error("结算检查失败：无法获取比赛信息", matchError);
-                    return;
-                }
-                
-                const finishedMatchIds = finishedMatches.map(m => m.id);
-                if (finishedMatchIds.length === 0) return; // 没有需要结算的比赛
-
-                // 2. 获取这些比赛中所有未结算的预测
-                const { data: unsettledBets, error: betsError } = await supabaseClient
+            async function recalculateAndUpdateBalance(user) {
+                const { data: bets, error } = await supabaseClient
                     .from('bet_bets')
-                    .select('*')
-                    .in('match_id', finishedMatchIds)
-                    .eq('settled', false);
-
-                if (betsError) {
-                    console.error("结算检查失败：无法获取预测信息", betsError);
+                    .select(`
+                        *,
+                        match_schedule (
+                            score_a,
+                            score_b,
+                            team_a,
+                            team_b
+                        )
+                    `)
+                    .eq('user_id', user.id);
+                
+                if (error) {
+                    console.error("无法获取用户预测记录:", error);
                     return;
                 }
 
-                if (unsettledBets.length === 0) return; // 没有需要结算的预测
+                if (!bets) return;
 
-                // 3. 计算每个用户的余额变动
-                const userBalanceUpdates = {};
+                let calculatedBalance = 100; // 初始分数
 
-                unsettledBets.forEach(bet => {
-                    const match = finishedMatches.find(m => m.id === bet.match_id);
-                    if (!match) return;
+                bets.forEach(bet => {
+                    // 1. 减去所有下注金额
+                    calculatedBalance -= bet.amount;
 
-                    const winner = match.score_a > match.score_b ? match.team_a : match.team_b;
+                    // 2. 如果比赛已结束，计算输赢
+                    const match = bet.match_schedule;
+                    if (match && match.score_a !== null && match.score_b !== null && (match.score_a > 0 || match.score_b > 0)) {
+                        const winner = match.score_a > match.score_b ? match.team_a : match.team_b;
+                        if (bet.predicted_winner === winner) {
+                            // 预测正确，返还奖金
+                            calculatedBalance += bet.amount * bet.odds_at_bet;
+                        }
+                    }
+                });
+                
+                // 3. 如果计算出的余额与数据库中的不符，则更新
+                if (Math.abs(calculatedBalance - user.balance) > 0.01) { // 使用一个小的容差避免浮点数问题
+                    const { error: updateError } = await supabaseClient
+                        .from('bet_users')
+                        .update({ balance: calculatedBalance })
+                        .eq('id', user.id);
                     
-                    if (!userBalanceUpdates[bet.user_id]) {
-                        userBalanceUpdates[bet.user_id] = 0;
+                    if (updateError) {
+                        console.error("更新余额失败:", updateError);
+                    } else {
+                        // 更新前端内存中的用户信息
+                        currentUser.balance = calculatedBalance;
+                        console.log(`用户 ${user.username} 的余额已从 ${user.balance} 更新为 ${calculatedBalance}`);
                     }
-
-                    if (bet.predicted_winner === winner) {
-                        // 预测正确，返还本金并派发奖金
-                        const winnings = bet.amount * bet.odds_at_bet;
-                        userBalanceUpdates[bet.user_id] += winnings;
-                    }
-                    // 预测错误，本金已在下注时扣除，此处无需操作
-                });
-
-                // 4. 更新数据库
-                const balanceUpdatePromises = Object.entries(userBalanceUpdates).map(([userId, balanceChange]) => {
-                     return supabaseClient.rpc('update_balance', { user_id_in: parseInt(userId), balance_change: balanceChange });
-                });
-                
-                const settledBetIds = unsettledBets.map(b => b.id);
-                const markBetsAsSettledPromise = supabaseClient
-                    .from('bet_bets')
-                    .update({ settled: true })
-                    .in('id', settledBetIds);
-
-                try {
-                    await Promise.all([...balanceUpdatePromises, markBetsAsSettledPromise]);
-                    console.log(`成功结算了 ${unsettledBets.length} 条预测。`);
-                    return true; // 表示有结算发生
-                } catch (rpcError) {
-                    console.error("结算失败：更新数据库时发生错误", rpcError);
-                    return false;
                 }
             }
             // ================= 关键修改处 E N D =================
@@ -480,15 +463,8 @@
                 loginModal.classList.remove('visible');
 
                 // ================= 关键修改处 S T A R T =================
-                // 登录后，执行结算并更新用户信息
-                const settled = await settleBets();
-                if (settled) {
-                    // 如果发生了结算，需要重新获取用户信息以保证余额是最新
-                    let { data: updatedUser, error: fetchError } = await supabaseClient.from('bet_users').select('*').eq('id', currentUser.id).single();
-                    if (!fetchError) {
-                        currentUser = updatedUser;
-                    }
-                }
+                // 登录后，执行余额重算和更新
+                await recalculateAndUpdateBalance(currentUser);
                 // ================= 关键修改处 E N D =================
                 
                 updateUserDisplay();
@@ -662,8 +638,7 @@
                          match_id: match.id,
                          amount: amount,
                          predicted_winner: selectedTeam,
-                         odds_at_bet: parseFloat(odds),
-                         settled: false // 显式设置新预测为未结算
+                         odds_at_bet: parseFloat(odds)
                      }]);
 
                      if(betError) {
@@ -795,7 +770,7 @@
                          const winner = match.score_a > match.score_b ? match.team_a : match.team_b;
                          if (bet.predicted_winner === winner) {
                              status = '胜利';
-                             settlement = `+${(bet.amount * bet.odds_at_bet).toFixed(2)}`; // 显示总回报
+                             settlement = `+${(bet.amount * bet.odds_at_bet).toFixed(2)}`;
                              settlementColor = 'var(--win-color)';
                          } else {
                              status = '失败';
