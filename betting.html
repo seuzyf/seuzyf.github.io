@@ -74,12 +74,13 @@
         .nav-button { padding: 0 25px; border: 2px solid var(--primary-color); color: var(--primary-color); text-decoration: none; transition: background-color 0.3s, color 0.3s; background-color: transparent;}
         .nav-button:hover { background-color: var(--primary-color); color: white; }
 
-        #betting-matches-view {
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+        .grid-view {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 20px;
         }
-
         .betting-card {
             background-color: var(--bg-color);
             border: 1px solid var(--border-color);
@@ -153,13 +154,22 @@
             text-align: right;
         }
 
-        .history-table {
+        .data-table {
             width: 100%;
             border-collapse: collapse;
         }
-        .history-table th, .history-table td {
-            padding: 8px;
+        .data-table th, .data-table td {
+            padding: 12px;
             border-bottom: 1px solid var(--border-color);
+            text-align: left;
+        }
+        .data-table thead th {
+            background-color: rgba(0,0,0,0.2);
+        }
+        .data-table .clickable-id {
+            color: var(--primary-color);
+            text-decoration: underline;
+            cursor: pointer;
         }
 
         #existing-bets-section {
@@ -173,21 +183,24 @@
             opacity: 0.8;
         }
         .bet-record {
-            display: flex;
-            justify-content: space-between;
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 10px;
             align-items: center;
             padding: 8px;
             background-color: var(--bg-color);
             border-radius: 5px;
             margin-bottom: 8px;
+            font-size: 0.9em;
         }
+        .bet-record span:first-child { font-weight: bold; color: var(--primary-color); }
         .bet-record .cancel-bet-btn {
             background-color: var(--loss-color);
             color: white;
             border: none;
             border-radius: 4px;
             padding: 4px 8px;
-            font-size: 0.8em;
+            font-size: 0.9em;
             cursor: pointer;
             transition: opacity 0.2s;
         }
@@ -205,10 +218,14 @@
                     <button id="logout-btn" class="nav-button" style="height: auto; padding: 5px 10px; margin-left: 10px;">登出</button>
                 </div>
                 <button id="login-btn" class="nav-button">登录/注册</button>
-                <button id="history-btn" class="nav-button" style="margin-top: 10px; display:none;">预测记录</button>
+                <button id="history-btn" class="nav-button" style="margin-top: 10px; display:none;">我的记录</button>
             </div>
             <h1>赛事预测</h1>
             <div class="controls-container">
+                <div class="filter-group" id="view-switcher">
+                    <button class="active" data-view="matches-view">比赛列表</button>
+                    <button data-view="ranking-view">积分排名</button>
+                </div>
                 <div class="filter-group" id="group-filter-buttons">
                     <button class="active" data-group="传奇组">传奇组</button>
                     <button data-group="中坚组">中坚组</button>
@@ -219,7 +236,19 @@
         </div>
 
         <main>
-            <section id="betting-matches-view"></section>
+            <section id="matches-view" class="view-section grid-view active"></section>
+            <section id="ranking-view" class="view-section">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>排名</th>
+                            <th>用户名</th>
+                            <th>分数</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ranking-table-body"></tbody>
+                </table>
+            </section>
         </main>
     </div>
 
@@ -240,17 +269,17 @@
         <div class="modal-content">
             <h3 class="modal-header" id="bet-modal-header"></h3>
             <div class="modal-body">
-                <div>
+                <div id="bet-controls-section">
                     <p>请选择您要支持的队伍:</p>
                     <div style="display: flex; gap: 1rem; justify-content: center;">
                         <button id="bet-team-a-btn" class="nav-button"></button>
                         <button id="bet-team-b-btn" class="nav-button"></button>
                     </div>
+                     <input type="number" id="bet-amount-input" placeholder="请输入支持分数 (最小为1)" style="margin-top: 1rem;">
                 </div>
-                <input type="number" id="bet-amount-input" placeholder="请输入支持分数 (最小为1)">
 
                 <div id="existing-bets-section">
-                    <h4>您在本场的预测记录</h4>
+                    <h4>本场所有预测记录</h4>
                     <div id="existing-bets-list"></div>
                 </div>
             </div>
@@ -263,9 +292,9 @@
     
     <div id="history-modal" class="modal-backdrop">
         <div class="modal-content" style="max-width: 800px;">
-            <h3 class="modal-header">预测记录</h3>
+            <h3 class="modal-header" id="history-modal-header">预测记录</h3>
             <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
-                <table class="history-table">
+                <table class="data-table">
                     <thead>
                         <tr>
                             <th>比赛</th>
@@ -298,9 +327,11 @@
             const loginModal = document.getElementById('login-modal');
             const loginConfirmBtn = document.getElementById('login-confirm-btn');
             const groupFilterButtons = document.getElementById('group-filter-buttons');
-            const bettingMatchesView = document.getElementById('betting-matches-view');
+            const bettingMatchesView = document.getElementById('matches-view');
+            const rankingView = document.getElementById('ranking-view');
             const betModal = document.getElementById('bet-modal');
             const betConfirmBtn = document.getElementById('bet-confirm-btn');
+            const viewSwitcher = document.getElementById('view-switcher');
             
             loginBtn.addEventListener('click', () => loginModal.classList.add('visible'));
             loginConfirmBtn.addEventListener('click', handleLoginOrRegister);
@@ -314,6 +345,23 @@
                 }
             });
 
+            viewSwitcher.addEventListener('click', (e) => {
+                if(e.target.tagName === 'BUTTON' && !e.target.classList.contains('active')){
+                    viewSwitcher.querySelector('.active').classList.remove('active');
+                    e.target.classList.add('active');
+                    
+                    document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+                    const viewId = e.target.dataset.view;
+                    document.getElementById(viewId).classList.add('active');
+
+                    if (viewId === 'ranking-view') {
+                        loadRankings();
+                    } else {
+                        groupFilterButtons.style.display = 'inline-flex';
+                    }
+                }
+            });
+
             async function handleLoginOrRegister() {
                 const username = document.getElementById('username-input').value.trim();
                 const password = document.getElementById('password-input').value;
@@ -324,7 +372,7 @@
 
                 let { data: user, error } = await supabaseClient.from('bet_users').select('*').eq('username', username).single();
 
-                if (error && error.code === 'PGRST116') { // User not found, so register
+                if (error && error.code === 'PGRST116') {
                     const { data: newUser, error: insertError } = await supabaseClient
                         .from('bet_users')
                         .insert([{ username, password, balance: 100 }])
@@ -338,11 +386,11 @@
                     currentUser = newUser;
                     alert('注册成功，初始分数为100！');
 
-                } else if (error) { // Other select error
+                } else if (error) {
                     alert('数据库查询失败: ' + error.message);
                     return;
                 
-                } else { // User found, check password
+                } else {
                     if (user.password !== password) {
                         alert('密码错误！');
                         return;
@@ -430,7 +478,7 @@
                 bettingMatchesView.innerHTML = '';
                 currentMatches.forEach(match => {
                     const card = document.createElement('div');
-                    const canBet = currentUser && !match.is_finished;
+                    const canBet = !match.is_finished;
                     card.className = `betting-card ${canBet ? 'bettable' : 'not-bettable'}`;
                     card.dataset.matchId = match.id;
                     
@@ -456,43 +504,40 @@
             async function openBetModal(matchId){
                  const match = currentMatches.find(m => m.id === matchId);
                  if(!match) return;
-
-                 if (!currentUser) {
-                     loginModal.classList.add('visible');
-                     return;
-                 }
-                 if (match.is_finished) {
-                     alert("本场比赛已结束，无法参与预测或撤销。");
-                     return;
-                 }
-
-                document.getElementById('bet-modal-header').textContent = `${match.team_a} vs ${match.team_b}`;
-                betModal.dataset.currentMatchId = matchId;
-                const teamABtn = document.getElementById('bet-team-a-btn');
-                const teamBBtn = document.getElementById('bet-team-b-btn');
-                teamABtn.textContent = match.team_a;
-                teamBBtn.textContent = match.team_b;
-                teamABtn.dataset.team = match.team_a;
-                teamBBtn.dataset.team = match.team_b;
-                 
-                document.getElementById('modal-user-balance').textContent = currentUser.balance.toFixed(2);
-                document.getElementById('bet-amount-input').value = '';
                 
-                await loadAndRenderExistingBets(matchId);
+                 document.getElementById('bet-controls-section').style.display = currentUser && !match.is_finished ? 'block' : 'none';
+                 document.getElementById('bet-confirm-btn').style.display = currentUser && !match.is_finished ? 'inline-flex' : 'none';
+                 document.getElementById('modal-user-balance').style.display = currentUser ? 'inline' : 'none';
+
+                 document.getElementById('bet-modal-header').textContent = `${match.team_a} vs ${match.team_b}`;
+                 betModal.dataset.currentMatchId = matchId;
+                 const teamABtn = document.getElementById('bet-team-a-btn');
+                 const teamBBtn = document.getElementById('bet-team-b-btn');
+                 teamABtn.textContent = match.team_a;
+                 teamBBtn.textContent = match.team_b;
+                 teamABtn.dataset.team = match.team_a;
+                 teamBBtn.dataset.team = match.team_b;
                  
-                let selectedTeam = null;
-                teamABtn.onclick = () => {
+                 if (currentUser) {
+                    document.getElementById('modal-user-balance').textContent = currentUser.balance.toFixed(2);
+                 }
+                 document.getElementById('bet-amount-input').value = '';
+                
+                 await loadAndRenderExistingBets(matchId);
+                 
+                 let selectedTeam = null;
+                 teamABtn.onclick = () => {
                      selectedTeam = match.team_a;
                      teamABtn.style.borderColor = 'var(--win-color)';
                      teamBBtn.style.borderColor = 'var(--primary-color)';
-                };
-                teamBBtn.onclick = () => {
+                 };
+                 teamBBtn.onclick = () => {
                      selectedTeam = match.team_b;
                      teamBBtn.style.borderColor = 'var(--win-color)';
                      teamABtn.style.borderColor = 'var(--primary-color)';
-                };
+                 };
 
-                betConfirmBtn.onclick = async () => {
+                 betConfirmBtn.onclick = async () => {
                      const amount = parseInt(document.getElementById('bet-amount-input').value);
                      if(!selectedTeam) { alert("请选择一支队伍"); return; }
                      if(isNaN(amount) || amount < 1) { alert("请输入有效的支持分数 (至少为1)"); return; }
@@ -527,9 +572,9 @@
                      
                      await loadAndRenderExistingBets(match.id);
                      await loadMatches(); 
-                };
+                 };
 
-                betModal.classList.add('visible');
+                 betModal.classList.add('visible');
             }
 
             async function loadAndRenderExistingBets(matchId) {
@@ -538,8 +583,7 @@
 
                 const { data: bets, error } = await supabaseClient
                     .from('bet_bets')
-                    .select('*')
-                    .eq('user_id', currentUser.id)
+                    .select(`*, bet_users (username)`)
                     .eq('match_id', matchId);
 
                 if (error) {
@@ -553,12 +597,15 @@
                 }
 
                 listContainer.innerHTML = '';
-                bets.forEach(bet => {
+                bets.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).forEach(bet => {
                     const recordDiv = document.createElement('div');
                     recordDiv.className = 'bet-record';
+                    const isOwnBet = currentUser && bet.user_id === currentUser.id;
+                    
                     recordDiv.innerHTML = `
-                        <span>${new Date(bet.created_at).toLocaleTimeString()} - 支持 ${bet.predicted_winner} ${bet.amount}分</span>
-                        <button class="cancel-bet-btn" data-bet-id="${bet.id}" data-amount="${bet.amount}">撤销</button>
+                        <span>${bet.bet_users.username}</span>
+                        <span>支持 ${bet.predicted_winner} ${bet.amount}分</span>
+                        ${isOwnBet ? `<button class="cancel-bet-btn" data-bet-id="${bet.id}" data-amount="${bet.amount}">撤销</button>` : '<span></span>'}
                     `;
                     listContainer.appendChild(recordDiv);
                 });
@@ -586,7 +633,6 @@
 
                 if (balanceError) {
                     alert('退还分数失败，请联系管理员！');
-                    // In a real app, you'd re-insert the bet to avoid data inconsistency
                     return;
                 }
                 
@@ -599,9 +645,10 @@
                 await loadMatches(); 
             }
             
-            async function showHistory() {
+            async function showHistory(userId, username) {
                 const historyBody = document.getElementById('history-table-body');
                 historyBody.innerHTML = '<tr><td colspan="6">加载中...</td></tr>';
+                document.getElementById('history-modal-header').textContent = `${username}的预测记录`;
                 document.getElementById('history-modal').classList.add('visible');
                 
                 const { data: bets, error } = await supabaseClient.from('bet_bets').select(`
@@ -612,7 +659,7 @@
                         score_a,
                         score_b
                     )
-                `).eq('user_id', currentUser.id).order('created_at', { ascending: false });
+                `).eq('user_id', userId).order('created_at', { ascending: false });
 
                 if(error) {
                     historyBody.innerHTML = `<tr><td colspan="6">加载失败: ${error.message}</td></tr>`;
@@ -657,7 +704,42 @@
                 });
             }
             
-            document.getElementById('history-btn').addEventListener('click', showHistory);
+            async function loadRankings() {
+                groupFilterButtons.style.display = 'none'; // Hide group filter in ranking view
+                const rankingBody = document.getElementById('ranking-table-body');
+                rankingBody.innerHTML = '<tr><td colspan="3">加载中...</td></tr>';
+
+                const { data: users, error } = await supabaseClient
+                    .from('bet_users')
+                    .select('id, username, balance')
+                    .order('balance', { ascending: false });
+                
+                if (error) {
+                    rankingBody.innerHTML = '<tr><td colspan="3">加载排名失败</td></tr>';
+                    return;
+                }
+
+                rankingBody.innerHTML = '';
+                users.forEach((user, index) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td class="clickable-id" data-user-id="${user.id}" data-username="${user.username}">${user.username}</td>
+                        <td>${user.balance.toFixed(2)}</td>
+                    `;
+                    rankingBody.appendChild(tr);
+                });
+
+                document.querySelectorAll('.clickable-id').forEach(idCell => {
+                    idCell.addEventListener('click', (e) => {
+                        const userId = e.target.dataset.userId;
+                        const username = e.target.dataset.username;
+                        showHistory(userId, username);
+                    });
+                });
+            }
+
+            document.getElementById('history-btn').addEventListener('click', () => showHistory(currentUser.id, currentUser.username));
             
             document.querySelectorAll('.modal-backdrop').forEach(modal => {
                 modal.addEventListener('click', (e) => {
