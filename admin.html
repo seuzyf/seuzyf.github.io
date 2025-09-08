@@ -221,10 +221,10 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td><select id="schedule-team-a"></select></td>
+                                    <td><select id="schedule-team-a" disabled></select></td>
                                     <td><input type="number" id="schedule-score-a" placeholder="得分"></td>
                                     <td><input type="number" id="schedule-score-b" placeholder="得分"></td>
-                                    <td><select id="schedule-team-b"></select></td>
+                                    <td><select id="schedule-team-b" disabled></select></td>
                                     <td><input type="text" id="schedule-link" placeholder="https://..."></td>
                                 </tr>
                             </tbody>
@@ -287,7 +287,6 @@ document.addEventListener('DOMContentLoaded', () => {
         'P-GF': '总决赛'
     };
 
-
     async function checkPassword() {
         const inputPassword = passwordInput.value;
         if (!inputPassword) { alert('请输入口令！'); return; }
@@ -349,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .from('match_schedule')
             .select('*')
             .eq('group', groupName)
-            .order('match_id');
+            .order('id'); // Order by ID to keep a consistent order
         if (error) {
             console.error(`加载 ${groupName} 赛程失败:`, error);
             currentScheduleData = [];
@@ -366,21 +365,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentScheduleData.length > 0) {
             currentScheduleData.forEach(match => {
                 const option = document.createElement('option');
-                option.value = match.match_id;
+                // **关键点**: 使用数据库的唯一主键 `id` 作为 option 的 value
+                option.value = match.id; 
                 option.textContent = `${matchIdToName[match.match_id] || match.match_id}: ${match.team_a} vs ${match.team_b}`;
                 selector.appendChild(option);
             });
         }
     }
 
-    function getTeamOptionsHTMLForCurrentGroup(selectedValue = '') {
-        const currentGroup = getCurrentGroup();
-        const teams = groupData[currentGroup] ? [...groupData[currentGroup].teams].sort() : [];
-        let html = '<option value="">选择队伍</option>';
-        teams.forEach(t => {
-            html += `<option value="${t}" ${t === selectedValue ? 'selected' : ''}>${t}</option>`;
-        });
-        return html;
+    // 这个函数仅用于在界面上显示队伍，不参与提交
+    function getTeamOptionsHTML(teamName) {
+        // 创建一个只包含当前队伍的 option，并设为选中
+        return `<option value="${teamName}" selected>${teamName}</option>`;
     }
 
     function loadSelectedMatch() {
@@ -392,10 +388,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const matchData = currentScheduleData.find(m => m.match_id === matchId);
+        const matchData = currentScheduleData.find(m => m.id == matchId);
         if (matchData) {
-            document.getElementById('schedule-team-a').innerHTML = getTeamOptionsHTMLForCurrentGroup(matchData.team_a);
-            document.getElementById('schedule-team-b').innerHTML = getTeamOptionsHTMLForCurrentGroup(matchData.team_b);
+            // 只显示队伍名，并且禁用下拉框
+            document.getElementById('schedule-team-a').innerHTML = getTeamOptionsHTML(matchData.team_a);
+            document.getElementById('schedule-team-b').innerHTML = getTeamOptionsHTML(matchData.team_b);
+            
             document.getElementById('schedule-score-a').value = matchData.score_a ?? '';
             document.getElementById('schedule-score-b').value = matchData.score_b ?? '';
             document.getElementById('schedule-link').value = matchData.link || '';
@@ -654,7 +652,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (error) { alert('提交赛果失败: ' + error.message); console.error(error); }
         else { alert('赛果提交成功！'); document.getElementById('matches-form-container').innerHTML = ''; }
     }
-
+    
+    // ================= 关键修正处 S T A R T =================
     async function submitSchedule() {
         const matchId = document.getElementById('match-selector').value;
         if (!matchId) {
@@ -665,18 +664,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const scoreA = document.getElementById('schedule-score-a').value;
         const scoreB = document.getElementById('schedule-score-b').value;
         
-        // 我们只更新需要改变的字段：比分和链接
+        // **修正:** 我们只更新需要改变的字段，不读取被禁用的队伍下拉框
         const dataToUpdate = {
             score_a: scoreA === '' ? null : parseInt(scoreA, 10),
             score_b: scoreB === '' ? null : parseInt(scoreB, 10),
             link: document.getElementById('schedule-link').value.trim()
         };
 
-        // **【核心修正】** 使用 .eq('id', matchId) 来通过唯一主键定位到正确的行
         const { data, error } = await supabaseClient
             .from('match_schedule')
             .update(dataToUpdate)
-            .eq('id', matchId) // 使用 'id' 列进行匹配，而不是 'match_id'
+            .eq('id', matchId) // **修正:** 使用从下拉菜单获取的唯一 'id' 进行匹配
             .select();
 
         if (error) {
@@ -684,13 +682,12 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error(error);
         } else if (data && data.length > 0) {
             alert('赛程比分已成功写入数据库！');
-            await loadScheduleForGroup(getCurrentGroup()); // 刷新数据以确认更新
+            await loadScheduleForGroup(getCurrentGroup()); // 成功后刷新数据
         } else {
-            // 这个情况通常不会发生，但作为调试信息很有用
-            alert('更新失败：未找到匹配的比赛记录或没有权限。');
-            console.log('Update returned no data. Match ID may be incorrect or RLS policy is blocking the update.');
+            alert('更新失败：未找到匹配的比赛记录。这可能是数据库权限问题。');
         }
     }
+    // ================= 关键修正处 E N D =================
 
     function loadIdsData(groupName) {
         const tableBody = document.getElementById('ids-table-body');
