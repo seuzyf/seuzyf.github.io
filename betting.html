@@ -343,6 +343,7 @@
         </div>
     </div>
 
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const SUPABASE_URL = 'https://vbyvolmtkjjyeiibpljf.supabase.co';
@@ -352,7 +353,7 @@
 
             let currentUser = null;
             let currentMatches = [];
-            let allMatchesData = []; // Store all match results here
+            let allMatchesData = [];
 
             const loginBtn = document.getElementById('login-btn');
             const logoutBtn = document.getElementById('logout-btn');
@@ -373,45 +374,30 @@
             async function handleLoginOrRegister() {
                 const username = document.getElementById('username-input').value.trim();
                 const password = document.getElementById('password-input').value;
-                if (!username || !password) {
-                    alert('请输入用户名和密码');
-                    return;
-                }
+                if (!username || !password) return alert('请输入用户名和密码');
 
                 let { data: user, error } = await supabaseClient.from('bet_users').select('*').eq('username', username).single();
 
                 if (error && error.code === 'PGRST116') {
-                    const { data: newUser, error: insertError } = await supabaseClient
-                        .from('bet_users')
-                        .insert([{ username, password, balance: 100 }])
-                        .select()
-                        .single();
-
-                    if(insertError) {
-                        alert('注册失败: ' + insertError.message);
-                        return;
-                    }
+                    const { data: newUser, error: insertError } = await supabaseClient.from('bet_users').insert([{ username, password }]).select().single();
+                    if (insertError) return alert('注册失败: ' + insertError.message);
                     currentUser = newUser;
                     alert('注册成功，初始分数为100！');
                 } else if (error) {
-                    alert('数据库查询失败: ' + error.message);
-                    return;
+                    return alert('数据库查询失败: ' + error.message);
                 } else {
-                    if (user.password !== password) {
-                        alert('密码错误！');
-                        return;
-                    }
+                    if (user.password !== password) return alert('密码错误！');
                     currentUser = user;
                 }
-                
+
                 loginModal.classList.remove('visible');
-                await loginAndSettle(); // **核心：登录后立即结算**
-                await loadMatches(); 
+                await loginAndSettle();
+                await loadMatches();
             }
 
             async function loginAndSettle() {
                 if (!currentUser) return;
-                console.log("开始为用户 " + currentUser.username + " 结算待处理的竞猜...");
+                console.log("开始为用户 " + currentUser.username + " 结算待处理的预测...");
 
                 // 1. 获取该用户所有“待结算”的竞猜记录
                 const { data: pendingBets, error: betsError } = await supabaseClient
@@ -422,17 +408,18 @@
                 
                 if (betsError) {
                     console.error("获取待结算记录失败:", betsError);
+                    alert("错误：无法获取您的预测记录。");
                     return;
                 }
 
                 if (pendingBets.length === 0) {
                     console.log("没有需要结算的记录。");
-                    updateUserDisplay(); // 确保显示的是最新余额
+                    updateUserDisplay(); 
                     return;
                 }
 
                 // 2. 准备结算
-                let balanceChange = 0;
+                let totalPayout = 0; // 总计应得的回报
                 const betsToUpdate = [];
 
                 for (const bet of pendingBets) {
@@ -440,46 +427,60 @@
                     if (!match) continue; // 比赛数据还没加载，跳过
 
                     const isFinished = (match.score_a !== null && match.score_b !== null) && 
-                                       (parseInt(match.score_a) > 0 || parseInt(match.score_b) > 0) &&
                                        (parseInt(match.score_a) !== parseInt(match.score_b));
 
                     if (isFinished) {
                         const winner = parseInt(match.score_a) > parseInt(match.score_b) ? match.team_a : match.team_b;
+                        
+                        // **【修正一】正确的奖金计算逻辑**
                         if (bet.predicted_winner === winner) {
-                            // 猜对了，计算奖金（回报 - 本金）
-                            balanceChange += (bet.amount * bet.odds_at_bet) - bet.amount;
+                            // 猜对了：获得全部回报（本金 * 赔率）
+                            totalPayout += (bet.amount * bet.odds_at_bet);
                         } else {
-                            // 猜错了，扣除本金
-                            balanceChange -= bet.amount;
+                            // 猜错了：回报为 0 （本金已在下注时扣除）
+                            // 此处无需操作
                         }
+                        
+                        // 标记这条记录需要更新状态
                         betsToUpdate.push({ ...bet, status: 'settled' });
                     }
                 }
                 
                 // 3. 如果有需要结算的，更新数据库
                 if (betsToUpdate.length > 0) {
-                    // 更新用户余额
-                    const newBalance = currentUser.balance + balanceChange;
-                    const { error: balanceUpdateError } = await supabaseClient
-                        .from('bet_users')
-                        .update({ balance: newBalance })
-                        .eq('id', currentUser.id);
-
-                    // 更新竞猜记录状态
+                    // **【修正二】调整数据库更新顺序，优先更新竞猜记录状态**
+                    // 第一步：将所有待结算的记录状态更新为 "settled"
                     const { error: betsUpdateError } = await supabaseClient
                         .from('bet_bets')
                         .upsert(betsToUpdate.map(({id, status}) => ({id, status})));
 
-                    if (balanceUpdateError || betsUpdateError) {
-                        alert("自动结算时发生错误，请联系管理员！");
-                        console.error(balanceUpdateError || betsUpdateError);
+                    // 如果更新状态失败，则中止一切操作，防止重复加分
+                    if (betsUpdateError) {
+                        alert("自动结算时发生错误，请联系管理员！ (错误码: BET_STATUS_UPDATE_FAILED)");
+                        console.error("更新竞猜记录状态失败:", betsUpdateError);
+                        return; 
+                    }
+
+                    // 第二步：只有在记录状态更新成功后，才给用户加分
+                    const newBalance = currentUser.balance + totalPayout;
+                    const { error: balanceUpdateError } = await supabaseClient
+                        .from('bet_users')
+                        .update({ balance: newBalance })
+                        .eq('id', currentUser.id);
+                    
+                    if (balanceUpdateError) {
+                         alert("自动结算时发生错误，请联系管理员！ (错误码: BALANCE_UPDATE_FAILED)");
+                         console.error("更新用户分数失败:", balanceUpdateError);
                     } else {
+                        // 一切顺利
                         currentUser.balance = newBalance;
                         console.log(`结算完成！${betsToUpdate.length}条记录已处理，余额更新为: ${newBalance}`);
                     }
                 }
+                
                 updateUserDisplay();
             }
+
 
             function handleLogout() {
                 currentUser = null;
@@ -508,29 +509,23 @@
 
             async function loadMatches(){
                 mainContent.innerHTML = '<p>正在加载最新赛程和赔率...</p>';
-                let {data: matches, error} = await supabaseClient.from('match_schedule').select('*').order('id');
-
+                const {data: matches, error} = await supabaseClient.from('match_schedule').select('*').order('id');
                 if(error){
-                    console.error("加载比赛失败:", error);
                     mainContent.innerHTML = '<p>加载比赛失败，请刷新页面重试。</p>';
                     return;
                 }
-
-                allMatchesData = matches; // **存储所有赛程结果**
+                allMatchesData = matches;
+                
                 const validMatches = matches.filter(m => m.team_a && m.team_b);
                 const matchIds = validMatches.map(m => m.id);
-
                 if (matchIds.length === 0) {
                     currentMatches = [];
                     renderMatches();
                     return;
                 }
 
-                let {data: bets, error: betsError} = await supabaseClient.from('bet_bets').select('*').in('match_id', matchIds);
-                if(betsError) {
-                    console.error("加载预测数据失败:", betsError);
-                    bets = [];
-                }
+                const {data: bets, error: betsError} = await supabaseClient.from('bet_bets').select('*').in('match_id', matchIds);
+                if(betsError) bets = [];
 
                 currentMatches = validMatches.map(match => {
                     const betsForMatch = bets.filter(b => b.match_id === match.id);
@@ -540,20 +535,17 @@
 
                     const oddsA = totalPool > 0 ? (totalPool / poolA) : 1.00;
                     const oddsB = totalPool > 0 ? (totalPool / poolB) : 1.00;
-
-                    const isFinished = (match.score_a !== null && match.score_b !== null) && 
-                                       (parseInt(match.score_a, 10) > 0 || parseInt(match.score_b, 10) > 0);
+                    
+                    const isFinished = (match.score_a !== null && match.score_b !== null) && (match.score_a > 0 || match.score_b > 0);
 
                     return {...match, odds_a: oddsA, odds_b: oddsB, is_finished: isFinished};
                 });
-
                 renderMatches();
             }
 
             function renderMatches(){
                 mainContent.innerHTML = '';
                 const groups = ['传奇组', '中坚组', '挑战组'];
-
                 groups.forEach(group => {
                     const groupMatches = currentMatches.filter(m => m.group === group);
                     if(groupMatches.length > 0) {
@@ -565,30 +557,21 @@
                         section.appendChild(header);
                         const grid = document.createElement('div');
                         grid.className = 'betting-matches-grid';
-
                         groupMatches.forEach(match => {
                             const card = document.createElement('div');
                             const canBet = !match.is_finished;
                             card.className = `betting-card ${canBet ? 'bettable' : 'not-bettable'}`;
                             card.dataset.matchId = match.id;
-
-                            const oddsAHigh = match.odds_a > match.odds_b;
-                            const oddsBHigh = match.odds_b > match.odds_a;
-
                             card.innerHTML = `
                                 <div class="team">
                                     <span class="team-name">${match.team_a}</span>
-                                    <span class="team-odds ${oddsAHigh ? 'high-odds' : ''}">${match.odds_a.toFixed(2)}</span>
-                                </div>
-                                <hr>
+                                    <span class="team-odds">${match.odds_a.toFixed(2)}</span>
+                                </div><hr>
                                 <div class="team">
                                     <span class="team-name">${match.team_b}</span>
-                                    <span class="team-odds ${oddsBHigh ? 'high-odds' : ''}">${match.odds_b.toFixed(2)}</span>
-                                </div>
-                            `;
-                            if(canBet){
-                                card.addEventListener('click', () => openBetModal(match.id));
-                            }
+                                    <span class="team-odds">${match.odds_b.toFixed(2)}</span>
+                                </div>`;
+                            if(canBet) card.addEventListener('click', () => openBetModal(match.id));
                             grid.appendChild(card);
                         });
                         section.appendChild(grid);
@@ -610,7 +593,6 @@
                  document.getElementById('modal-user-balance').style.display = 'inline';
                  document.getElementById('bet-modal-header').textContent = `${match.team_a} vs ${match.team_b}`;
                  betModal.dataset.currentMatchId = match.id;
-
                  const teamABtn = document.getElementById('bet-team-a-btn');
                  const teamBBtn = document.getElementById('bet-team-b-btn');
                  teamABtn.textContent = match.team_a; teamBBtn.textContent = match.team_b;
@@ -628,14 +610,8 @@
                  await loadAndRenderExistingBets(matchId);
 
                  let selectedTeam = null;
-                 teamABtn.onclick = () => {
-                     selectedTeam = match.team_a;
-                     teamABtn.style.borderColor = 'var(--win-color)'; teamBBtn.style.borderColor = 'var(--primary-color)';
-                 };
-                 teamBBtn.onclick = () => {
-                     selectedTeam = match.team_b;
-                     teamBBtn.style.borderColor = 'var(--win-color)'; teamABtn.style.borderColor = 'var(--primary-color)';
-                 };
+                 teamABtn.onclick = () => { selectedTeam = match.team_a; teamABtn.style.borderColor = 'var(--win-color)'; teamBBtn.style.borderColor = 'var(--primary-color)'; };
+                 teamBBtn.onclick = () => { selectedTeam = match.team_b; teamBBtn.style.borderColor = 'var(--win-color)'; teamABtn.style.borderColor = 'var(--primary-color)'; };
 
                  betConfirmBtn.onclick = async () => {
                     betConfirmBtn.disabled = true; betConfirmBtn.textContent = '提交中...';
@@ -645,18 +621,17 @@
                         betConfirmBtn.disabled = false; betConfirmBtn.textContent = '确认预测'; return;
                      }
                      
-                     const { error: betError } = await supabaseClient.from('bet_bets').insert([{
-                         user_id: currentUser.id, match_id: match.id, amount, predicted_winner: selectedTeam, odds_at_bet: parseFloat(selectedTeam === match.team_a ? match.odds_a : match.odds_b)
-                     }]);
-
-                     if(betError) {
-                        alert("预测记录失败: " + betError.message);
-                        betConfirmBtn.disabled = false; betConfirmBtn.textContent = '确认预测'; return;
-                     }
-
                      const newBalance = currentUser.balance - amount;
                      const { error: balanceError } = await supabaseClient.from('bet_users').update({ balance: newBalance }).eq('id', currentUser.id);
-                     if (balanceError) { alert("扣除分数时出错，请联系管理员"); }
+                     if(balanceError) { alert("预测失败，扣除分数时出错: " + balanceError.message); betConfirmBtn.disabled = false; betConfirmBtn.textContent = '确认预测'; return; }
+
+                     const odds = selectedTeam === match.team_a ? match.odds_a : match.odds_b;
+                     const { error: betError } = await supabaseClient.from('bet_bets').insert([{ user_id: currentUser.id, match_id: match.id, amount, predicted_winner: selectedTeam, odds_at_bet: parseFloat(odds) }]);
+                     if(betError) {
+                         await supabaseClient.from('bet_users').update({ balance: currentUser.balance }).eq('id', currentUser.id);
+                         alert("预测记录失败，分数已退回: " + betError.message);
+                         betConfirmBtn.disabled = false; betConfirmBtn.textContent = '确认预测'; return;
+                     }
 
                      currentUser.balance = newBalance;
                      alert("预测成功!");
@@ -665,7 +640,6 @@
                      betModal.classList.remove('visible');
                      await loadMatches();
                  };
-
                  betModal.classList.add('visible');
             }
 
@@ -674,7 +648,6 @@
                 listContainer.innerHTML = '加载中...';
                 const { data: bets, error } = await supabaseClient
                     .from('bet_bets').select(`*, bet_users (username)`).eq('match_id', matchId).order('created_at', { ascending: false });
-
                 if (error) { listContainer.innerHTML = '<p style="color:var(--loss-color)">加载预测记录失败</p>'; return; }
                 if (bets.length === 0) { listContainer.innerHTML = '<p>暂无预测记录</p>'; return; }
 
@@ -683,10 +656,7 @@
                     const recordDiv = document.createElement('div');
                     recordDiv.className = 'bet-record';
                     const isOwnBet = currentUser && bet.user_id === currentUser.id;
-                    recordDiv.innerHTML = `
-                        <span>${bet.bet_users ? bet.bet_users.username : '匿名'}</span>
-                        <span>支持 ${bet.predicted_winner} ${bet.amount}分</span>
-                        ${isOwnBet ? `<button class="cancel-bet-btn" data-bet-id="${bet.id}" data-amount="${bet.amount}">撤销</button>` : '<span></span>'}`;
+                    recordDiv.innerHTML = `<span>${bet.bet_users ? bet.bet_users.username : '匿名'}</span><span>支持 ${bet.predicted_winner} ${bet.amount}分</span>${isOwnBet ? `<button class="cancel-bet-btn" data-bet-id="${bet.id}" data-amount="${bet.amount}">撤销</button>` : '<span></span>'}`;
                     listContainer.appendChild(recordDiv);
                 });
                 document.querySelectorAll('.cancel-bet-btn').forEach(btn => btn.addEventListener('click', handleCancelBet));
@@ -697,12 +667,15 @@
                 const amount = parseFloat(event.target.dataset.amount);
                 if (!confirm(`您确定要撤销这笔 ${amount} 分的预测吗？`)) return;
 
-                const { error: deleteError } = await supabaseClient.from('bet_bets').delete().eq('id', betId);
-                if (deleteError) { alert('撤销失败: ' + deleteError.message); return; }
-
                 const newBalance = currentUser.balance + amount;
                 const { error: balanceError } = await supabaseClient.from('bet_users').update({ balance: newBalance }).eq('id', currentUser.id);
-                if (balanceError) { alert('退还分数失败，请联系管理员！'); return; }
+                if (balanceError) { alert('撤销失败，退还分数时出错！'); return; }
+
+                const { error: deleteError } = await supabaseClient.from('bet_bets').delete().eq('id', betId);
+                if (deleteError) {
+                    await supabaseClient.from('bet_users').update({ balance: currentUser.balance }).eq('id', currentUser.id);
+                    alert('撤销失败: ' + deleteError.message); return;
+                }
 
                 currentUser.balance = newBalance;
                 alert('撤销成功，分数已退回！');
@@ -715,14 +688,12 @@
                 const historyModal = document.getElementById('history-modal');
                 const historyHeader = document.getElementById('history-modal-header');
                 const historyBody = document.getElementById('history-table-body');
-
                 historyHeader.textContent = username ? `${username} 的预测记录` : '我的预测记录';
                 historyBody.innerHTML = '<tr><td colspan="6">加载中...</td></tr>';
                 historyModal.classList.add('visible');
 
                 const targetUserId = userId || currentUser.id;
                 const { data: bets, error } = await supabaseClient.from('bet_bets').select(`*, match_schedule (*)`).eq('user_id', targetUserId).order('created_at', { ascending: false });
-
                 if(error) { historyBody.innerHTML = `<tr><td colspan="6">加载失败: ${error.message}</td></tr>`; return; }
                 if (bets.length === 0) { historyBody.innerHTML = '<tr><td colspan="6">暂无记录</td></tr>'; return; }
 
@@ -732,8 +703,7 @@
                     let statusText = '待结算';
                     let settlement = 'N/A';
                     let settlementColor = 'var(--text-color)';
-                    
-                    const isFinished = (match.score_a !== null && match.score_b !== null) && (match.score_a > 0 || match.score_b > 0) && (match.score_a !== match.score_b);
+                    const isFinished = (match && match.score_a !== null && match.score_b !== null) && (match.score_a != match.score_b) && (match.score_a > 0 || match.score_b > 0);
 
                     if (isFinished) {
                         const winner = match.score_a > match.score_b ? match.team_a : match.team_b;
@@ -749,13 +719,7 @@
                     }
 
                     const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${match ? `${match.team_a} vs ${match.team_b}`: '比赛信息丢失'}</td>
-                        <td>${bet.predicted_winner}</td>
-                        <td>${bet.amount.toFixed(2)}</td>
-                        <td>${bet.odds_at_bet.toFixed(2)}</td>
-                        <td>${statusText}</td>
-                        <td style="color: ${settlementColor};">${settlement}</td>`;
+                    tr.innerHTML = `<td>${match ? `${match.team_a} vs ${match.team_b}`: '信息丢失'}</td><td>${bet.predicted_winner}</td><td>${bet.amount.toFixed(2)}</td><td>${bet.odds_at_bet.toFixed(2)}</td><td>${statusText}</td><td style="color: ${settlementColor};">${settlement}</td>`;
                     historyBody.appendChild(tr);
                 });
             }
@@ -764,16 +728,12 @@
                 const leaderboardBody = document.getElementById('leaderboard-table-body');
                 leaderboardBody.innerHTML = '<tr><td colspan="3">加载中...</td></tr>';
                 const { data: users, error } = await supabaseClient.from('bet_users').select('id, username, balance').order('balance', { ascending: false });
-
                 if(error){ leaderboardBody.innerHTML = `<tr><td colspan="3">加载排名失败: ${error.message}</td></tr>`; return; }
 
                 leaderboardBody.innerHTML = '';
                 users.forEach((user, index) => {
                     const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${index + 1}</td>
-                        <td class="username-cell" data-user-id="${user.id}" data-username="${user.username}">${user.username}</td>
-                        <td>${user.balance.toFixed(2)}</td>`;
+                    tr.innerHTML = `<td>${index + 1}</td><td class="username-cell" data-user-id="${user.id}" data-username="${user.username}">${user.username}</td><td>${user.balance.toFixed(2)}</td>`;
                     leaderboardBody.appendChild(tr);
                 });
                 document.querySelectorAll('.username-cell').forEach(cell => cell.addEventListener('click', (e) => showHistory(e.target.dataset.userId, e.target.dataset.username)));
@@ -791,7 +751,6 @@
             document.getElementById('history-btn').addEventListener('click', () => showHistory());
             document.querySelectorAll('.modal-backdrop').forEach(modal => modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('visible'); }));
 
-            // 初始加载
             loadMatches();
         });
     </script>
