@@ -657,30 +657,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function submitSchedule() {
         const matchId = document.getElementById('match-selector').value;
-        if (!matchId) return alert('请先选择一场比赛。');
+        if (!matchId) {
+            alert('请先选择一场比赛。');
+            return;
+        }
+
+        const scoreA = document.getElementById('schedule-score-a').value;
+        const scoreB = document.getElementById('schedule-score-b').value;
         
-        const scoreA_input = document.getElementById('schedule-score-a').value;
-        const scoreB_input = document.getElementById('schedule-score-b').value;
-        
+        // 我们只更新需要改变的字段：比分和链接
         const dataToUpdate = {
-            team_a: document.getElementById('schedule-team-a').value,
-            team_b: document.getElementById('schedule-team-b').value,
-            score_a: scoreA_input === '' ? null : parseInt(scoreA_input),
-            score_b: scoreB_input === '' ? null : parseInt(scoreB_input),
+            score_a: scoreA === '' ? null : parseInt(scoreA, 10),
+            score_b: scoreB === '' ? null : parseInt(scoreB, 10),
             link: document.getElementById('schedule-link').value.trim()
         };
-        
-        const { error } = await supabaseClient
+
+        // **【核心修正】** 使用 .eq('id', matchId) 来通过唯一主键定位到正确的行
+        const { data, error } = await supabaseClient
             .from('match_schedule')
             .update(dataToUpdate)
-            .eq('group', getCurrentGroup())
-            .eq('match_id', matchId);
+            .eq('id', matchId) // 使用 'id' 列进行匹配，而不是 'match_id'
+            .select();
 
         if (error) {
-            alert('更新赛程失败: ' + error.message);
+            alert('错误：更新赛程失败！\n' + error.message);
+            console.error(error);
+        } else if (data && data.length > 0) {
+            alert('赛程比分已成功写入数据库！');
+            await loadScheduleForGroup(getCurrentGroup()); // 刷新数据以确认更新
         } else {
-            alert('赛程更新成功！');
-            await loadScheduleForGroup(getCurrentGroup()); // Refresh the data
+            // 这个情况通常不会发生，但作为调试信息很有用
+            alert('更新失败：未找到匹配的比赛记录或没有权限。');
+            console.log('Update returned no data. Match ID may be incorrect or RLS policy is blocking the update.');
         }
     }
 
