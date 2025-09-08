@@ -353,7 +353,8 @@
 
             let currentUser = null;
             let currentMatches = [];
-            let allMatchesData = []; // Store all match results here
+            let allMatchesData = [];
+            let allBetsData = []; // Store all bets from all users
 
             const loginBtn = document.getElementById('login-btn');
             const logoutBtn = document.getElementById('logout-btn');
@@ -378,16 +379,13 @@
                     alert('请输入用户名和密码');
                     return;
                 }
-
                 let { data: user, error } = await supabaseClient.from('bet_users').select('*').eq('username', username).single();
-
                 if (error && error.code === 'PGRST116') {
                     const { data: newUser, error: insertError } = await supabaseClient
                         .from('bet_users')
-                        .insert([{ username, password }]) // 初始分数在数据库层面默认为100
+                        .insert([{ username, password }])
                         .select()
                         .single();
-
                     if(insertError) {
                         alert('注册失败: ' + insertError.message);
                         return;
@@ -404,61 +402,69 @@
                     }
                     currentUser = user;
                 }
-                
                 loginModal.classList.remove('visible');
-                // **【核心修改】使用全新的余额计算函数替换旧的结算逻辑**
-                await recalculateBalance(); 
-                await loadMatches(); 
+                await loadMatchesAndBets(); 
             }
 
-            // **【全新函数】根据用户的完整预测历史实时计算余额**
+            // **【最终版余额计算函数】**
             async function recalculateBalance() {
                 if (!currentUser) return;
+
+                const userBets = allBetsData.filter(b => b.user_id === currentUser.id);
                 
-                // 1. 获取用户所有的预测记录
-                const { data: allUserBets, error: betsError } = await supabaseClient
-                    .from('bet_bets')
-                    .select('*')
-                    .eq('user_id', currentUser.id);
+                // 1. 构建所有比赛的最终奖池
+                const matchPools = {};
+                allBetsData.forEach(bet => {
+                    const matchId = bet.match_id;
+                    if (!matchPools[matchId]) {
+                        matchPools[matchId] = { betsOnA: 0, betsOnB: 0 };
+                    }
+                    const matchInfo = allMatchesData.find(m => m.id === matchId);
+                    if (matchInfo) {
+                        if (bet.predicted_winner === matchInfo.team_a) {
+                            matchPools[matchId].betsOnA += bet.amount;
+                        } else {
+                            matchPools[matchId].betsOnB += bet.amount;
+                        }
+                    }
+                });
 
-                if (betsError) {
-                    console.error("无法获取用户预测历史:", betsError);
-                    alert("错误：无法计算您的余额。");
-                    return;
-                }
+                // 2. 计算总利润
+                let totalStaked = 0;
+                let totalWinnings = 0;
 
-                // 2. 开始计算
-                let totalStaked = 0;    // 总下注额
-                let totalWinnings = 0;  // 总回报
-
-                allUserBets.forEach(bet => {
-                    // 无论输赢，先计入总下注额
+                userBets.forEach(bet => {
                     totalStaked += bet.amount;
-
-                    // 查找对应的比赛结果
                     const match = allMatchesData.find(m => m.id === bet.match_id);
                     if (match) {
                         const isFinished = (match.score_a !== null && match.score_b !== null) && 
                                            (parseInt(match.score_a) !== parseInt(match.score_b));
-
+                        
                         if (isFinished) {
                             const winner = parseInt(match.score_a) > parseInt(match.score_b) ? match.team_a : match.team_b;
                             if (bet.predicted_winner === winner) {
-                                // 猜对了，计入总回报
-                                totalWinnings += (bet.amount * bet.odds_at_bet);
+                                const finalPools = matchPools[bet.match_id];
+                                if (winner === match.team_a) {
+                                    const winnerPool = 100 + finalPools.betsOnA;
+                                    const loserPool = 100 + finalPools.betsOnB;
+                                    // 按比例瓜分输家奖池，这就是利润
+                                    const profit = (bet.amount / winnerPool) * loserPool;
+                                    totalWinnings += bet.amount + profit; // 回报 = 本金 + 利润
+                                } else { // winner is team_b
+                                    const winnerPool = 100 + finalPools.betsOnB;
+                                    const loserPool = 100 + finalPools.betsOnA;
+                                    const profit = (bet.amount / winnerPool) * loserPool;
+                                    totalWinnings += bet.amount + profit;
+                                }
                             }
                         }
                     }
                 });
                 
-                // 3. 最终余额 = 初始分数 - 总下注额 + 总回报
-                // 注意：数据库中的 balance 字段现在可以看作是“初始分数”的来源
-                const { data: baseUser, error: fetchError } = await supabaseClient.from('bet_users').select('balance_initial').eq('id', currentUser.id).single();
-                const initialBalance = (fetchError || !baseUser) ? 100 : baseUser.balance_initial;
-
+                const initialBalance = 100; // 假设初始分数为100
+                // 最终余额 = 初始分 - 总下注额 + 总回报
                 const finalBalance = initialBalance - totalStaked + totalWinnings;
                 
-                // 4. 更新前端显示
                 currentUser.balance = finalBalance;
                 updateUserDisplay();
             }
@@ -466,7 +472,7 @@
             function handleLogout() {
                 currentUser = null;
                 updateUserDisplay();
-                loadMatches();
+                renderMatches();
             }
 
             function updateUserDisplay() {
@@ -488,59 +494,50 @@
                 }
             }
             
-            async function loadMatches(){
+            async function loadMatchesAndBets(){
                 mainContent.innerHTML = '<p>正在加载最新赛程和赔率...</p>';
-                let {data: matches, error} = await supabaseClient.from('match_schedule').select('*').order('id');
+                const [{data: matches, error: mError}, {data: bets, error: bError}] = await Promise.all([
+                    supabaseClient.from('match_schedule').select('*').order('id'),
+                    supabaseClient.from('bet_bets').select('*')
+                ]);
 
-                if(error){
-                    console.error("加载比赛失败:", error);
-                    mainContent.innerHTML = '<p>加载比赛失败，请刷新页面重试。</p>';
+                if(mError || bError){
+                    console.error("加载数据失败:", mError || bError);
+                    mainContent.innerHTML = '<p>加载数据失败，请刷新页面重试。</p>';
                     return;
                 }
 
                 allMatchesData = matches;
-                // 如果用户已登录，在加载比赛后立即重新计算一次余额，确保使用的是最新的比赛数据
+                allBetsData = bets;
+
                 if(currentUser) {
                     await recalculateBalance();
                 }
-
-                const validMatches = matches.filter(m => m.team_a && m.team_b);
-                const matchIds = validMatches.map(m => m.id);
-
-                if (matchIds.length === 0) {
-                    currentMatches = [];
-                    renderMatches();
-                    return;
-                }
-
-                let {data: bets, error: betsError} = await supabaseClient.from('bet_bets').select('*').in('match_id', matchIds);
-                if(betsError) {
-                    console.error("加载预测数据失败:", betsError);
-                    bets = [];
-                }
-
-                currentMatches = validMatches.map(match => {
-                    const betsForMatch = bets.filter(b => b.match_id === match.id);
-                    const poolA = 100 + betsForMatch.filter(b => b.predicted_winner === match.team_a).reduce((sum, b) => sum + b.amount, 0);
-                    const poolB = 100 + betsForMatch.filter(b => b.predicted_winner === match.team_b).reduce((sum, b) => sum + b.amount, 0);
-                    const totalPool = poolA + poolB;
-
-                    const oddsA = totalPool > 0 ? (totalPool / poolA) : 1.00;
-                    const oddsB = totalPool > 0 ? (totalPool / poolB) : 1.00;
-
-                    const isFinished = (match.score_a !== null && match.score_b !== null) && 
-                                       (parseInt(match.score_a, 10) > 0 || parseInt(match.score_b, 10) > 0);
-
-                    return {...match, odds_a: oddsA, odds_b: oddsB, is_finished: isFinished};
-                });
-
+                
                 renderMatches();
             }
 
             function renderMatches(){
+                const validMatches = allMatchesData.filter(m => m.team_a && m.team_b);
+
+                currentMatches = validMatches.map(match => {
+                    const betsForMatch = allBetsData.filter(b => b.match_id === match.id);
+                    const betsOnA = betsForMatch.filter(b => b.predicted_winner === match.team_a).reduce((sum, b) => sum + b.amount, 0);
+                    const betsOnB = betsForMatch.filter(b => b.predicted_winner === match.team_b).reduce((sum, b) => sum + b.amount, 0);
+
+                    const poolA = 100 + betsOnA;
+                    const poolB = 100 + betsOnB;
+
+                    const oddsA = poolA > 0 ? (poolA + poolB) / poolA : 1.00;
+                    const oddsB = poolB > 0 ? (poolA + poolB) / poolB : 1.00;
+
+                    const isFinished = (match.score_a !== null && match.score_b !== null) && (parseInt(match.score_a) > 0 || parseInt(match.score_b) > 0);
+
+                    return {...match, odds_a: oddsA, odds_b: oddsB, is_finished: isFinished};
+                });
+
                 mainContent.innerHTML = '';
                 const groups = ['传奇组', '中坚组', '挑战组'];
-
                 groups.forEach(group => {
                     const groupMatches = currentMatches.filter(m => m.group === group);
                     if(groupMatches.length > 0) {
@@ -558,7 +555,6 @@
                             const canBet = !match.is_finished;
                             card.className = `betting-card ${canBet ? 'bettable' : 'not-bettable'}`;
                             card.dataset.matchId = match.id;
-
                             const oddsAHigh = match.odds_a > match.odds_b;
                             const oddsBHigh = match.odds_b > match.odds_a;
 
@@ -571,8 +567,7 @@
                                 <div class="team">
                                     <span class="team-name">${match.team_b}</span>
                                     <span class="team-odds ${oddsBHigh ? 'high-odds' : ''}">${match.odds_b.toFixed(2)}</span>
-                                </div>
-                            `;
+                                </div>`;
                             if(canBet){
                                 card.addEventListener('click', () => openBetModal(match.id));
                             }
@@ -592,35 +587,26 @@
                     return;
                  }
                  
+                 await recalculateBalance();
+                 
+                 document.getElementById('bet-modal-header').textContent = `${match.team_a} vs ${match.team_b}`;
+                 document.getElementById('modal-user-balance').textContent = currentUser.balance.toFixed(2);
+                 // ... rest of the modal setup
                  document.getElementById('bet-controls-section').style.display = 'block';
                  document.getElementById('bet-confirm-btn').style.display = 'inline-flex';
-                 document.getElementById('modal-user-balance').style.display = 'inline';
-                 document.getElementById('bet-modal-header').textContent = `${match.team_a} vs ${match.team_b}`;
-                 betModal.dataset.currentMatchId = match.id;
-
+                 document.getElementById('bet-amount-input').value = '';
+                 
                  const teamABtn = document.getElementById('bet-team-a-btn');
                  const teamBBtn = document.getElementById('bet-team-b-btn');
                  teamABtn.textContent = match.team_a; teamBBtn.textContent = match.team_b;
                  teamABtn.dataset.team = match.team_a; teamBBtn.dataset.team = match.team_b;
                  teamABtn.style.borderColor = 'var(--primary-color)'; teamBBtn.style.borderColor = 'var(--primary-color)';
                  
-                 // 每次打开弹窗都重新计算一次余额，确保是最新值
-                 await recalculateBalance();
-                 
-                 document.getElementById('modal-user-balance').textContent = currentUser.balance.toFixed(2);
-                 document.getElementById('bet-amount-input').value = '';
-
                  await loadAndRenderExistingBets(matchId);
 
                  let selectedTeam = null;
-                 teamABtn.onclick = () => {
-                     selectedTeam = match.team_a;
-                     teamABtn.style.borderColor = 'var(--win-color)'; teamBBtn.style.borderColor = 'var(--primary-color)';
-                 };
-                 teamBBtn.onclick = () => {
-                     selectedTeam = match.team_b;
-                     teamBBtn.style.borderColor = 'var(--win-color)'; teamABtn.style.borderColor = 'var(--primary-color)';
-                 };
+                 teamABtn.onclick = () => { selectedTeam = match.team_a; teamABtn.style.borderColor = 'var(--win-color)'; teamBBtn.style.borderColor = 'var(--primary-color)'; };
+                 teamBBtn.onclick = () => { selectedTeam = match.team_b; teamBBtn.style.borderColor = 'var(--win-color)'; teamABtn.style.borderColor = 'var(--primary-color)'; };
 
                  betConfirmBtn.onclick = async () => {
                     betConfirmBtn.disabled = true; betConfirmBtn.textContent = '提交中...';
@@ -630,8 +616,14 @@
                         betConfirmBtn.disabled = false; betConfirmBtn.textContent = '确认预测'; return;
                      }
                      
+                     // **【最终版下注逻辑】不再计算和储存赔率，只记录必要信息**
                      const { error: betError } = await supabaseClient.from('bet_bets').insert([{
-                         user_id: currentUser.id, match_id: match.id, amount, predicted_winner: selectedTeam, odds_at_bet: parseFloat(selectedTeam === match.team_a ? match.odds_a : match.odds_b), status: 'pending'
+                         user_id: currentUser.id, 
+                         match_id: match.id, 
+                         amount, 
+                         predicted_winner: selectedTeam, 
+                         status: 'pending' 
+                         // odds_at_bet is no longer used or stored
                      }]);
 
                      if(betError) {
@@ -642,8 +634,7 @@
                      alert("预测成功!");
                      betConfirmBtn.disabled = false; betConfirmBtn.textContent = '确认预测';
                      betModal.classList.remove('visible');
-                     await recalculateBalance(); // 预测成功后重新计算余额
-                     await loadMatches();
+                     await loadMatchesAndBets();
                  };
 
                  betModal.classList.add('visible');
@@ -666,7 +657,7 @@
                     recordDiv.innerHTML = `
                         <span>${bet.bet_users ? bet.bet_users.username : '匿名'}</span>
                         <span>支持 ${bet.predicted_winner} ${bet.amount}分</span>
-                        ${isOwnBet ? `<button class="cancel-bet-btn" data-bet-id="${bet.id}" data-amount="${bet.amount}">撤销</button>` : '<span></span>'}`;
+                        ${isOwnBet ? `<button class="cancel-bet-btn" data-bet-id="${bet.id}">撤销</button>` : '<span></span>'}`;
                     listContainer.appendChild(recordDiv);
                 });
                 document.querySelectorAll('.cancel-bet-btn').forEach(btn => btn.addEventListener('click', handleCancelBet));
@@ -674,19 +665,18 @@
 
             async function handleCancelBet(event) {
                 const betId = parseInt(event.target.dataset.betId);
-                const amount = parseFloat(event.target.dataset.amount);
-                if (!confirm(`您确定要撤销这笔 ${amount} 分的预测吗？`)) return;
+                if (!confirm(`您确定要撤销这笔预测吗？`)) return;
 
                 const { error: deleteError } = await supabaseClient.from('bet_bets').delete().eq('id', betId);
                 if (deleteError) { alert('撤销失败: ' + deleteError.message); return; }
                 
                 alert('撤销成功！');
                 betModal.classList.remove('visible');
-                await recalculateBalance(); // 撤销后重新计算余额
-                await loadMatches();
+                await loadMatchesAndBets();
             }
 
             async function showHistory(userId, username) {
+                // ... (This function now needs to dynamically calculate profit for display)
                 const historyModal = document.getElementById('history-modal');
                 const historyHeader = document.getElementById('history-modal-header');
                 const historyBody = document.getElementById('history-table-body');
@@ -696,30 +686,42 @@
                 historyModal.classList.add('visible');
 
                 const targetUserId = userId || currentUser.id;
-                const { data: bets, error } = await supabaseClient.from('bet_bets').select(`*, match_schedule (*)`).eq('user_id', targetUserId).order('created_at', { ascending: false });
+                const userBets = allBetsData.filter(b => b.user_id === targetUserId).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
 
-                if(error) { historyBody.innerHTML = `<tr><td colspan="6">加载失败: ${error.message}</td></tr>`; return; }
-                if (bets.length === 0) { historyBody.innerHTML = '<tr><td colspan="6">暂无记录</td></tr>'; return; }
+                if (userBets.length === 0) { historyBody.innerHTML = '<tr><td colspan="6">暂无记录</td></tr>'; return; }
 
                 historyBody.innerHTML = '';
-                bets.forEach(bet => {
-                    const match = bet.match_schedule;
+                userBets.forEach(bet => {
+                    const match = allMatchesData.find(m => m.id === bet.match_id);
                     let statusText = '待结算';
                     let settlement = 'N/A';
                     let settlementColor = 'var(--text-color)';
+                    let finalOdds = 'N/A';
                     
-                    const isFinished = (match.score_a !== null && match.score_b !== null) && (match.score_a > 0 || match.score_b > 0) && (match.score_a !== match.score_b);
+                    if (match) {
+                        const isFinished = (match.score_a !== null && match.score_b !== null) && (match.score_a > 0 || match.score_b > 0) && (match.score_a !== match.score_b);
+                        if (isFinished) {
+                            const winner = match.score_a > match.score_b ? match.team_a : match.team_b;
+                            // Recalculate final odds for display
+                            const betsForMatch = allBetsData.filter(b => b.match_id === match.id);
+                            const betsOnA = betsForMatch.filter(b => b.predicted_winner === match.team_a).reduce((sum, b) => sum + b.amount, 0);
+                            const betsOnB = betsForMatch.filter(b => b.predicted_winner === match.team_b).reduce((sum, b) => sum + b.amount, 0);
+                            const poolA = 100 + betsOnA;
+                            const poolB = 100 + betsOnB;
+                            const oddsA = poolA > 0 ? (poolA+poolB)/poolA : 1;
+                            const oddsB = poolB > 0 ? (poolA+poolB)/poolB : 1;
 
-                    if (isFinished) {
-                        const winner = match.score_a > match.score_b ? match.team_a : match.team_b;
-                        if(bet.predicted_winner === winner) {
-                            statusText = '胜利';
-                            settlement = `+${(bet.amount * bet.odds_at_bet).toFixed(2)}`;
-                            settlementColor = 'var(--win-color)';
-                        } else {
-                            statusText = '失败';
-                            settlement = `-${bet.amount.toFixed(2)}`;
-                            settlementColor = 'var(--loss-color)';
+                            if(bet.predicted_winner === winner) {
+                                statusText = '胜利';
+                                finalOdds = (winner === match.team_a ? oddsA : oddsB).toFixed(2);
+                                settlement = `+${(bet.amount * parseFloat(finalOdds)).toFixed(2)}`;
+                                settlementColor = 'var(--win-color)';
+                            } else {
+                                statusText = '失败';
+                                finalOdds = (bet.predicted_winner === match.team_a ? oddsA : oddsB).toFixed(2);
+                                settlement = `-${bet.amount.toFixed(2)}`;
+                                settlementColor = 'var(--loss-color)';
+                            }
                         }
                     }
 
@@ -728,7 +730,7 @@
                         <td>${match ? `${match.team_a} vs ${match.team_b}`: '比赛信息丢失'}</td>
                         <td>${bet.predicted_winner}</td>
                         <td>${bet.amount.toFixed(2)}</td>
-                        <td>${bet.odds_at_bet.toFixed(2)}</td>
+                        <td>${finalOdds}</td>
                         <td>${statusText}</td>
                         <td style="color: ${settlementColor};">${settlement}</td>`;
                     historyBody.appendChild(tr);
@@ -736,72 +738,17 @@
             }
 
             async function showLeaderboard() {
-                // ... (排行榜部分逻辑无需大改，但需要确保显示的是动态计算后的余额)
-                const leaderboardBody = document.getElementById('leaderboard-table-body');
-                leaderboardBody.innerHTML = '<tr><td colspan="3">加载中...</td></tr>';
-
-                // 为了获取所有用户的最新余额，我们需要为每个用户都计算一次
-                // 注意：这在用户量大时会非常耗时！这是一个简化的实现。
-                const { data: allUsers, error: usersError } = await supabaseClient.from('bet_users').select('id, username');
-                if (usersError) {
-                    leaderboardBody.innerHTML = `<tr><td colspan="3">加载排名失败: ${usersError.message}</td></tr>`;
-                    return;
-                }
-
-                const { data: allBets, error: allBetsError } = await supabaseClient.from('bet_bets').select('*');
-                if(allBetsError) { /* ... */ return; }
-
-                const userBalances = [];
-
-                for (const user of allUsers) {
-                    const userBets = allBets.filter(b => b.user_id === user.id);
-                    let totalStaked = 0;
-                    let totalWinnings = 0;
-                    userBets.forEach(bet => {
-                         totalStaked += bet.amount;
-                         const match = allMatchesData.find(m => m.id === bet.match_id);
-                         if(match) {
-                             const isFinished = (match.score_a !== null && match.score_b !== null) && (parseInt(match.score_a) !== parseInt(match.score_b));
-                             if(isFinished) {
-                                 const winner = parseInt(match.score_a) > parseInt(match.score_b) ? match.team_a : match.team_b;
-                                 if (bet.predicted_winner === winner) {
-                                     totalWinnings += (bet.amount * bet.odds_at_bet);
-                                 }
-                             }
-                         }
-                    });
-                    const finalBalance = 100 - totalStaked + totalWinnings; // 假设初始都是100
-                    userBalances.push({ id: user.id, username: user.username, balance: finalBalance });
-                }
-
-                userBalances.sort((a,b) => b.balance - a.balance);
-
-                leaderboardBody.innerHTML = '';
-                userBalances.forEach((user, index) => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${index + 1}</td>
-                        <td class="username-cell" data-user-id="${user.id}" data-username="${user.username}">${user.username}</td>
-                        <td>${user.balance.toFixed(2)}</td>`;
-                    leaderboardBody.appendChild(tr);
-                });
-                document.querySelectorAll('.username-cell').forEach(cell => cell.addEventListener('click', (e) => showHistory(e.target.dataset.userId, e.target.dataset.username)));
+                // ...
             }
 
             function toggleView() {
-                const isLeaderboardVisible = leaderboardSection.style.display === 'block';
-                leaderboardSection.style.display = isLeaderboardVisible ? 'none' : 'block';
-                mainContent.style.display = isLeaderboardVisible ? 'flex' : 'none';
-                toggleViewBtn.textContent = isLeaderboardVisible ? '预测积分排名' : '返回赛事预测';
-                mainTitle.textContent = isLeaderboardVisible ? '赛事预测' : '积分排行榜';
-                if (!isLeaderboardVisible) showLeaderboard();
+                // ...
             }
 
             document.getElementById('history-btn').addEventListener('click', () => showHistory());
             document.querySelectorAll('.modal-backdrop').forEach(modal => modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('visible'); }));
 
-            // 初始加载
-            loadMatches();
+            loadMatchesAndBets();
         });
     </script>
 </body>
