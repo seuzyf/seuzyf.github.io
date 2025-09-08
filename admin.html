@@ -230,7 +230,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <button class="success" style="margin-top: 1rem;" id="submit-schedule">更新赛程</button>
+                    <button class="success" style="margin-top: 1rem;" id="submit-schedule">更新赛程并结算</button>
                 </div>
             </div>
         </div>
@@ -286,7 +286,6 @@ document.addEventListener('DOMContentLoaded', () => {
         'P-LBF': '败者组-决赛',
         'P-GF': '总决赛'
     };
-
 
     async function checkPassword() {
         const inputPassword = passwordInput.value;
@@ -366,7 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentScheduleData.length > 0) {
             currentScheduleData.forEach(match => {
                 const option = document.createElement('option');
-                option.value = match.match_id;
+                option.value = match.id; // Use the unique ID from the table
                 option.textContent = `${matchIdToName[match.match_id] || match.match_id}: ${match.team_a} vs ${match.team_b}`;
                 selector.appendChild(option);
             });
@@ -392,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const matchData = currentScheduleData.find(m => m.match_id === matchId);
+        const matchData = currentScheduleData.find(m => m.id == matchId);
         if (matchData) {
             document.getElementById('schedule-team-a').innerHTML = getTeamOptionsHTMLForCurrentGroup(matchData.team_a);
             document.getElementById('schedule-team-b').innerHTML = getTeamOptionsHTMLForCurrentGroup(matchData.team_b);
@@ -655,6 +654,88 @@ document.addEventListener('DOMContentLoaded', () => {
         else { alert('赛果提交成功！'); document.getElementById('matches-form-container').innerHTML = ''; }
     }
 
+    // ================= 关键修改处 S T A R T =================
+    async function settleBetsForMatch(matchId, winner) {
+        if (!matchId || !winner) return;
+
+        // 1. 获取所有与本场比赛相关且未结算的竞猜
+        const { data: pendingBets, error: betsError } = await supabaseClient
+            .from('bet_bets')
+            .select('*')
+            .eq('match_id', matchId)
+            .eq('status', 'pending');
+
+        if (betsError) {
+            console.error('获取竞猜记录失败:', betsError);
+            alert('结算失败：无法获取竞猜记录。');
+            return;
+        }
+
+        if (pendingBets.length === 0) {
+            console.log('没有需要结算的竞猜记录。');
+            return; // 没有需要结算的
+        }
+
+        const winningBets = pendingBets.filter(bet => bet.predicted_winner === winner);
+        const userPayouts = {};
+
+        // 2. 计算每个获胜用户的总收益
+        winningBets.forEach(bet => {
+            const payout = bet.amount * bet.odds_at_bet;
+            if (!userPayouts[bet.user_id]) {
+                userPayouts[bet.user_id] = 0;
+            }
+            userPayouts[bet.user_id] += payout;
+        });
+
+        // 3. 批量更新获胜用户的余额
+        const userIds = Object.keys(userPayouts);
+        if (userIds.length > 0) {
+            try {
+                // Supabase JS v2 不支持直接的批量更新，需要循环
+                for (const userId of userIds) {
+                    const payoutAmount = userPayouts[userId];
+                    // 使用 rpc 调用一个数据库函数来原子性地增加余额
+                    const { error: updateError } = await supabaseClient.rpc('add_to_balance', {
+                        user_id_to_update: userId,
+                        amount_to_add: payoutAmount
+                    });
+                     if (updateError) throw updateError;
+                }
+            } catch (error) {
+                 console.error('批量更新用户余额失败:', error);
+                 alert('结算失败：更新用户余额时出错。');
+                 return;
+            }
+        }
+        
+        // 4. 将所有相关竞猜记录状态更新为 'settled'
+        const betIdsToUpdate = pendingBets.map(bet => bet.id);
+        const { error: statusUpdateError } = await supabaseClient
+            .from('bet_bets')
+            .update({ status: 'settled' })
+            .in('id', betIdsToUpdate);
+
+        if (statusUpdateError) {
+            console.error('更新竞猜状态失败:', statusUpdateError);
+            alert('结算警告：用户分数已更新，但竞猜记录状态更新失败，请手动检查。');
+            return;
+        }
+
+        alert(`结算完成！共处理了 ${pendingBets.length} 条竞猜记录，其中 ${winningBets.length} 条获胜。`);
+    }
+
+    // 在Supabase SQL Editor中创建这个函数！
+    // CREATE OR REPLACE FUNCTION add_to_balance(user_id_to_update BIGINT, amount_to_add NUMERIC)
+    // RETURNS VOID AS $$
+    // BEGIN
+    //   UPDATE bet_users
+    //   SET balance = balance + amount_to_add
+    //   WHERE id = user_id_to_update;
+    // END;
+    // $$ LANGUAGE plpgsql;
+    // ================= 关键修改处 E N D =================
+
     async function submitSchedule() {
         const matchId = document.getElementById('match-selector').value;
         if (!matchId) return alert('请先选择一场比赛。');
@@ -662,27 +743,37 @@ document.addEventListener('DOMContentLoaded', () => {
         const scoreA_input = document.getElementById('schedule-score-a').value;
         const scoreB_input = document.getElementById('schedule-score-b').value;
         
+        const scoreA = scoreA_input === '' ? null : parseInt(scoreA_input);
+        const scoreB = scoreB_input === '' ? null : parseInt(scoreB_input);
+        
         const dataToUpdate = {
             team_a: document.getElementById('schedule-team-a').value,
             team_b: document.getElementById('schedule-team-b').value,
-            score_a: scoreA_input === '' ? null : parseInt(scoreA_input),
-            score_b: scoreB_input === '' ? null : parseInt(scoreB_input),
+            score_a: scoreA,
+            score_b: scoreB,
             link: document.getElementById('schedule-link').value.trim()
         };
         
         const { error } = await supabaseClient
             .from('match_schedule')
             .update(dataToUpdate)
-            .eq('group', getCurrentGroup())
-            .eq('match_id', matchId);
+            .eq('id', matchId);
 
         if (error) {
             alert('更新赛程失败: ' + error.message);
         } else {
             alert('赛程更新成功！');
-            await loadScheduleForGroup(getCurrentGroup()); // Refresh the data
+            // ================= 关键修改处 S T A R T =================
+            // 只有在比赛有明确结果时才进行结算
+            if (scoreA !== null && scoreB !== null && scoreA !== scoreB) {
+                const winner = scoreA > scoreB ? dataToUpdate.team_a : dataToUpdate.team_b;
+                await settleBetsForMatch(matchId, winner);
+            }
+            // ================= 关键修改处 E N D =================
+            await loadScheduleForGroup(getCurrentGroup()); 
         }
     }
+
 
     function loadIdsData(groupName) {
         const tableBody = document.getElementById('ids-table-body');
