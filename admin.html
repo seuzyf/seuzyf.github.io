@@ -221,10 +221,10 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td><select id="schedule-team-a"></select></td>
+                                    <td><select id="schedule-team-a" disabled></select></td>
                                     <td><input type="number" id="schedule-score-a" placeholder="得分"></td>
                                     <td><input type="number" id="schedule-score-b" placeholder="得分"></td>
-                                    <td><select id="schedule-team-b"></select></td>
+                                    <td><select id="schedule-team-b" disabled></select></td>
                                     <td><input type="text" id="schedule-link" placeholder="https://..."></td>
                                 </tr>
                             </tbody>
@@ -395,6 +395,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (matchData) {
             document.getElementById('schedule-team-a').innerHTML = getTeamOptionsHTMLForCurrentGroup(matchData.team_a);
             document.getElementById('schedule-team-b').innerHTML = getTeamOptionsHTMLForCurrentGroup(matchData.team_b);
+            // Set the selected value for the disabled dropdowns
+            document.getElementById('schedule-team-a').value = matchData.team_a;
+            document.getElementById('schedule-team-b').value = matchData.team_b;
+            
             document.getElementById('schedule-score-a').value = matchData.score_a ?? '';
             document.getElementById('schedule-score-b').value = matchData.score_b ?? '';
             document.getElementById('schedule-link').value = matchData.link || '';
@@ -664,7 +668,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const scoreA = document.getElementById('schedule-score-a').value;
         const scoreB = document.getElementById('schedule-score-b').value;
         
+        // **修正:** 明确将队伍名称从禁用的下拉框中获取
+        const teamA = document.getElementById('schedule-team-a').value;
+        const teamB = document.getElementById('schedule-team-b').value;
+        
         const dataToUpdate = {
+            team_a: teamA,
+            team_b: teamB,
             score_a: scoreA === '' ? null : parseInt(scoreA, 10),
             score_b: scoreB === '' ? null : parseInt(scoreB, 10),
             link: document.getElementById('schedule-link').value.trim()
@@ -678,11 +688,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (error) {
             alert('错误：更新赛程失败！\n' + error.message);
+            console.error(error);
         } else {
-            alert('赛程比分已成功更新！竞猜页面的结算将自动处理。');
-            await loadScheduleForGroup(getCurrentGroup()); // 刷新数据
+            alert('赛程比分已成功写入数据库！竞猜页面将在用户下次登录时自动结算。');
+            await loadScheduleForGroup(getCurrentGroup()); // 刷新数据以确认更新
         }
     }
+
 
     function loadIdsData(groupName) {
         const tableBody = document.getElementById('ids-table-body');
