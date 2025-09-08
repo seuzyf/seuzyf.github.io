@@ -115,13 +115,17 @@
             box-shadow: 0 2px 8px var(--shadow-color);
         }
         .betting-card.bettable {
-            border-color: var(--win-color);
+            border-left: 3px solid var(--win-color);
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
         }
         .betting-card.bettable:hover {
             transform: translateY(-3px);
             box-shadow: 0 6px 12px var(--shadow-color);
+        }
+        .betting-card.not-bettable {
+            opacity: 0.7;
+            border-left: 3px solid var(--loss-color);
         }
         .team { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
         .team-name { font-size: 1.1em; }
@@ -343,7 +347,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const SUPABASE_URL = 'https://vbyvolmtkjjyeiibpljf.supabase.co';
-            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieXZvbG10a2pqeWVpaWJwbGpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzMxNDksImV4cCI6MjA3MjI0OTE0OX0.Tnot1kIVn8vJ-vggYaTGBGTkIBY7m6yIOquSjG5mSUM';
+            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieXZvbG10a2pqeWVpaWJwbGpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzMxNDksImV4cCI6MjA3MjI0OTE0OX0.Tnot1kivn8vJ-vggYaTGBGTkIBY7m6yIOquSjG5mSUM';
             const { createClient } = supabase;
             const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -405,6 +409,14 @@
                 }
                 
                 loginModal.classList.remove('visible');
+                // ====================== 新增功能：登录后自动结算 START ======================
+                await settleBetsForUser(currentUser.id);
+                // 重新获取用户信息，因为余额可能已经更新
+                const { data: updatedUser, error: fetchError } = await supabaseClient.from('bet_users').select('*').eq('id', currentUser.id).single();
+                if (!fetchError) {
+                    currentUser = updatedUser;
+                }
+                // ====================== 新增功能：登录后自动结算 END ======================
                 updateUserDisplay();
                 loadMatches();
             }
@@ -513,6 +525,7 @@
                                     <span class="team-odds ${oddsBHigh ? 'high-odds' : ''}">${match.odds_b.toFixed(2)}</span>
                                 </div>
                             `;
+                            // ====================== 修改点：已结束比赛也允许点击查看投注记录 ======================
                             card.addEventListener('click', () => openBetModal(match.id));
                             grid.appendChild(card);
                         });
@@ -526,8 +539,10 @@
                  const match = currentMatches.find(m => m.id === matchId);
                  if(!match) return;
                 
-                 document.getElementById('bet-controls-section').style.display = currentUser && !match.is_finished ? 'block' : 'none';
-                 document.getElementById('bet-confirm-btn').style.display = currentUser && !match.is_finished ? 'inline-flex' : 'none';
+                 // ====================== 修改点：根据是否登录和比赛是否结束来决定是否显示下注界面 ======================
+                 const canBet = currentUser && !match.is_finished;
+                 document.getElementById('bet-controls-section').style.display = canBet ? 'block' : 'none';
+                 document.getElementById('bet-confirm-btn').style.display = canBet ? 'inline-flex' : 'none';
                  document.getElementById('modal-user-balance').style.display = currentUser ? 'inline' : 'none';
 
                  document.getElementById('bet-modal-header').textContent = `${match.team_a} vs ${match.team_b}`;
@@ -538,6 +553,8 @@
                  teamBBtn.textContent = match.team_b;
                  teamABtn.dataset.team = match.team_a;
                  teamBBtn.dataset.team = match.team_b;
+                 teamABtn.style.borderColor = 'var(--primary-color)';
+                 teamBBtn.style.borderColor = 'var(--primary-color)';
                  
                  if (currentUser) {
                     document.getElementById('modal-user-balance').textContent = currentUser.balance.toFixed(2);
@@ -571,15 +588,18 @@
                      
                      const odds = selectedTeam === match.team_a ? match.odds_a : match.odds_b;
 
+                     // ====================== 修改点：插入新预测时，设置status为'pending' ======================
                      const { error: betError } = await supabaseClient.from('bet_bets').insert([{
                          user_id: currentUser.id,
                          match_id: match.id,
                          amount: amount,
                          predicted_winner: selectedTeam,
-                         odds_at_bet: parseFloat(odds)
+                         odds_at_bet: parseFloat(odds),
+                         status: 'pending' // 确保新预测是待结算状态
                      }]);
                      
                      if(betError) {
+                         // 如果插入失败，把用户的分数加回去
                          await supabaseClient.from('bet_users').update({ balance: currentUser.balance }).eq('id', currentUser.id);
                          alert("预测记录失败，请重试: " + betError.message);
                          return;
@@ -590,6 +610,8 @@
                      updateUserDisplay();
                      document.getElementById('modal-user-balance').textContent = currentUser.balance.toFixed(2);
                      document.getElementById('bet-amount-input').value = '';
+                     teamABtn.style.borderColor = 'var(--primary-color)';
+                     teamBBtn.style.borderColor = 'var(--primary-color)';
                      
                      await loadAndRenderExistingBets(match.id);
                      await loadMatches(); 
@@ -618,15 +640,18 @@
                 }
 
                 listContainer.innerHTML = '';
+                 const match = currentMatches.find(m => m.id === matchId);
                 bets.forEach(bet => {
                     const recordDiv = document.createElement('div');
                     recordDiv.className = 'bet-record';
+                    // ====================== 修改点：只有未结束的比赛且是自己的预测，才显示撤销按钮 ======================
                     const isOwnBet = currentUser && bet.user_id === currentUser.id;
+                    const canCancel = isOwnBet && match && !match.is_finished;
                     
                     recordDiv.innerHTML = `
                         <span>${bet.bet_users.username}</span>
                         <span>支持 ${bet.predicted_winner} ${bet.amount}分</span>
-                        ${isOwnBet ? `<button class="cancel-bet-btn" data-bet-id="${bet.id}" data-amount="${bet.amount}">撤销</button>` : '<span></span>'}
+                        ${canCancel ? `<button class="cancel-bet-btn" data-bet-id="${bet.id}" data-amount="${bet.amount}">撤销</button>` : '<span></span>'}
                     `;
                     listContainer.appendChild(recordDiv);
                 });
@@ -635,25 +660,30 @@
                     btn.addEventListener('click', handleCancelBet);
                 });
             }
-
-            async function handleCancelBet(event) {
+            
+             async function handleCancelBet(event) {
                 const betId = parseInt(event.target.dataset.betId);
                 const amount = parseFloat(event.target.dataset.amount);
                 const matchId = parseInt(betModal.dataset.currentMatchId);
 
                 if (!confirm(`您确定要撤销这笔 ${amount} 分的预测吗？`)) return;
 
-                const { error: deleteError } = await supabaseClient.from('bet_bets').delete().eq('id', betId);
-                if (deleteError) {
-                    alert('撤销失败: ' + deleteError.message);
-                    return;
-                }
-
+                // 使用事务来确保数据一致性：先加回分数，再删除预测
+                // 注意：Supabase JS V2没有内置的客户端事务，以下为分步操作。在生产环境中，最好通过数据库函数实现原子操作。
+                
                 const newBalance = currentUser.balance + amount;
                 const { error: balanceError } = await supabaseClient.from('bet_users').update({ balance: newBalance }).eq('id', currentUser.id);
 
                 if (balanceError) {
-                    alert('退还分数失败，请联系管理员！');
+                    alert('撤销失败，退还分数时出错: ' + balanceError.message);
+                    return;
+                }
+
+                const { error: deleteError } = await supabaseClient.from('bet_bets').delete().eq('id', betId);
+                if (deleteError) {
+                    // 如果删除失败，把刚刚加的分数再扣回去，恢复原状
+                    await supabaseClient.from('bet_users').update({ balance: currentUser.balance }).eq('id', currentUser.id);
+                    alert('撤销失败，删除记录时出错: ' + deleteError.message);
                     return;
                 }
                 
@@ -665,6 +695,72 @@
                 await loadAndRenderExistingBets(matchId); 
                 await loadMatches(); 
             }
+
+            // ====================== 全新功能：结算函数 START ======================
+            async function settleBetsForUser(userId) {
+                // 1. 找出用户所有'待结算'的预测
+                const { data: pendingBets, error: fetchError } = await supabaseClient
+                    .from('bet_bets')
+                    .select('*, match_schedule(*)') // 同时获取关联的比赛信息
+                    .eq('user_id', userId)
+                    .eq('status', 'pending');
+
+                if (fetchError) {
+                    console.error('获取待结算预测失败:', fetchError);
+                    return;
+                }
+                if (pendingBets.length === 0) {
+                    console.log('没有需要结算的预测。');
+                    return;
+                }
+
+                let totalPayout = 0;
+                const settledBetIds = [];
+
+                // 2. 遍历每一个待结算的预测
+                for (const bet of pendingBets) {
+                    const match = bet.match_schedule;
+                    // 检查比赛是否已结束
+                    if (match && match.score_a !== null && match.score_b !== null && (match.score_a > 0 || match.score_b > 0)) {
+                        const winner = match.score_a > match.score_b ? match.team_a : match.team_b;
+                        let betStatus = 'lost';
+                        
+                        // 3. 判断是否胜利，计算奖金
+                        if (bet.predicted_winner === winner) {
+                            totalPayout += bet.amount * bet.odds_at_bet;
+                            betStatus = 'won';
+                        }
+                        
+                        // 标记此预测为已处理
+                        settledBetIds.push({id: bet.id, status: betStatus});
+                    }
+                }
+                
+                // 4. 如果有奖金需要发放，则更新用户余额
+                if (totalPayout > 0) {
+                    // Supabase的.rpc()可以调用数据库函数来原子性地增加余额，更安全
+                    // 这里为了简单，直接读取再更新
+                    const { data: user, error: userError } = await supabaseClient.from('bet_users').select('balance').eq('id', userId).single();
+                    if(userError) { console.error("结算时获取用户余额失败:", userError); return; }
+
+                    const newBalance = user.balance + totalPayout;
+                    const { error: updateError } = await supabaseClient.from('bet_users').update({ balance: newBalance }).eq('id', userId);
+                    if (updateError) {
+                        console.error('更新用户余额失败:', updateError);
+                        // 如果更新余额失败，则不继续下面的状态更新，以便下次重试
+                        return;
+                    }
+                }
+
+                // 5. 将已处理的预测状态更新为 'won' 或 'lost'
+                if (settledBetIds.length > 0) {
+                     for(const item of settledBetIds){
+                         await supabaseClient.from('bet_bets').update({ status: item.status }).eq('id', item.id);
+                     }
+                    console.log(`为用户 ${userId} 结算了 ${settledBetIds.length} 条预测，总收益: ${totalPayout.toFixed(2)}`);
+                }
+            }
+            // ====================== 全新功能：结算函数 END ======================
             
             async function showHistory(userId, username) {
                 const historyModal = document.getElementById('history-modal');
@@ -703,19 +799,18 @@
                     let status = '待结算';
                     let settlement = 'N/A';
                     let settlementColor = 'var(--text-color)';
-
-                    if (match && match.score_a !== null && match.score_b !== null && (match.score_a > 0 || match.score_b > 0)) {
-                         const winner = match.score_a > match.score_b ? match.team_a : match.team_b;
-                         if (bet.predicted_winner === winner) {
-                             status = '胜利';
-                             settlement = `+${(bet.amount * bet.odds_at_bet - bet.amount).toFixed(2)}`;
-                             settlementColor = 'var(--win-color)';
-                         } else {
-                             status = '失败';
-                             settlement = `-${bet.amount.toFixed(2)}`;
-                             settlementColor = 'var(--loss-color)';
-                         }
+                    
+                    // ====================== 修改点：根据数据库中的 'status' 字段显示结果 ======================
+                    if (bet.status === 'won') {
+                         status = '胜利';
+                         settlement = `+${(bet.amount * bet.odds_at_bet).toFixed(2)}`;
+                         settlementColor = 'var(--win-color)';
+                    } else if (bet.status === 'lost') {
+                         status = '失败';
+                         settlement = `-${bet.amount.toFixed(2)}`;
+                         settlementColor = 'var(--loss-color)';
                     }
+                    // 如果 status 仍然是 'pending'，则保持默认的“待结算”状态
                     
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
@@ -723,7 +818,7 @@
                         <td>${bet.predicted_winner}</td>
                         <td>${bet.amount.toFixed(2)}</td>
                         <td>${bet.odds_at_bet.toFixed(2)}</td>
-                        <td>${status}</td>
+                        <td style="color: ${settlementColor};">${status}</td>
                         <td style="color: ${settlementColor};">${settlement}</td>
                     `;
                     historyBody.appendChild(tr);
