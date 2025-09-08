@@ -230,7 +230,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <button class="success" style="margin-top: 1rem;" id="submit-schedule">更新赛程并结算</button>
+                    <button class="success" style="margin-top: 1rem;" id="submit-schedule">更新赛程</button>
                 </div>
             </div>
         </div>
@@ -656,45 +656,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function submitSchedule() {
         const matchId = document.getElementById('match-selector').value;
-        if (!matchId) return alert('请先选择一场比赛。');
-        
+        if (!matchId) {
+            alert('请先选择一场比赛。');
+            return;
+        }
+
         const scoreA = document.getElementById('schedule-score-a').value;
         const scoreB = document.getElementById('schedule-score-b').value;
         
         const dataToUpdate = {
-            team_a: document.getElementById('schedule-team-a').value,
-            team_b: document.getElementById('schedule-team-b').value,
-            score_a: scoreA === '' ? null : parseInt(scoreA),
-            score_b: scoreB === '' ? null : parseInt(scoreB),
+            score_a: scoreA === '' ? null : parseInt(scoreA, 10),
+            score_b: scoreB === '' ? null : parseInt(scoreB, 10),
             link: document.getElementById('schedule-link').value.trim()
         };
-        
-        // Step 1: Update the match score
-        const { error: updateError } = await supabaseClient
+
+        const { data, error } = await supabaseClient
             .from('match_schedule')
             .update(dataToUpdate)
-            .eq('id', matchId);
+            .eq('id', matchId)
+            .select();
 
-        if (updateError) {
-            alert('更新赛程失败: ' + updateError.message);
-            return;
-        }
-        
-        alert('赛程更新成功！现在开始处理竞猜结算...');
-
-        // Step 2: Call the database function to handle all settlement logic
-        const { data: result, error: rpcError } = await supabaseClient.rpc('resettle_match', {
-            match_id_to_settle: parseInt(matchId)
-        });
-
-        if (rpcError) {
-            alert('竞猜结算时发生严重错误: ' + rpcError.message);
+        if (error) {
+            alert('错误：更新赛程失败！\n' + error.message);
         } else {
-            alert(result); // Show the message returned from the database function
+            alert('赛程比分已成功更新！竞猜页面的结算将自动处理。');
+            await loadScheduleForGroup(getCurrentGroup()); // 刷新数据
         }
-        
-        // Step 3: Refresh the data on the admin page
-        await loadScheduleForGroup(getCurrentGroup()); 
     }
 
     function loadIdsData(groupName) {
