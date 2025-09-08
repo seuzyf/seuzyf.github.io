@@ -399,7 +399,6 @@
                 if (!currentUser) return;
                 console.log("开始为用户 " + currentUser.username + " 结算待处理的预测...");
 
-                // 1. 获取该用户所有“待结算”的竞猜记录
                 const { data: pendingBets, error: betsError } = await supabaseClient
                     .from('bet_bets')
                     .select('*')
@@ -418,63 +417,62 @@
                     return;
                 }
 
-                // 2. 准备结算
-                let totalPayout = 0; // 总计应得的回报
+                let totalPayout = 0;
                 const betsToUpdate = [];
 
                 for (const bet of pendingBets) {
                     const match = allMatchesData.find(m => m.id === bet.match_id);
-                    if (!match) continue; // 比赛数据还没加载，跳过
+                    if (!match) continue;
 
                     const isFinished = (match.score_a !== null && match.score_b !== null) && 
                                        (parseInt(match.score_a) !== parseInt(match.score_b));
 
                     if (isFinished) {
                         const winner = parseInt(match.score_a) > parseInt(match.score_b) ? match.team_a : match.team_b;
-                        
-                        // **【修正一】正确的奖金计算逻辑**
                         if (bet.predicted_winner === winner) {
-                            // 猜对了：获得全部回报（本金 * 赔率）
                             totalPayout += (bet.amount * bet.odds_at_bet);
-                        } else {
-                            // 猜错了：回报为 0 （本金已在下注时扣除）
-                            // 此处无需操作
                         }
-                        
-                        // 标记这条记录需要更新状态
-                        betsToUpdate.push({ ...bet, status: 'settled' });
+                        betsToUpdate.push(bet); // Store the full bet object
                     }
                 }
                 
-                // 3. 如果有需要结算的，更新数据库
                 if (betsToUpdate.length > 0) {
-                    // **【修正二】调整数据库更新顺序，优先更新竞猜记录状态**
-                    // 第一步：将所有待结算的记录状态更新为 "settled"
-                    const { error: betsUpdateError } = await supabaseClient
-                        .from('bet_bets')
-                        .upsert(betsToUpdate.map(({id, status}) => ({id, status})));
+                    let allUpdatesSucceeded = true;
+                    
+                    // **【调试修正】逐条更新记录，而不是批量操作，以便更好地定位错误**
+                    for (const bet of betsToUpdate) {
+                        const { error: singleUpdateError } = await supabaseClient
+                            .from('bet_bets')
+                            .update({ status: 'settled' }) // 只更新 status 字段
+                            .eq('id', bet.id);             // 条件是 id 匹配
 
-                    // 如果更新状态失败，则中止一切操作，防止重复加分
-                    if (betsUpdateError) {
-                        alert("自动结算时发生错误，请联系管理员！ (错误码: BET_STATUS_UPDATE_FAILED)");
-                        console.error("更新竞猜记录状态失败:", betsUpdateError);
-                        return; 
+                        // 如果单条更新失败
+                        if (singleUpdateError) {
+                            // **关键步骤：在控制台打印详细错误**
+                            console.error(`更新 bet ID #${bet.id} 失败，Supabase 返回的原始错误:`, singleUpdateError);
+                            allUpdatesSucceeded = false;
+                            
+                            // 提示用户，并附上新的错误码
+                            alert("自动结算时发生错误，请联系管理员！ (错误码: SINGLE_BET_UPDATE_FAILED)");
+                            return; // 遇到第一个错误就立即停止
+                        }
                     }
 
-                    // 第二步：只有在记录状态更新成功后，才给用户加分
-                    const newBalance = currentUser.balance + totalPayout;
-                    const { error: balanceUpdateError } = await supabaseClient
-                        .from('bet_users')
-                        .update({ balance: newBalance })
-                        .eq('id', currentUser.id);
-                    
-                    if (balanceUpdateError) {
-                         alert("自动结算时发生错误，请联系管理员！ (错误码: BALANCE_UPDATE_FAILED)");
-                         console.error("更新用户分数失败:", balanceUpdateError);
-                    } else {
-                        // 一切顺利
-                        currentUser.balance = newBalance;
-                        console.log(`结算完成！${betsToUpdate.length}条记录已处理，余额更新为: ${newBalance}`);
+                    // 如果所有记录的状态都成功更新了，才继续给用户加分
+                    if (allUpdatesSucceeded) {
+                        const newBalance = currentUser.balance + totalPayout;
+                        const { error: balanceUpdateError } = await supabaseClient
+                            .from('bet_users')
+                            .update({ balance: newBalance })
+                            .eq('id', currentUser.id);
+                        
+                        if (balanceUpdateError) {
+                            alert("自动结算时发生错误，请联系管理员！ (错误码: BALANCE_UPDATE_FAILED)");
+                            console.error("更新用户分数失败:", balanceUpdateError);
+                        } else {
+                            currentUser.balance = newBalance;
+                            console.log(`结算完成！${betsToUpdate.length}条记录已处理，余额更新为: ${newBalance}`);
+                        }
                     }
                 }
                 
