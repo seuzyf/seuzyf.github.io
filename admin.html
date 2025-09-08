@@ -212,10 +212,7 @@
         <div id="schedule-tab" class="tab-content">
             <div class="form-section">
                 <h3>更新赛程比分</h3>
-                <div style="display: flex; gap: 15px; margin-bottom: 1rem;">
-                    <select id="match-selector" style="flex: 2;"></select>
-                    <button id="load-match-btn" style="flex: 1;">加载比赛</button>
-                </div>
+                <select id="match-selector" style="margin-bottom: 1rem;"></select>
                 <div id="schedule-update-form" style="display: none;">
                      <div style="overflow-x: auto;">
                         <table>
@@ -224,10 +221,10 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td><input type="text" id="schedule-team-a" readonly></td>
+                                    <td><select id="schedule-team-a"></select></td>
                                     <td><input type="number" id="schedule-score-a" placeholder="得分"></td>
                                     <td><input type="number" id="schedule-score-b" placeholder="得分"></td>
-                                    <td><input type="text" id="schedule-team-b" readonly></td>
+                                    <td><select id="schedule-team-b"></select></td>
                                     <td><input type="text" id="schedule-link" placeholder="https://..."></td>
                                 </tr>
                             </tbody>
@@ -322,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await loadScheduleForGroup(getCurrentGroup());
 
         document.getElementById('submit-matches').addEventListener('click', submitMatches);
-        document.getElementById('load-match-btn').addEventListener('click', loadSelectedMatch);
+        document.getElementById('match-selector').addEventListener('change', loadSelectedMatch);
         document.getElementById('submit-schedule').addEventListener('click', submitSchedule);
         document.getElementById('update-ids').addEventListener('click', updateIds);
     }
@@ -360,6 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentScheduleData = data.filter(m => m.team_a && m.team_a !== 'TBD');
         }
         populateMatchSelector();
+        document.getElementById('schedule-update-form').style.display = 'none';
     }
 
     function populateMatchSelector() {
@@ -375,6 +373,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function getTeamOptionsHTMLForCurrentGroup(selectedValue = '') {
+        const currentGroup = getCurrentGroup();
+        const teams = groupData[currentGroup] ? [...groupData[currentGroup].teams].sort() : [];
+        let html = '<option value="">选择队伍</option>';
+        teams.forEach(t => {
+            html += `<option value="${t}" ${t === selectedValue ? 'selected' : ''}>${t}</option>`;
+        });
+        return html;
+    }
+
     function loadSelectedMatch() {
         const selector = document.getElementById('match-selector');
         const matchId = selector.value;
@@ -386,8 +394,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const matchData = currentScheduleData.find(m => m.match_id === matchId);
         if (matchData) {
-            document.getElementById('schedule-team-a').value = matchData.team_a || '';
-            document.getElementById('schedule-team-b').value = matchData.team_b || '';
+            document.getElementById('schedule-team-a').innerHTML = getTeamOptionsHTMLForCurrentGroup(matchData.team_a);
+            document.getElementById('schedule-team-b').innerHTML = getTeamOptionsHTMLForCurrentGroup(matchData.team_b);
             document.getElementById('schedule-score-a').value = matchData.score_a ?? '';
             document.getElementById('schedule-score-b').value = matchData.score_b ?? '';
             document.getElementById('schedule-link').value = matchData.link || '';
@@ -406,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return document.querySelector('#group-filter-buttons button.active').dataset.group;
     }
     
-    function getTeamOptionsHTMLForCurrentGroup() {
+    function getTeamSelectOptionsHTMLForCurrentGroup() {
         const currentGroup = getCurrentGroup();
         const teams = groupData[currentGroup] ? [...groupData[currentGroup].teams].sort() : [];
         return '<option value="">选择队伍</option>' + teams.map(t => `<option value="${t}">${t}</option>`).join('');
@@ -422,7 +430,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateTeamDatalist();
                 loadIdsData(newGroup);
                 document.getElementById('matches-form-container').innerHTML = '';
-                document.getElementById('schedule-update-form').style.display = 'none';
                 await loadScheduleForGroup(newGroup);
             }
         });
@@ -522,7 +529,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </thead>
             <tbody>
                  <tr>
-                    <td rowspan="5" style="vertical-align: middle;"><select data-col="${teamKey}" class="team-selector">${getTeamOptionsHTMLForCurrentGroup()}</select></td>
+                    <td rowspan="5" style="vertical-align: middle;"><select data-col="${teamKey}" class="team-selector">${getTeamSelectOptionsHTMLForCurrentGroup()}</select></td>
                     ${Array(5).fill(0).map((_, i) => `
                         ${i > 0 ? '<tr>' : ''}
                         <td><input type="text" data-col="${teamKey}_player${i+1}_id" placeholder="ID/选择" list="${datalistId}"></td>
@@ -656,6 +663,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const scoreB_input = document.getElementById('schedule-score-b').value;
         
         const dataToUpdate = {
+            team_a: document.getElementById('schedule-team-a').value,
+            team_b: document.getElementById('schedule-team-b').value,
             score_a: scoreA_input === '' ? null : parseInt(scoreA_input),
             score_b: scoreB_input === '' ? null : parseInt(scoreB_input),
             link: document.getElementById('schedule-link').value.trim()
@@ -671,7 +680,6 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('更新赛程失败: ' + error.message);
         } else {
             alert('赛程更新成功！');
-            document.getElementById('schedule-update-form').style.display = 'none';
             await loadScheduleForGroup(getCurrentGroup()); // Refresh the data
         }
     }
