@@ -428,7 +428,10 @@ document.addEventListener('DOMContentLoaded', () => {
             loginBtn.style.display = 'none';
             historyBtn.style.display = 'inline-flex';
             usernameDisplay.textContent = currentUser.username;
-            userBalance.textContent = currentUser.balance ? currentUser.balance.toFixed(2) : '100.00';
+            // ==================== FIX START ====================
+            // Changed the condition to correctly handle a balance of 0
+            userBalance.textContent = typeof currentUser.balance === 'number' ? currentUser.balance.toFixed(2) : '100.00';
+            // ===================== FIX END =====================
         } else {
             userDisplay.style.display = 'none';
             loginBtn.style.display = 'block';
@@ -614,7 +617,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         alert('撤销成功！');
         await initializePage();
-        loadAndRenderExistingBets(parseInt(document.querySelector('.betting-card[data-match-id]').dataset.matchId));
+        // Re-open the modal if it was open
+        const betModalHeader = document.getElementById('bet-modal-header');
+        if (betModal.classList.contains('visible') && betModalHeader.textContent) {
+            const matchId = allMatchesData.find(m => `${m.team_a} vs ${m.team_b}` === betModalHeader.textContent)?.id;
+            if (matchId) {
+                loadAndRenderExistingBets(matchId);
+            }
+        }
     }
 
     function showHistory(userId, username) {
