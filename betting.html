@@ -128,7 +128,7 @@
             border-radius: 5px; font-size: 1em;
         }
         .modal-footer { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem; }
-        .modal-footer button {
+        .modal-footer .confirm-btn { 
             height: var(--control-height);
             display: inline-flex;
             align-items: center;
@@ -136,26 +136,14 @@
             font-weight: 500;
             padding: 0 25px;
             cursor: pointer;
-            border: 2px solid;
+            border: 2px solid var(--win-color);
+            color: var(--win-color);
+            background-color: transparent;
             transition: background-color 0.3s, color 0.3s;
         }
-        .modal-footer .confirm-btn { 
-            background-color: var(--win-color); 
-            color: white; 
-            border-color: var(--win-color);
-        }
         .modal-footer .confirm-btn:hover {
-             background-color: transparent;
-             color: var(--win-color);
-        }
-        .modal-footer .cancel-btn { 
-            background-color: transparent; 
-            color: var(--loss-color); 
-            border-color: var(--loss-color);
-        }
-        .modal-footer .cancel-btn:hover {
-            background-color: var(--loss-color);
-            color: white;
+             background-color: var(--win-color);
+             color: white;
         }
         
         .user-info {
@@ -172,6 +160,40 @@
         .history-table th, .history-table td {
             padding: 8px;
             border-bottom: 1px solid var(--border-color);
+        }
+
+        /* New styles for bet records in modal */
+        #existing-bets-section {
+            margin-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 1rem;
+        }
+        #existing-bets-section h4 {
+            margin-top: 0;
+            text-align: center;
+            opacity: 0.8;
+        }
+        .bet-record {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            background-color: var(--bg-color);
+            border-radius: 5px;
+            margin-bottom: 8px;
+        }
+        .bet-record .cancel-bet-btn {
+            background-color: var(--loss-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .bet-record .cancel-bet-btn:hover {
+            opacity: 0.8;
         }
     </style>
 </head>
@@ -210,7 +232,6 @@
                 <input type="password" id="password-input" placeholder="请输入您的密码" required>
             </div>
             <div class="modal-footer">
-                <button class="cancel-btn" onclick="document.getElementById('login-modal').classList.remove('visible')">取消</button>
                 <button id="login-confirm-btn" class="confirm-btn">确认</button>
             </div>
         </div>
@@ -220,17 +241,23 @@
         <div class="modal-content">
             <h3 class="modal-header" id="bet-modal-header"></h3>
             <div class="modal-body">
-                <p>请选择您要投注的队伍:</p>
-                <div style="display: flex; gap: 1rem; justify-content: center;">
-                    <button id="bet-team-a-btn" class="nav-button"></button>
-                    <button id="bet-team-b-btn" class="nav-button"></button>
+                <div>
+                    <p>请选择您要投注的队伍:</p>
+                    <div style="display: flex; gap: 1rem; justify-content: center;">
+                        <button id="bet-team-a-btn" class="nav-button"></button>
+                        <button id="bet-team-b-btn" class="nav-button"></button>
+                    </div>
                 </div>
                 <input type="number" id="bet-amount-input" placeholder="请输入投注分数 (最小为1)">
+
+                <div id="existing-bets-section">
+                    <h4>您在本场的投注记录</h4>
+                    <div id="existing-bets-list"></div>
+                </div>
             </div>
             <div class="modal-footer">
                  <div style="margin-right: auto;">您的余额: <span id="modal-user-balance"></span></div>
-                <button class="cancel-btn" onclick="document.getElementById('bet-modal').classList.remove('visible')">撤销</button>
-                <button id="bet-confirm-btn" class="confirm-btn">确认</button>
+                <button id="bet-confirm-btn" class="confirm-btn">确认投注</button>
             </div>
         </div>
     </div>
@@ -252,9 +279,6 @@
                     </thead>
                     <tbody id="history-table-body"></tbody>
                 </table>
-            </div>
-            <div class="modal-footer">
-                <button class="cancel-btn" onclick="document.getElementById('history-modal').classList.remove('visible')">关闭</button>
             </div>
         </div>
     </div>
@@ -430,7 +454,7 @@
                 });
             }
             
-            function openBetModal(matchId){
+            async function openBetModal(matchId){
                  const match = currentMatches.find(m => m.id === matchId);
                  if(!match) return;
 
@@ -439,33 +463,36 @@
                      return;
                  }
                  if (match.is_finished) {
-                     alert("本场比赛已结束，无法投注。");
+                     alert("本场比赛已结束，无法投注或撤销。");
                      return;
                  }
 
-                 document.getElementById('bet-modal-header').textContent = `${match.team_a} vs ${match.team_b}`;
-                 const teamABtn = document.getElementById('bet-team-a-btn');
-                 const teamBBtn = document.getElementById('bet-team-b-btn');
-                 teamABtn.textContent = match.team_a;
-                 teamBBtn.textContent = match.team_b;
-                 teamABtn.dataset.team = match.team_a;
-                 teamBBtn.dataset.team = match.team_b;
+                document.getElementById('bet-modal-header').textContent = `${match.team_a} vs ${match.team_b}`;
+                const teamABtn = document.getElementById('bet-team-a-btn');
+                const teamBBtn = document.getElementById('bet-team-b-btn');
+                teamABtn.textContent = match.team_a;
+                teamBBtn.textContent = match.team_b;
+                teamABtn.dataset.team = match.team_a;
+                teamBBtn.dataset.team = match.team_b;
                  
-                 document.getElementById('modal-user-balance').textContent = currentUser.balance.toFixed(2);
+                document.getElementById('modal-user-balance').textContent = currentUser.balance.toFixed(2);
+                document.getElementById('bet-amount-input').value = '';
+                
+                await loadAndRenderExistingBets(matchId);
                  
-                 let selectedTeam = null;
-                 teamABtn.onclick = () => {
+                let selectedTeam = null;
+                teamABtn.onclick = () => {
                      selectedTeam = match.team_a;
                      teamABtn.style.borderColor = 'var(--win-color)';
                      teamBBtn.style.borderColor = 'var(--primary-color)';
-                 };
-                 teamBBtn.onclick = () => {
+                };
+                teamBBtn.onclick = () => {
                      selectedTeam = match.team_b;
                      teamBBtn.style.borderColor = 'var(--win-color)';
                      teamABtn.style.borderColor = 'var(--primary-color)';
-                 };
+                };
 
-                 betConfirmBtn.onclick = async () => {
+                betConfirmBtn.onclick = async () => {
                      const amount = parseInt(document.getElementById('bet-amount-input').value);
                      if(!selectedTeam) { alert("请选择一支队伍"); return; }
                      if(isNaN(amount) || amount < 1) { alert("请输入有效的投注分数 (至少为1)"); return; }
@@ -487,7 +514,6 @@
                      }]);
                      
                      if(betError) {
-                         // Rollback balance
                          await supabaseClient.from('bet_users').update({ balance: currentUser.balance }).eq('id', currentUser.id);
                          alert("投注记录失败，请重试: " + betError.message);
                          return;
@@ -496,11 +522,82 @@
                      currentUser.balance = newBalance;
                      alert("投注成功!");
                      updateUserDisplay();
-                     betModal.classList.remove('visible');
-                     loadMatches(); // Reload to update odds
-                 };
+                     document.getElementById('modal-user-balance').textContent = currentUser.balance.toFixed(2);
+                     document.getElementById('bet-amount-input').value = '';
+                     
+                     await loadAndRenderExistingBets(match.id);
+                     loadMatches(); // Reload main page to update odds
+                };
 
-                 betModal.classList.add('visible');
+                betModal.classList.add('visible');
+            }
+
+            async function loadAndRenderExistingBets(matchId) {
+                const listContainer = document.getElementById('existing-bets-list');
+                listContainer.innerHTML = '加载中...';
+
+                const { data: bets, error } = await supabaseClient
+                    .from('bet_bets')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .eq('match_id', matchId);
+
+                if (error) {
+                    listContainer.innerHTML = '<p style="color:var(--loss-color)">加载投注记录失败</p>';
+                    return;
+                }
+
+                if (bets.length === 0) {
+                    listContainer.innerHTML = '<p>暂无投注记录</p>';
+                    return;
+                }
+
+                listContainer.innerHTML = '';
+                bets.forEach(bet => {
+                    const recordDiv = document.createElement('div');
+                    recordDiv.className = 'bet-record';
+                    recordDiv.innerHTML = `
+                        <span>${new Date(bet.created_at).toLocaleTimeString()} - 投注 ${bet.predicted_winner} ${bet.amount}分</span>
+                        <button class="cancel-bet-btn" data-bet-id="${bet.id}" data-amount="${bet.amount}">撤销</button>
+                    `;
+                    listContainer.appendChild(recordDiv);
+                });
+
+                document.querySelectorAll('.cancel-bet-btn').forEach(btn => {
+                    btn.addEventListener('click', handleCancelBet);
+                });
+            }
+
+            async function handleCancelBet(event) {
+                const betId = parseInt(event.target.dataset.betId);
+                const amount = parseFloat(event.target.dataset.amount);
+                const matchId = betModal.querySelector('.cancel-bet-btn').closest('.modal-content').querySelector('#existing-bets-list .bet-record .cancel-bet-btn').closest('.bet-record').parentElement.parentElement.parentElement.parentElement.querySelector('.betting-card').dataset.matchId;
+
+
+                if (!confirm(`您确定要撤销这笔 ${amount} 分的投注吗？`)) return;
+
+                const { error: deleteError } = await supabaseClient.from('bet_bets').delete().eq('id', betId);
+                if (deleteError) {
+                    alert('撤销失败: ' + deleteError.message);
+                    return;
+                }
+
+                const newBalance = currentUser.balance + amount;
+                const { error: balanceError } = await supabaseClient.from('bet_users').update({ balance: newBalance }).eq('id', currentUser.id);
+
+                if (balanceError) {
+                    alert('退款失败，请联系管理员！');
+                    // Here you might want to try re-inserting the bet to avoid data inconsistency
+                    return;
+                }
+                
+                currentUser.balance = newBalance;
+                alert('撤销成功，分数已退回！');
+                updateUserDisplay();
+                document.getElementById('modal-user-balance').textContent = currentUser.balance.toFixed(2);
+                
+                await loadAndRenderExistingBets(matchId); // Refresh list in modal
+                loadMatches(); // Refresh main page to update odds
             }
             
             async function showHistory() {
@@ -563,6 +660,14 @@
             
             document.getElementById('history-btn').addEventListener('click', showHistory);
             
+            document.querySelectorAll('.modal-backdrop').forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.classList.remove('visible');
+                    }
+                });
+            });
+
             // Initial load
             loadMatches();
         });
