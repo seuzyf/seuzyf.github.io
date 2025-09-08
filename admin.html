@@ -395,10 +395,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (matchData) {
             document.getElementById('schedule-team-a').innerHTML = getTeamOptionsHTMLForCurrentGroup(matchData.team_a);
             document.getElementById('schedule-team-b').innerHTML = getTeamOptionsHTMLForCurrentGroup(matchData.team_b);
-            // Set the selected value for the disabled dropdowns
             document.getElementById('schedule-team-a').value = matchData.team_a;
             document.getElementById('schedule-team-b').value = matchData.team_b;
-            
             document.getElementById('schedule-score-a').value = matchData.score_a ?? '';
             document.getElementById('schedule-score-b').value = matchData.score_b ?? '';
             document.getElementById('schedule-link').value = matchData.link || '';
@@ -658,6 +656,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else { alert('赛果提交成功！'); document.getElementById('matches-form-container').innerHTML = ''; }
     }
 
+    // ================= 关键修正处 S T A R T =================
     async function submitSchedule() {
         const matchId = document.getElementById('match-selector').value;
         if (!matchId) {
@@ -668,13 +667,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const scoreA = document.getElementById('schedule-score-a').value;
         const scoreB = document.getElementById('schedule-score-b').value;
         
-        // **修正:** 明确将队伍名称从禁用的下拉框中获取
-        const teamA = document.getElementById('schedule-team-a').value;
-        const teamB = document.getElementById('schedule-team-b').value;
-        
+        // 只更新需要改变的字段
         const dataToUpdate = {
-            team_a: teamA,
-            team_b: teamB,
             score_a: scoreA === '' ? null : parseInt(scoreA, 10),
             score_b: scoreB === '' ? null : parseInt(scoreB, 10),
             link: document.getElementById('schedule-link').value.trim()
@@ -683,18 +677,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const { data, error } = await supabaseClient
             .from('match_schedule')
             .update(dataToUpdate)
-            .eq('id', matchId)
+            .eq('id', matchId) // 确保使用 'id' 作为筛选条件
             .select();
 
         if (error) {
             alert('错误：更新赛程失败！\n' + error.message);
             console.error(error);
-        } else {
-            alert('赛程比分已成功写入数据库！竞猜页面将在用户下次登录时自动结算。');
+        } else if (data && data.length > 0) {
+            alert('赛程比分已成功写入数据库！');
             await loadScheduleForGroup(getCurrentGroup()); // 刷新数据以确认更新
+        } else {
+            alert('更新失败：未找到匹配的比赛记录或没有权限。请检查控制台。');
+            console.log('Update returned no data. Match ID may be incorrect or RLS policy is blocking the update.');
         }
     }
-
+    // ================= 关键修正处 E N D =================
 
     function loadIdsData(groupName) {
         const tableBody = document.getElementById('ids-table-body');
