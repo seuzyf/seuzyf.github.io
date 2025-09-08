@@ -52,7 +52,12 @@
             border: 1px solid var(--border-color);
             position: relative;
         }
-        .main-header-block h1 { color: var(--primary-color); margin: 0 0 10px 0; font-weight: 700; font-size: 2.5em; }
+        .main-header-block h1 { color: var(--primary-color); margin: 0 0 5px 0; font-weight: 700; font-size: 2.5em; }
+        .disclaimer {
+            font-size: 0.9em;
+            opacity: 0.7;
+            margin: 0 0 10px 0;
+        }
         .controls-container {
             display: flex;
             justify-content: center;
@@ -267,6 +272,7 @@
                 <button id="history-btn" class="nav-button" style="margin-top: 10px; display:none;">我的预测记录</button>
             </div>
             <h1 id="main-title">赛事预测</h1>
+            <p class="disclaimer">本功能仅供娱乐，预测分数无任何实际价值</p>
             <div class="controls-container">
                  <a href="index.html" class="nav-button">返回比赛中心</a>
                  <a href="summary.html" class="nav-button">查看选手数据</a>
@@ -446,14 +452,22 @@ document.addEventListener('DOMContentLoaded', () => {
             historyBtn.style.display = 'inline-flex';
             usernameDisplay.textContent = currentUser.username;
             userBalance.textContent = typeof currentUser.balance === 'number' ? currentUser.balance.toFixed(2) : '100.00';
-
+            
             if (currentUser.balance === 0) {
-                const today = new Date().toISOString().slice(0, 10);
-                const hasClaimedToday = allWelfareData.some(claim => {
-                    return claim.user_id === currentUser.id && new Date(claim.claimed_at).toISOString().slice(0, 10) === today;
+                const userBets = allBetsData.filter(b => b.user_id === currentUser.id);
+                const hasPendingBets = userBets.some(bet => {
+                    const match = allMatchesData.find(m => m.id === bet.match_id);
+                    return match && (match.score_a === null || match.score_b === null || match.score_a === match.score_b);
                 });
-                if (!hasClaimedToday) {
-                    welfareBtn.style.display = 'inline-flex';
+
+                if (!hasPendingBets) {
+                    const today = new Date().toISOString().slice(0, 10);
+                    const hasClaimedToday = allWelfareData.some(claim => {
+                        return claim.user_id === currentUser.id && new Date(claim.claimed_at).toISOString().slice(0, 10) === today;
+                    });
+                    if (!hasClaimedToday) {
+                        welfareBtn.style.display = 'inline-flex';
+                    }
                 }
             }
         } else {
@@ -683,7 +697,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const historyBody = document.getElementById('history-table-body');
         historyBody.innerHTML = '<tr><td colspan="6">计算中...</td></tr>';
         
-        const userBets = allBetsData.filter(b => b.user_id === userId).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+        const userBets = allBetsData.filter(b => b.user_id === userId).sort((a,b) => new Date(b.created_at) - new Date(a,b));
         
         if (userBets.length === 0) { historyBody.innerHTML = '<tr><td colspan="6">暂无记录</td></tr>'; historyModal.classList.add('visible'); return; }
 
