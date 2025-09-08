@@ -169,7 +169,7 @@
                     <span id="username-display"></span> | 余额: <span id="user-balance"></span>
                     <button id="logout-btn" class="nav-button" style="height: auto; padding: 5px 10px; margin-left: 10px;">登出</button>
                 </div>
-                <button id="login-btn" class="nav-button">登录</button>
+                <button id="login-btn" class="nav-button">登录/注册</button>
                 <button id="history-btn" class="nav-button" style="margin-top: 10px; display:none;">竞猜记录</button>
             </div>
             <h1>赛事竞猜</h1>
@@ -190,9 +190,10 @@
 
     <div id="login-modal" class="modal-backdrop">
         <div class="modal-content">
-            <h3 class="modal-header">登录/注册</h3>
+            <h3 class="modal-header">登录或注册</h3>
             <div class="modal-body">
-                <input type="text" id="username-input" placeholder="请输入您的姓名" required>
+                <p style="font-size: 0.9em; opacity: 0.8; text-align: center;">为简化流程，您的用户名将作为登录邮箱。如果账户不存在，将自动为您注册。</p>
+                <input type="text" id="username-input" placeholder="请输入您的用户名" required>
                 <input type="password" id="password-input" placeholder="请输入您的密码" required>
             </div>
             <div class="modal-footer">
@@ -257,6 +258,7 @@
             let currentMatches = [];
 
             const loginBtn = document.getElementById('login-btn');
+            const logoutBtn = document.getElementById('logout-btn');
             const loginModal = document.getElementById('login-modal');
             const loginConfirmBtn = document.getElementById('login-confirm-btn');
             const groupFilterButtons = document.getElementById('group-filter-buttons');
@@ -265,7 +267,9 @@
             const betConfirmBtn = document.getElementById('bet-confirm-btn');
             
             loginBtn.addEventListener('click', () => loginModal.classList.add('visible'));
-            loginConfirmBtn.addEventListener('click', handleLogin);
+            loginConfirmBtn.addEventListener('click', handleLoginOrRegister);
+            logoutBtn.addEventListener('click', handleLogout);
+
             groupFilterButtons.addEventListener('click', (e) => {
                 if(e.target.tagName === 'BUTTON' && !e.target.classList.contains('active')){
                     groupFilterButtons.querySelector('.active').classList.remove('active');
@@ -274,40 +278,85 @@
                 }
             });
 
-            async function handleLogin() {
+            async function handleLoginOrRegister() {
                 const username = document.getElementById('username-input').value.trim();
                 const password = document.getElementById('password-input').value;
                 if (!username || !password) {
                     alert('请输入用户名和密码');
                     return;
                 }
+                // Supabase requires an email format, we'll append a dummy domain
+                const email = `${username}@example.com`;
 
-                let { data: user, error } = await supabaseClient.from('bet_users').select('*').eq('username', username).single();
+                // 1. Try to sign in
+                let { data: loginData, error: loginError } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password,
+                });
 
-                if (error && error.code === 'PGRST116') { // Not found
-                    const { data: newUser, error: insertError } = await supabaseClient.from('bet_users').insert([{ username, password, balance: 100 }]).select().single();
-                    if(insertError) {
-                        alert('注册失败: ' + insertError.message);
+                if (loginError) {
+                    // 2. If login fails because user doesn't exist, try to sign up
+                    if (loginError.message.includes("Invalid login credentials") || loginError.message.includes("User not found")) {
+                        let { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
+                            email: email,
+                            password: password,
+                            options: {
+                                // Pass username in metadata, trigger will pick it up
+                                data: {
+                                    username: username
+                                }
+                            }
+                        });
+
+                        if (signUpError) {
+                            // Handle cases like "User already registered" if they used a different password
+                            if (signUpError.message.includes("User already registered")) {
+                                alert("登录失败：密码错误。");
+                            } else {
+                                alert('注册失败: ' + signUpError.message);
+                            }
+                            return;
+                        }
+                        
+                        if (signUpData.user) {
+                            // The database trigger (we'll create next) handles creating the profile.
+                            // We just need to fetch it after a short delay.
+                            alert('注册成功，初始积分为100！');
+                            await new Promise(r => setTimeout(r, 500)); // Wait for trigger
+                            await fetchUserProfile(signUpData.user.id);
+                        }
+                    } else {
+                        alert('登录失败: ' + loginError.message);
                         return;
                     }
-                    currentUser = newUser;
-                    alert('注册成功，初始积分为100！');
-                } else if(error) {
-                    alert('登录失败: ' + error.message);
-                    return;
-                } else {
-                    if (user.password !== password) {
-                        alert('密码错误！');
-                        return;
-                    }
-                    currentUser = user;
+                } else if (loginData.user) {
+                    // Login was successful, fetch their profile
+                    await fetchUserProfile(loginData.user.id);
                 }
-                
+
                 loginModal.classList.remove('visible');
                 updateUserDisplay();
                 loadMatches();
             }
+
+            async function fetchUserProfile(userId) {
+                let { data: userProfile, error: profileError } = await supabaseClient.from('bet_users').select('*').eq('id', userId).single();
+                if (profileError) {
+                    alert('获取用户信息失败，请稍后重试。');
+                    console.error("Profile fetch error:", profileError);
+                    currentUser = null;
+                    return;
+                }
+                currentUser = userProfile;
+            }
             
+            async function handleLogout() {
+                await supabaseClient.auth.signOut();
+                currentUser = null;
+                updateUserDisplay();
+                bettingMatchesView.innerHTML = '<p>请先登录以查看可竞猜的比赛。</p>';
+            }
+
             function updateUserDisplay() {
                 const userDisplay = document.getElementById('user-display');
                 const usernameDisplay = document.getElementById('username-display');
@@ -323,12 +372,15 @@
                 } else {
                     userDisplay.style.display = 'none';
                     loginBtn.style.display = 'block';
-                     historyBtn.style.display = 'none';
+                    historyBtn.style.display = 'none';
                 }
             }
             
             async function loadMatches(){
-                if(!currentUser) return;
+                if(!currentUser) {
+                    bettingMatchesView.innerHTML = '<p>请先登录以查看可竞猜的比赛。</p>';
+                    return;
+                };
                 
                 const activeGroup = groupFilterButtons.querySelector('.active').dataset.group;
                 let {data: matches, error} = await supabaseClient.from('match_schedule').select('*').eq('group', activeGroup);
@@ -338,12 +390,15 @@
                     return;
                 }
                 
-                const today = new Date().toISOString().split('T')[0];
-
                 const upcomingMatches = matches.filter(m => !m.score_a && !m.score_b && m.team_a && m.team_b);
                 
-                // Fetch all bets for these upcoming matches to calculate odds
                 const matchIds = upcomingMatches.map(m => m.id);
+                if (matchIds.length === 0) {
+                    currentMatches = [];
+                    renderMatches();
+                    return;
+                }
+
                 let {data: bets, error: betsError} = await supabaseClient.from('bet_bets').select('*').in('match_id', matchIds);
                 if(betsError) {
                     console.error("加载投注数据失败:", betsError);
@@ -356,8 +411,8 @@
                     const poolB = 100 + betsForMatch.filter(b => b.predicted_winner === match.team_b).reduce((sum, b) => sum + b.amount, 0);
                     const totalPool = poolA + poolB;
                     
-                    const oddsA = totalPool > 0 ? (totalPool / poolA).toFixed(2) : 1.00;
-                    const oddsB = totalPool > 0 ? (totalPool / poolB).toFixed(2) : 1.00;
+                    const oddsA = totalPool > 0 ? (totalPool / poolA) : 1.00;
+                    const oddsB = totalPool > 0 ? (totalPool / poolB) : 1.00;
                     
                     return {...match, odds_a: oddsA, odds_b: oddsB};
                 });
@@ -366,22 +421,26 @@
             }
             
             function renderMatches(){
+                if (currentMatches.length === 0) {
+                    bettingMatchesView.innerHTML = '<p>当前分组暂无可竞猜的比赛。</p>';
+                    return;
+                }
                 bettingMatchesView.innerHTML = '';
                 currentMatches.forEach(match => {
                     const card = document.createElement('div');
                     card.className = 'betting-card';
                     card.dataset.matchId = match.id;
                     
-                    const oddsAHigh = parseFloat(match.odds_a) > parseFloat(match.odds_b);
+                    const oddsAHigh = match.odds_a > match.odds_b;
 
                     card.innerHTML = `
                         <div class="betting-card-header">
                             <div class="betting-card-teams">
                                 <span class="team-name">${match.team_a}</span>
                                 <span class="odds">
-                                    <span class="${oddsAHigh ? 'high-odds' : ''}">${match.odds_a}</span>
+                                    <span class="${oddsAHigh ? 'high-odds' : ''}">${match.odds_a.toFixed(2)}</span>
                                     vs
-                                    <span class="${!oddsAHigh ? 'high-odds' : ''}">${match.odds_b}</span>
+                                    <span class="${!oddsAHigh ? 'high-odds' : ''}">${match.odds_b.toFixed(2)}</span>
                                 </span>
                                 <span class="team-name">${match.team_b}</span>
                             </div>
@@ -488,7 +547,7 @@
                     let settlement = 'N/A';
                     let settlementColor = 'var(--text-color)';
 
-                    if (match.score_a !== null && match.score_b !== null) {
+                    if (match && match.score_a !== null && match.score_b !== null) {
                          const winner = match.score_a > match.score_b ? match.team_a : match.team_b;
                          if (bet.predicted_winner === winner) {
                              status = '胜利';
@@ -503,7 +562,7 @@
                     
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${match.team_a} vs ${match.team_b}</td>
+                        <td>${match ? `${match.team_a} vs ${match.team_b}`: '比赛信息丢失'}</td>
                         <td>${bet.predicted_winner}</td>
                         <td>${bet.amount.toFixed(2)}</td>
                         <td>${bet.odds_at_bet.toFixed(2)}</td>
@@ -515,12 +574,6 @@
             }
             
             document.getElementById('history-btn').addEventListener('click', showHistory);
-            document.getElementById('logout-btn').addEventListener('click', () => {
-                currentUser = null;
-                updateUserDisplay();
-                bettingMatchesView.innerHTML = '<p>请先登录以查看可竞猜的比赛。</p>';
-            });
-
         });
     </script>
 </body>
