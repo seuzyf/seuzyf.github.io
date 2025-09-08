@@ -244,6 +244,12 @@
             border: 1px solid var(--border-color);
             width: 100%;
         }
+        #welfare-btn {
+            background-color: var(--win-color);
+            border-color: var(--win-color);
+            color: white;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -251,8 +257,11 @@
         <div class="main-header-block">
             <div class="user-info">
                 <div id="user-display" style="display: none;">
-                    <span id="username-display"></span> | 剩余分数: <span id="user-balance"></span>
-                    <button id="logout-btn" class="nav-button" style="height: auto; padding: 5px 10px; margin-left: 10px; font-size: 0.8em;">登出</button>
+                    <div>
+                        <span id="username-display"></span> | 剩余分数: <span id="user-balance"></span>
+                        <button id="logout-btn" class="nav-button" style="height: auto; padding: 5px 10px; margin-left: 10px; font-size: 0.8em;">登出</button>
+                    </div>
+                    <button id="welfare-btn" class="nav-button" style="display:none;">领取低保 (+5分)</button>
                 </div>
                 <button id="login-btn" class="nav-button">登录/注册</button>
                 <button id="history-btn" class="nav-button" style="margin-top: 10px; display:none;">我的预测记录</button>
@@ -278,6 +287,7 @@
                                 <th>当前分数</th>
                                 <th>预测次数</th>
                                 <th>正确率</th>
+                                <th>低保次数</th>
                             </tr>
                         </thead>
                         <tbody id="leaderboard-table-body"></tbody>
@@ -356,6 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let allMatchesData = [];
     let allBetsData = [];
     let allUsersData = [];
+    let allWelfareData = [];
 
     const loginBtn = document.getElementById('login-btn');
     const logoutBtn = document.getElementById('logout-btn');
@@ -368,12 +379,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleViewBtn = document.getElementById('toggle-view-btn');
     const leaderboardSection = document.getElementById('leaderboard-section');
     const mainTitle = document.getElementById('main-title');
+    const welfareBtn = document.getElementById('welfare-btn');
 
     loginBtn.addEventListener('click', () => loginModal.classList.add('visible'));
     loginConfirmBtn.addEventListener('click', handleLoginOrRegister);
     logoutBtn.addEventListener('click', handleLogout);
     historyBtn.addEventListener('click', () => showHistory(currentUser.id, "我"));
     toggleViewBtn.addEventListener('click', toggleView);
+    welfareBtn.addEventListener('click', handleWelfareClaim);
 
     async function handleLoginOrRegister() {
         const username = document.getElementById('username-input').value.trim();
@@ -385,7 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let { data: user, error } = await supabaseClient.from('bet_users').select('*').eq('username', username).single();
 
-        if (error && error.code === 'PGRST116') { // Not found, so register
+        if (error && error.code === 'PGRST116') {
             const { data: newUser, error: insertError } = await supabaseClient
                 .from('bet_users')
                 .insert([{ username, password }])
@@ -401,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (error) {
             alert('数据库查询失败: ' + error.message);
             return;
-        } else { // User found, check password
+        } else {
             if (user.password !== password) {
                 alert('密码错误！');
                 return;
@@ -424,6 +437,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const userDisplay = document.getElementById('user-display');
         const usernameDisplay = document.getElementById('username-display');
         const userBalance = document.getElementById('user-balance');
+        
+        welfareBtn.style.display = 'none';
 
         if (currentUser) {
             userDisplay.style.display = 'block';
@@ -431,6 +446,16 @@ document.addEventListener('DOMContentLoaded', () => {
             historyBtn.style.display = 'inline-flex';
             usernameDisplay.textContent = currentUser.username;
             userBalance.textContent = typeof currentUser.balance === 'number' ? currentUser.balance.toFixed(2) : '100.00';
+
+            if (currentUser.balance === 0) {
+                const today = new Date().toISOString().slice(0, 10);
+                const hasClaimedToday = allWelfareData.some(claim => {
+                    return claim.user_id === currentUser.id && new Date(claim.claimed_at).toISOString().slice(0, 10) === today;
+                });
+                if (!hasClaimedToday) {
+                    welfareBtn.style.display = 'inline-flex';
+                }
+            }
         } else {
             userDisplay.style.display = 'none';
             loginBtn.style.display = 'block';
@@ -440,14 +465,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function initializePage() {
         mainContent.innerHTML = '<p>正在加载最新赛程和预测数据...</p>';
-        const [{ data: matches, error: mError }, { data: bets, error: bError }, {data: users, error: uError}] = await Promise.all([
+        const [
+            { data: matches, error: mError }, 
+            { data: bets, error: bError }, 
+            { data: users, error: uError },
+            { data: welfare, error: wError }
+        ] = await Promise.all([
             supabaseClient.from('match_schedule').select('*').order('id'),
             supabaseClient.from('bet_bets').select('*'),
-            supabaseClient.from('bet_users').select('id, username, balance')
+            supabaseClient.from('bet_users').select('id, username, balance'),
+            supabaseClient.from('bet_welfare_claims').select('*')
         ]);
 
-        if (mError || bError || uError) {
-            console.error("加载数据失败:", mError || bError || uError);
+        if (mError || bError || uError || wError) {
+            console.error("加载数据失败:", mError || bError || uError || wError);
             mainContent.innerHTML = '<p>加载数据失败，请刷新页面重试。</p>';
             return;
         }
@@ -455,6 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
         allMatchesData = matches;
         allBetsData = bets;
         allUsersData = users;
+        allWelfareData = welfare;
 
         await calculateAllUserBalances();
         
@@ -496,11 +528,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         const winnerPool = (winner === match.team_a) ? (100 + pool.betsOnA) : (100 + pool.betsOnB);
                         const loserPool = (winner === match.team_a) ? (100 + pool.betsOnB) : (100 + pool.betsOnA);
                         const profit = (bet.amount / winnerPool) * loserPool;
-                        totalWinnings += bet.amount + profit; // Return stake + profit
+                        totalWinnings += bet.amount + profit;
                     }
                 }
             });
-            user.balance = 100 - totalStaked + totalWinnings;
+            const welfareClaims = allWelfareData.filter(c => c.user_id === user.id).length;
+            user.balance = 100 - totalStaked + totalWinnings + (welfareClaims * 5);
         });
     }
 
@@ -625,6 +658,24 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
+    
+    async function handleWelfareClaim() {
+        if (!currentUser || currentUser.balance !== 0) return;
+        welfareBtn.disabled = true;
+        welfareBtn.textContent = '领取中...';
+        
+        const { error } = await supabaseClient.from('bet_welfare_claims').insert([{ user_id: currentUser.id }]);
+        
+        if (error) {
+            alert('领取失败: ' + error.message);
+            welfareBtn.disabled = false;
+            welfareBtn.textContent = '领取低保 (+5分)';
+            return;
+        }
+        
+        alert('低保领取成功，获得5分！');
+        await initializePage();
+    }
 
     function showHistory(userId, username) {
         const historyModal = document.getElementById('history-modal');
@@ -679,6 +730,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalPredictions = userBets.length;
             let correctPredictions = 0;
             let settledPredictions = 0;
+            const welfareCount = allWelfareData.filter(c => c.user_id === user.id).length;
 
             userBets.forEach(bet => {
                 const match = allMatchesData.find(m => m.id === bet.match_id);
@@ -692,7 +744,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const accuracy = settledPredictions > 0 ? ((correctPredictions / settledPredictions) * 100) : 0;
-            return { ...user, predictionCount: totalPredictions, accuracy };
+            return { ...user, predictionCount: totalPredictions, accuracy, welfareCount };
         });
 
         leaderboardBody.innerHTML = usersWithStats.map((user, index) => `
@@ -702,6 +754,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${user.balance.toFixed(2)}</td>
                 <td>${user.predictionCount}</td>
                 <td>${user.accuracy.toFixed(1)}%</td>
+                <td>${user.welfareCount}</td>
             </tr>
         `).join('');
 
