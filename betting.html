@@ -73,7 +73,7 @@
             text-decoration: none;
             transition: background-color 0.3s, color 0.3s;
             background-color: transparent;
-            font-size: 1em; /* Ensure consistent font size */
+            font-size: 1em;
         }
         .nav-button:hover { background-color: var(--primary-color); color: white; }
 
@@ -122,7 +122,7 @@
         }
          .betting-card.not-bettable {
             border-left: 4px solid var(--border-color);
-            opacity: 0.6;
+            opacity: 0.7;
         }
         .betting-card.bettable:hover {
             transform: translateY(-3px);
@@ -199,7 +199,6 @@
             color: var(--primary-color);
             font-weight: bold;
         }
-
 
         #existing-bets-section {
             margin-top: 1.5rem;
@@ -371,69 +370,6 @@
             logoutBtn.addEventListener('click', handleLogout);
             toggleViewBtn.addEventListener('click', toggleView);
 
-            // ================= 关键修改处 S T A R T =================
-            // 此函数用于登录时检查，确保用户余额与所有“已结算”的竞猜记录同步
-            async function syncUserBalance(user) {
-                const { data: settledBets, error } = await supabaseClient
-                    .from('bet_bets')
-                    .select(`
-                        *,
-                        match_schedule (
-                            score_a, score_b, team_a, team_b
-                        )
-                    `)
-                    .eq('user_id', user.id)
-                    .eq('status', 'settled');
-
-                if (error) {
-                    console.error("同步余额失败：无法获取已结算的记录:", error);
-                    return user.balance; // 返回现有余额
-                }
-                
-                // 重新计算理论上的余额
-                let calculatedBalance = 100; // 初始分数
-                const { data: allUserBets, error: allBetsError } = await supabaseClient
-                    .from('bet_bets').select('*').eq('user_id', user.id);
-                
-                if(allBetsError) return user.balance;
-
-                // 减去所有下注金额
-                allUserBets.forEach(bet => {
-                    calculatedBalance -= bet.amount;
-                });
-                
-                // 加上所有已结算的胜利奖金
-                settledBets.forEach(bet => {
-                    const match = bet.match_schedule;
-                    if (match) {
-                        const winner = match.score_a > match.score_b ? match.team_a : match.team_b;
-                        if (bet.predicted_winner === winner) {
-                            calculatedBalance += bet.amount * bet.odds_at_bet;
-                        }
-                    }
-                });
-
-                // 如果计算出的余额和数据库不符，进行修正
-                if (Math.abs(calculatedBalance - user.balance) > 0.01) {
-                    console.warn(`用户 ${user.username} 余额不一致，将从 ${user.balance} 修正为 ${calculatedBalance}`);
-                    const { data: updatedUser, error: updateError } = await supabaseClient
-                        .from('bet_users')
-                        .update({ balance: calculatedBalance })
-                        .eq('id', user.id)
-                        .select()
-                        .single();
-                    
-                    if (updateError) {
-                        console.error("修正余额失败:", updateError);
-                        return user.balance;
-                    }
-                    return updatedUser.balance;
-                }
-
-                return user.balance; // 余额一致，无需修正
-            }
-            // ================= 关键修改处 E N D =================
-
             async function handleLoginOrRegister() {
                 const username = document.getElementById('username-input').value.trim();
                 const password = document.getElementById('password-input').value;
@@ -469,17 +405,19 @@
                     }
                     currentUser = user;
                 }
+                
+                // After successful login or registration, fetch the LATEST user data again to ensure balance is correct
+                const { data: freshUser, error: freshUserError } = await supabaseClient.from('bet_users').select('*').eq('id', currentUser.id).single();
+                if(freshUserError){
+                    alert('无法刷新用户信息，余额可能不正确。');
+                } else {
+                    currentUser = freshUser;
+                }
+
 
                 loginModal.classList.remove('visible');
-
-                // ================= 关键修改处 S T A R T =================
-                // 登录后，执行余额同步检查
-                const syncedBalance = await syncUserBalance(currentUser);
-                currentUser.balance = syncedBalance;
-                // ================= 关键修改处 E N D =================
-                
                 updateUserDisplay();
-                loadMatches();
+                await loadMatches(); // Refresh matches after logging in
             }
 
             function handleLogout() {
@@ -508,7 +446,8 @@
             }
 
             async function loadMatches(){
-                let {data: matches, error} = await supabaseClient.from('match_schedule').select('*');
+                mainContent.innerHTML = '<p>正在加载最新赛程和赔率...</p>';
+                let {data: matches, error} = await supabaseClient.from('match_schedule').select('*').order('id');
 
                 if(error){
                     console.error("加载比赛失败:", error);
@@ -516,9 +455,9 @@
                     return;
                 }
 
-                const upcomingMatches = matches.filter(m => m.team_a && m.team_b);
+                const validMatches = matches.filter(m => m.team_a && m.team_b);
 
-                const matchIds = upcomingMatches.map(m => m.id);
+                const matchIds = validMatches.map(m => m.id);
                 if (matchIds.length === 0) {
                     currentMatches = [];
                     renderMatches();
@@ -531,7 +470,7 @@
                     bets = [];
                 }
 
-                currentMatches = upcomingMatches.map(match => {
+                currentMatches = validMatches.map(match => {
                     const betsForMatch = bets.filter(b => b.match_id === match.id);
                     const poolA = 100 + betsForMatch.filter(b => b.predicted_winner === match.team_a).reduce((sum, b) => sum + b.amount, 0);
                     const poolB = 100 + betsForMatch.filter(b => b.predicted_winner === match.team_b).reduce((sum, b) => sum + b.amount, 0);
@@ -540,7 +479,9 @@
                     const oddsA = totalPool > 0 ? (totalPool / poolA) : 1.00;
                     const oddsB = totalPool > 0 ? (totalPool / poolB) : 1.00;
 
-                    const isFinished = match.score_a !== null && match.score_b !== null && (match.score_a > 0 || match.score_b > 0);
+                    // This is the crucial part: determine bettable status based on fresh score data
+                    const isFinished = (match.score_a !== null && match.score_b !== null) && 
+                                       (parseInt(match.score_a) > 0 || parseInt(match.score_b) > 0);
 
                     return {...match, odds_a: oddsA, odds_b: oddsB, is_finished: isFinished};
                 });
@@ -599,11 +540,14 @@
 
             async function openBetModal(matchId){
                  const match = currentMatches.find(m => m.id === matchId);
-                 if(!match) return;
-
-                 document.getElementById('bet-controls-section').style.display = currentUser && !match.is_finished ? 'block' : 'none';
-                 document.getElementById('bet-confirm-btn').style.display = currentUser && !match.is_finished ? 'inline-flex' : 'none';
-                 document.getElementById('modal-user-balance').style.display = currentUser ? 'inline' : 'none';
+                 if(!match || !currentUser) {
+                    alert('请先登录再进行操作。');
+                    return;
+                 }
+                 
+                 document.getElementById('bet-controls-section').style.display = 'block';
+                 document.getElementById('bet-confirm-btn').style.display = 'inline-flex';
+                 document.getElementById('modal-user-balance').style.display = 'inline';
 
                  document.getElementById('bet-modal-header').textContent = `${match.team_a} vs ${match.team_b}`;
                  betModal.dataset.currentMatchId = match.id;
@@ -616,10 +560,7 @@
                  teamABtn.style.borderColor = 'var(--primary-color)';
                  teamBBtn.style.borderColor = 'var(--primary-color)';
 
-
-                 if (currentUser) {
-                    document.getElementById('modal-user-balance').textContent = currentUser.balance.toFixed(2);
-                 }
+                 document.getElementById('modal-user-balance').textContent = currentUser.balance.toFixed(2);
                  document.getElementById('bet-amount-input').value = '';
 
                  await loadAndRenderExistingBets(matchId);
@@ -640,27 +581,37 @@
                      const amount = parseInt(document.getElementById('bet-amount-input').value);
                      if(!selectedTeam) { alert("请选择一支队伍"); return; }
                      if(isNaN(amount) || amount < 1) { alert("请输入有效的支持分数 (至少为1)"); return; }
-                     if(amount > currentUser.balance) { alert("您的分数不足"); return; }
+                     
+                     // Fetch latest balance before betting
+                     const { data: latestUser, error: fetchError } = await supabaseClient.from('bet_users').select('balance').eq('id', currentUser.id).single();
+                     if(fetchError || !latestUser){ alert("无法获取最新分数，请重试"); return; }
 
-                     const newBalance = currentUser.balance - amount;
-
-                     const { error: balanceError } = await supabaseClient.from('bet_users').update({ balance: newBalance }).eq('id', currentUser.id);
-                     if(balanceError) { alert("预测失败，请重试: " + balanceError.message); return; }
-
+                     if(amount > latestUser.balance) { alert("您的分数不足"); return; }
+                     
                      const odds = selectedTeam === match.team_a ? match.odds_a : match.odds_b;
 
-                     const { error: betError } = await supabaseClient.from('bet_bets').insert([{
+                     const { data: newBet, error: betError } = await supabaseClient.from('bet_bets').insert([{
                          user_id: currentUser.id,
                          match_id: match.id,
                          amount: amount,
                          predicted_winner: selectedTeam,
                          odds_at_bet: parseFloat(odds)
-                     }]);
+                     }]).select().single();
 
                      if(betError) {
-                         await supabaseClient.from('bet_users').update({ balance: currentUser.balance }).eq('id', currentUser.id);
                          alert("预测记录失败，请重试: " + betError.message);
                          return;
+                     }
+                     
+                     // Deduct balance AFTER successfully inserting the bet
+                     const newBalance = latestUser.balance - amount;
+                     const { error: balanceError } = await supabaseClient.from('bet_users').update({ balance: newBalance }).eq('id', currentUser.id);
+
+                     if(balanceError) { 
+                        // If balance update fails, try to delete the bet to revert
+                        await supabaseClient.from('bet_bets').delete().eq('id', newBet.id);
+                        alert("扣除分数失败，您的预测已被撤销。"); 
+                        return; 
                      }
 
                      currentUser.balance = newBalance;
@@ -683,7 +634,9 @@
                 const { data: bets, error } = await supabaseClient
                     .from('bet_bets')
                     .select(`*, bet_users (username)`)
-                    .eq('match_id', matchId);
+                    .eq('match_id', matchId)
+                    .order('created_at', { ascending: false });
+
 
                 if (error) {
                     listContainer.innerHTML = '<p style="color:var(--loss-color)">加载预测记录失败</p>';
@@ -778,26 +731,22 @@
                 historyBody.innerHTML = '';
                 bets.forEach(bet => {
                     const match = bet.match_schedule;
-                    let status = '待结算';
+                    let statusText = '待结算';
                     let settlement = 'N/A';
                     let settlementColor = 'var(--text-color)';
 
-                    if(bet.status === 'settled') {
-                        if (match && match.score_a !== null && match.score_b !== null && (match.score_a > 0 || match.score_b > 0)) {
-                             const winner = match.score_a > match.score_b ? match.team_a : match.team_b;
-                             if (bet.predicted_winner === winner) {
-                                 status = '胜利';
-                                 settlement = `+${(bet.amount * bet.odds_at_bet - bet.amount).toFixed(2)}`;
-                                 settlementColor = 'var(--win-color)';
-                             } else {
-                                 status = '失败';
-                                 settlement = `-${bet.amount.toFixed(2)}`;
-                                 settlementColor = 'var(--loss-color)';
-                             }
-                        } else {
-                            status = '比赛数据异常';
-                        }
+                    if(bet.status === 'won') {
+                        statusText = '胜利';
+                        settlement = `+${(bet.amount * bet.odds_at_bet - bet.amount).toFixed(2)}`;
+                        settlementColor = 'var(--win-color)';
+                    } else if (bet.status === 'lost') {
+                        statusText = '失败';
+                        settlement = `-${bet.amount.toFixed(2)}`;
+                        settlementColor = 'var(--loss-color)';
+                    } else if (match && (match.score_a > 0 || match.score_b > 0)) {
+                        statusText = '已结束(待结算)';
                     }
+
 
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
@@ -805,7 +754,7 @@
                         <td>${bet.predicted_winner}</td>
                         <td>${bet.amount.toFixed(2)}</td>
                         <td>${bet.odds_at_bet.toFixed(2)}</td>
-                        <td>${status}</td>
+                        <td>${statusText}</td>
                         <td style="color: ${settlementColor};">${settlement}</td>
                     `;
                     historyBody.appendChild(tr);
