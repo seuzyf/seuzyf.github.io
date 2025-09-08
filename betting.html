@@ -633,7 +633,6 @@
                     if (updateError) {
                         alert('扣除分数失败，请联系管理员！');
                         // Attempt to delete the bet we just inserted for consistency
-                        // This part is tricky and might fail, but it's a good practice
                         await supabaseClient.from('bet_bets').delete().match({ user_id: currentUser.id, match_id: match.id, amount: amount });
                     } else {
                         alert("预测成功!");
