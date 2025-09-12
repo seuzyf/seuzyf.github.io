@@ -394,7 +394,6 @@
             </div>
         </div>
     </div>
-
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const SUPABASE_URL = 'https://vbyvolmtkjjyeiibpljf.supabase.co';
@@ -407,7 +406,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let allBetsData = [];
     let allUsersData = [];
     let allWelfareData = [];
-    let bettingGroupStatus = {}; // <-- 新增: 存储组别锁定状态
+    let bettingGroupStatus = {};
 
     const loginBtn = document.getElementById('login-btn');
     const logoutBtn = document.getElementById('logout-btn');
@@ -519,13 +518,13 @@ document.addEventListener('DOMContentLoaded', () => {
             { data: bets, error: bError }, 
             { data: users, error: uError },
             { data: welfare, error: wError },
-            { data: groupsStatus, error: gError } // <-- 新增: 获取组别状态
+            { data: groupsStatus, error: gError }
         ] = await Promise.all([
             supabaseClient.from('match_schedule').select('*').order('id'),
             supabaseClient.from('bet_bets').select('*'),
             supabaseClient.from('bet_users').select('id, username, balance'),
             supabaseClient.from('bet_welfare_claims').select('*'),
-            supabaseClient.from('betting_groups').select('group_name, is_locked') // <-- 新增
+            supabaseClient.from('betting_groups').select('group_name, is_locked')
         ]);
 
         if (mError || bError || uError || wError || gError) {
@@ -538,7 +537,6 @@ document.addEventListener('DOMContentLoaded', () => {
         allBetsData = bets;
         allUsersData = users;
         allWelfareData = welfare;
-        // <-- 新增: 将组别状态存入变量
         bettingGroupStatus = groupsStatus.reduce((acc, group) => {
             acc[group.group_name] = group.is_locked;
             return acc;
@@ -651,23 +649,20 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.lock-btn').forEach(btn => btn.addEventListener('click', handleLockGroup));
     }
     
-    // <-- 新增: 处理锁定/解锁组别竞猜的函数 -->
     async function handleLockGroup(event) {
         const groupName = event.target.dataset.group;
         const currentStatus = bettingGroupStatus[groupName];
         const action = currentStatus ? '解锁' : '锁定';
 
         const adminPassword = prompt(`请输入管理员密码以"${action}"该组别的竞猜:`);
-        if (adminPassword === null) return; // 用户取消
+        if (adminPassword === null) return;
 
-        // 验证管理员密码
         const { data: manageData, error: manageError } = await supabaseClient.from('manage').select('password').limit(1).single();
         if(manageError || manageData.password !== adminPassword) {
             alert('管理员密码错误！');
             return;
         }
 
-        // 更新数据库
         const { error: updateError } = await supabaseClient
             .from('betting_groups')
             .update({ is_locked: !currentStatus })
@@ -677,10 +672,9 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(`${action}失败: ${updateError.message}`);
         } else {
             alert(`"${groupName}" 已成功${action}！`);
-            await initializePage(); // 重新加载所有数据并刷新页面
+            await initializePage();
         }
     }
-
 
     function openBetModal(matchId) {
         if (!currentUser) {
@@ -690,7 +684,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const match = allMatchesData.find(m => m.id === matchId);
         
-        // <-- 新增: 检查组别是否已锁定 -->
         if (bettingGroupStatus[match.group]) {
             alert(`"${match.group}" 的竞猜已被管理员锁定，无法进行操作。`);
             return;
@@ -719,6 +712,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
+            // FIX START: Re-fetch lock status before submitting
+            const { data: groupStatus, error: groupError } = await supabaseClient
+                .from('betting_groups')
+                .select('is_locked')
+                .eq('group_name', match.group)
+                .single();
+
+            if (groupError) {
+                alert("错误：无法验证竞猜状态，请重试。" + groupError.message);
+                return;
+            }
+            if (groupStatus.is_locked) {
+                alert(`"${match.group}"的竞猜已被锁定，无法提交新的预测。`);
+                betModal.classList.remove('visible');
+                await initializePage();
+                return;
+            }
+            // FIX END
+            
             betConfirmBtn.disabled = true; betConfirmBtn.textContent = '提交中...';
             const { error } = await supabaseClient.from('bet_bets').insert([{ user_id: currentUser.id, match_id: match.id, amount, predicted_winner: selectedTeam }]);
             betConfirmBtn.disabled = false; betConfirmBtn.textContent = '确认预测';
@@ -735,7 +747,7 @@ document.addEventListener('DOMContentLoaded', () => {
         betModal.classList.add('visible');
     }
 
-    async function loadAndRenderExistingBets(matchId, groupName) { // <-- 修改: 传入 groupName
+    async function loadAndRenderExistingBets(matchId, groupName) {
         const listContainer = document.getElementById('existing-bets-list');
         listContainer.innerHTML = '加载中...';
         const { data: bets, error } = await supabaseClient
@@ -744,7 +756,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (error) { listContainer.innerHTML = '<p style="color:var(--loss-color)">加载记录失败</p>'; return; }
         if (bets.length === 0) { listContainer.innerHTML = '<p>暂无预测记录</p>'; return; }
         
-        const isGroupLocked = bettingGroupStatus[groupName]; // <-- 新增: 检查组是否锁定
+        const isGroupLocked = bettingGroupStatus[groupName];
 
         listContainer.innerHTML = bets.map(bet => `
             <div class="bet-record">
@@ -758,16 +770,35 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleCancelBet(event) {
         const betId = parseInt(event.target.dataset.betId);
         
-        // <-- 新增: 在撤销前再次检查锁定状态 -->
         const betToCancel = allBetsData.find(b => b.id === betId);
-        if (betToCancel) {
-            const matchOfBet = allMatchesData.find(m => m.id === betToCancel.match_id);
-            if (matchOfBet && bettingGroupStatus[matchOfBet.group]) {
-                alert('该组别竞猜已锁定，无法撤销。');
-                return;
-            }
+        if (!betToCancel) {
+            alert('找不到该预测记录。');
+            return;
         }
-        // <-- 结束新增 -->
+        const matchOfBet = allMatchesData.find(m => m.id === betToCancel.match_id);
+        if (!matchOfBet) {
+             alert('找不到该预测对应的比赛。');
+             return;
+        }
+
+        // FIX START: Re-fetch lock status before cancelling
+        const { data: groupStatus, error: groupError } = await supabaseClient
+            .from('betting_groups')
+            .select('is_locked')
+            .eq('group_name', matchOfBet.group)
+            .single();
+
+        if (groupError) {
+            alert("错误：无法验证竞猜状态，请重试。" + groupError.message);
+            return;
+        }
+        if (groupStatus.is_locked) {
+            alert(`"${matchOfBet.group}"的竞猜已被锁定，无法撤销预测。`);
+            betModal.classList.remove('visible');
+            await initializePage();
+            return;
+        }
+        // FIX END
         
         if (!confirm(`您确定要撤销这笔预测吗？`)) return;
 
@@ -779,10 +810,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (betModal.classList.contains('visible')) {
             const betModalHeader = document.getElementById('bet-modal-header');
-            const matchId = allMatchesData.find(m => `${m.team_a} vs ${m.team_b}` === betModalHeader.textContent)?.id;
-            if (matchId) {
-                 const match = allMatchesData.find(m => m.id === matchId);
-                 loadAndRenderExistingBets(matchId, match.group);
+            const matchIdFromModal = allMatchesData.find(m => `${m.team_a} vs ${m.team_b}` === betModalHeader.textContent)?.id;
+            if (matchIdFromModal) {
+                 const match = allMatchesData.find(m => m.id === matchIdFromModal);
+                 loadAndRenderExistingBets(matchIdFromModal, match.group);
             }
         }
     }
