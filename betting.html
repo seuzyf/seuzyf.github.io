@@ -604,7 +604,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 section.innerHTML = `
                     <h2 class="group-header">
                         ${group}
-                        <button class="lock-btn ${isGroupLocked ? 'locked' : ''}" data-group="${group}">${isGroupLocked ? '已锁定' : '锁定竞猜'}</button>
+                        <button class="lock-btn ${isGroupLocked ? 'locked' : ''}" data-group="${group}">${isGroupLocked ? '解除锁定' : '锁定竞猜'}</button>
                     </h2>
                     <div class="betting-matches-grid"></div>`;
                 
@@ -652,7 +652,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleLockGroup(event) {
         const groupName = event.target.dataset.group;
         const currentStatus = bettingGroupStatus[groupName];
-        const action = currentStatus ? '解锁' : '锁定';
+        const action = currentStatus ? '解除锁定' : '锁定';
 
         const adminPassword = prompt(`请输入管理员密码以"${action}"该组别的竞猜:`);
         if (adminPassword === null) return;
@@ -712,7 +712,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            // FIX START: Re-fetch lock status before submitting
             const { data: groupStatus, error: groupError } = await supabaseClient
                 .from('betting_groups')
                 .select('is_locked')
@@ -729,7 +728,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 await initializePage();
                 return;
             }
-            // FIX END
             
             betConfirmBtn.disabled = true; betConfirmBtn.textContent = '提交中...';
             const { error } = await supabaseClient.from('bet_bets').insert([{ user_id: currentUser.id, match_id: match.id, amount, predicted_winner: selectedTeam }]);
@@ -781,7 +779,6 @@ document.addEventListener('DOMContentLoaded', () => {
              return;
         }
 
-        // FIX START: Re-fetch lock status before cancelling
         const { data: groupStatus, error: groupError } = await supabaseClient
             .from('betting_groups')
             .select('is_locked')
@@ -798,7 +795,6 @@ document.addEventListener('DOMContentLoaded', () => {
             await initializePage();
             return;
         }
-        // FIX END
         
         if (!confirm(`您确定要撤销这笔预测吗？`)) return;
 
