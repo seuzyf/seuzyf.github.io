@@ -106,6 +106,34 @@
             margin-bottom: 20px;
             padding-bottom: 10px;
             border-bottom: 2px solid var(--border-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .lock-btn {
+            background: none;
+            border: 1px solid var(--text-color);
+            color: var(--text-color);
+            opacity: 0.6;
+            cursor: pointer;
+            border-radius: 5px;
+            padding: 4px 8px;
+            font-size: 0.6em;
+            transition: all 0.3s;
+        }
+        .lock-btn:hover {
+            opacity: 1;
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+        .lock-btn.locked {
+            background-color: var(--loss-color);
+            border-color: var(--loss-color);
+            color: white;
+            opacity: 1;
         }
 
         .betting-matches-grid {
@@ -129,6 +157,11 @@
          .betting-card.not-bettable {
             border-left: 4px solid var(--border-color);
             opacity: 0.7;
+        }
+        .betting-card.group-locked {
+            border-left: 4px solid var(--loss-color);
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         .betting-card.bettable:hover {
             transform: translateY(-3px);
@@ -361,6 +394,7 @@
             </div>
         </div>
     </div>
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const SUPABASE_URL = 'https://vbyvolmtkjjyeiibpljf.supabase.co';
@@ -373,6 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let allBetsData = [];
     let allUsersData = [];
     let allWelfareData = [];
+    let bettingGroupStatus = {}; // <-- 新增: 存储组别锁定状态
 
     const loginBtn = document.getElementById('login-btn');
     const logoutBtn = document.getElementById('logout-btn');
@@ -483,16 +518,18 @@ document.addEventListener('DOMContentLoaded', () => {
             { data: matches, error: mError }, 
             { data: bets, error: bError }, 
             { data: users, error: uError },
-            { data: welfare, error: wError }
+            { data: welfare, error: wError },
+            { data: groupsStatus, error: gError } // <-- 新增: 获取组别状态
         ] = await Promise.all([
             supabaseClient.from('match_schedule').select('*').order('id'),
             supabaseClient.from('bet_bets').select('*'),
             supabaseClient.from('bet_users').select('id, username, balance'),
-            supabaseClient.from('bet_welfare_claims').select('*')
+            supabaseClient.from('bet_welfare_claims').select('*'),
+            supabaseClient.from('betting_groups').select('group_name, is_locked') // <-- 新增
         ]);
 
-        if (mError || bError || uError || wError) {
-            console.error("加载数据失败:", mError || bError || uError || wError);
+        if (mError || bError || uError || wError || gError) {
+            console.error("加载数据失败:", mError || bError || uError || wError || gError);
             mainContent.innerHTML = '<p>加载数据失败，请刷新页面重试。</p>';
             return;
         }
@@ -501,6 +538,11 @@ document.addEventListener('DOMContentLoaded', () => {
         allBetsData = bets;
         allUsersData = users;
         allWelfareData = welfare;
+        // <-- 新增: 将组别状态存入变量
+        bettingGroupStatus = groupsStatus.reduce((acc, group) => {
+            acc[group.group_name] = group.is_locked;
+            return acc;
+        }, {});
 
         await calculateAllUserBalances();
         
@@ -559,7 +601,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (groupMatches.length > 0) {
                 const section = document.createElement('section');
                 section.className = 'group-section';
-                section.innerHTML = `<h2 class="group-header">${group}</h2><div class="betting-matches-grid"></div>`;
+                const isGroupLocked = bettingGroupStatus[group];
+                
+                section.innerHTML = `
+                    <h2 class="group-header">
+                        ${group}
+                        <button class="lock-btn ${isGroupLocked ? 'locked' : ''}" data-group="${group}">${isGroupLocked ? '已锁定' : '锁定竞猜'}</button>
+                    </h2>
+                    <div class="betting-matches-grid"></div>`;
+                
                 const grid = section.querySelector('.betting-matches-grid');
 
                 groupMatches.forEach(match => {
@@ -573,13 +623,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     const isFinished = match.score_a !== null && match.score_b !== null && (match.score_a > 0 || match.score_b > 0);
 
                     const card = document.createElement('div');
-                    card.className = `betting-card ${!isFinished ? 'bettable' : 'not-bettable'}`;
+                    let cardClass = 'betting-card';
+                    if(isGroupLocked) {
+                        cardClass += ' group-locked';
+                    } else if (!isFinished) {
+                        cardClass += ' bettable';
+                    } else {
+                        cardClass += ' not-bettable';
+                    }
+
+                    card.className = cardClass;
                     card.dataset.matchId = match.id;
                     card.innerHTML = `
                         <div class="team"><span class="team-name">${match.team_a}</span><span class="team-odds ${oddsA > oddsB ? 'high-odds' : ''}">${oddsA.toFixed(2)}</span></div>
                         <hr>
                         <div class="team"><span class="team-name">${match.team_b}</span><span class="team-odds ${oddsB > oddsA ? 'high-odds' : ''}">${oddsB.toFixed(2)}</span></div>`;
-                    if (!isFinished) {
+                    
+                    if (!isFinished && !isGroupLocked) {
                         card.addEventListener('click', () => openBetModal(match.id));
                     }
                     grid.appendChild(card);
@@ -587,7 +647,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 mainContent.appendChild(section);
             }
         });
+
+        document.querySelectorAll('.lock-btn').forEach(btn => btn.addEventListener('click', handleLockGroup));
     }
+    
+    // <-- 新增: 处理锁定/解锁组别竞猜的函数 -->
+    async function handleLockGroup(event) {
+        const groupName = event.target.dataset.group;
+        const currentStatus = bettingGroupStatus[groupName];
+        const action = currentStatus ? '解锁' : '锁定';
+
+        const adminPassword = prompt(`请输入管理员密码以"${action}"该组别的竞猜:`);
+        if (adminPassword === null) return; // 用户取消
+
+        // 验证管理员密码
+        const { data: manageData, error: manageError } = await supabaseClient.from('manage').select('password').limit(1).single();
+        if(manageError || manageData.password !== adminPassword) {
+            alert('管理员密码错误！');
+            return;
+        }
+
+        // 更新数据库
+        const { error: updateError } = await supabaseClient
+            .from('betting_groups')
+            .update({ is_locked: !currentStatus })
+            .eq('group_name', groupName);
+
+        if (updateError) {
+            alert(`${action}失败: ${updateError.message}`);
+        } else {
+            alert(`"${groupName}" 已成功${action}！`);
+            await initializePage(); // 重新加载所有数据并刷新页面
+        }
+    }
+
 
     function openBetModal(matchId) {
         if (!currentUser) {
@@ -597,6 +690,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const match = allMatchesData.find(m => m.id === matchId);
         
+        // <-- 新增: 检查组别是否已锁定 -->
+        if (bettingGroupStatus[match.group]) {
+            alert(`"${match.group}" 的竞猜已被管理员锁定，无法进行操作。`);
+            return;
+        }
+
         document.getElementById('bet-modal-header').textContent = `${match.team_a} vs ${match.team_b}`;
         document.getElementById('modal-user-balance').textContent = currentUser.balance.toFixed(2);
         document.getElementById('bet-amount-input').value = '';
@@ -607,7 +706,7 @@ document.addEventListener('DOMContentLoaded', () => {
         teamBBtn.textContent = match.team_b;
         [teamABtn, teamBBtn].forEach(btn => btn.style.borderColor = 'var(--primary-color)');
 
-        loadAndRenderExistingBets(match.id);
+        loadAndRenderExistingBets(match.id, match.group);
         
         let selectedTeam = null;
         teamABtn.onclick = () => { selectedTeam = match.team_a; teamABtn.style.borderColor = 'var(--win-color)'; teamBBtn.style.borderColor = 'var(--primary-color)'; };
@@ -636,7 +735,7 @@ document.addEventListener('DOMContentLoaded', () => {
         betModal.classList.add('visible');
     }
 
-    async function loadAndRenderExistingBets(matchId) {
+    async function loadAndRenderExistingBets(matchId, groupName) { // <-- 修改: 传入 groupName
         const listContainer = document.getElementById('existing-bets-list');
         listContainer.innerHTML = '加载中...';
         const { data: bets, error } = await supabaseClient
@@ -644,18 +743,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (error) { listContainer.innerHTML = '<p style="color:var(--loss-color)">加载记录失败</p>'; return; }
         if (bets.length === 0) { listContainer.innerHTML = '<p>暂无预测记录</p>'; return; }
+        
+        const isGroupLocked = bettingGroupStatus[groupName]; // <-- 新增: 检查组是否锁定
 
         listContainer.innerHTML = bets.map(bet => `
             <div class="bet-record">
                 <span>${bet.bet_users ? bet.bet_users.username : '匿名'}</span>
                 <span>支持 ${bet.predicted_winner} ${bet.amount}分</span>
-                ${currentUser && bet.user_id === currentUser.id ? `<button class="cancel-bet-btn" data-bet-id="${bet.id}">撤销</button>` : '<span></span>'}
+                ${(currentUser && bet.user_id === currentUser.id && !isGroupLocked) ? `<button class="cancel-bet-btn" data-bet-id="${bet.id}">撤销</button>` : '<span></span>'}
             </div>`).join('');
         document.querySelectorAll('.cancel-bet-btn').forEach(btn => btn.addEventListener('click', handleCancelBet));
     }
 
     async function handleCancelBet(event) {
         const betId = parseInt(event.target.dataset.betId);
+        
+        // <-- 新增: 在撤销前再次检查锁定状态 -->
+        const betToCancel = allBetsData.find(b => b.id === betId);
+        if (betToCancel) {
+            const matchOfBet = allMatchesData.find(m => m.id === betToCancel.match_id);
+            if (matchOfBet && bettingGroupStatus[matchOfBet.group]) {
+                alert('该组别竞猜已锁定，无法撤销。');
+                return;
+            }
+        }
+        // <-- 结束新增 -->
+        
         if (!confirm(`您确定要撤销这笔预测吗？`)) return;
 
         const { error } = await supabaseClient.from('bet_bets').delete().eq('id', betId);
@@ -668,7 +781,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const betModalHeader = document.getElementById('bet-modal-header');
             const matchId = allMatchesData.find(m => `${m.team_a} vs ${m.team_b}` === betModalHeader.textContent)?.id;
             if (matchId) {
-                loadAndRenderExistingBets(matchId);
+                 const match = allMatchesData.find(m => m.id === matchId);
+                 loadAndRenderExistingBets(matchId, match.group);
             }
         }
     }
