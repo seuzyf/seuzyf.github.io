@@ -217,7 +217,7 @@
                      <div style="overflow-x: auto;">
                         <table>
                             <thead>
-                                <tr><th>队伍A</th><th>A队得分</th><th>B队得分</th><th>队伍B</th><th>比赛日期</th><th>回放链接</th></tr>
+                                <tr><th>队伍A</th><th>A队得分</th><th>B队得分</th><th>队伍B</th><th>比赛时间</th><th>回放链接</th></tr>
                             </thead>
                             <tbody>
                                 <tr>
@@ -225,7 +225,7 @@
                                     <td><input type="number" id="schedule-score-a" placeholder="得分"></td>
                                     <td><input type="number" id="schedule-score-b" placeholder="得分"></td>
                                     <td><select id="schedule-team-b" disabled></select></td>
-                                    <td><input type="date" id="schedule-date"></td>
+                                    <td><input type="datetime-local" id="schedule-date"></td>
                                     <td><input type="text" id="schedule-link" placeholder="https://..."></td>
                                 </tr>
                             </tbody>
@@ -366,7 +366,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentScheduleData.length > 0) {
             currentScheduleData.forEach(match => {
                 const option = document.createElement('option');
-                // **关键点**: 使用数据库的唯一主键 `id` 作为 option 的 value
                 option.value = match.id; 
                 option.textContent = `${matchIdToName[match.match_id] || match.match_id}: ${match.team_a} vs ${match.team_b}`;
                 selector.appendChild(option);
@@ -374,9 +373,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 这个函数仅用于在界面上显示队伍，不参与提交
     function getTeamOptionsHTML(teamName) {
-        // 创建一个只包含当前队伍的 option，并设为选中
         return `<option value="${teamName}" selected>${teamName}</option>`;
     }
 
@@ -391,13 +388,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const matchData = currentScheduleData.find(m => m.id == matchId);
         if (matchData) {
-            // 只显示队伍名，并且禁用下拉框
             document.getElementById('schedule-team-a').innerHTML = getTeamOptionsHTML(matchData.team_a);
             document.getElementById('schedule-team-b').innerHTML = getTeamOptionsHTML(matchData.team_b);
             
             document.getElementById('schedule-score-a').value = matchData.score_a ?? '';
             document.getElementById('schedule-score-b').value = matchData.score_b ?? '';
-            document.getElementById('schedule-date').value = matchData.match_date || '';
+            // Format for datetime-local input, which requires 'YYYY-MM-DDTHH:mm'
+            const dateValue = matchData.match_date ? new Date(new Date(matchData.match_date).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '';
+            document.getElementById('schedule-date').value = dateValue;
             document.getElementById('schedule-link').value = matchData.link || '';
             form.style.display = 'block';
         }
@@ -662,23 +660,22 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // **关键修正：将从下拉菜单获取的字符串 ID 转换为整数**
         const matchId = parseInt(matchIdString, 10);
-
         const scoreA = document.getElementById('schedule-score-a').value;
         const scoreB = document.getElementById('schedule-score-b').value;
+        const scheduleDate = document.getElementById('schedule-date').value;
         
         const dataToUpdate = {
             score_a: scoreA === '' ? null : parseInt(scoreA, 10),
             score_b: scoreB === '' ? null : parseInt(scoreB, 10),
-            match_date: document.getElementById('schedule-date').value || null,
+            match_date: scheduleDate ? new Date(scheduleDate).toISOString() : null,
             link: document.getElementById('schedule-link').value.trim()
         };
 
         const { data, error } = await supabaseClient
             .from('match_schedule')
             .update(dataToUpdate)
-            .eq('id', matchId) // 现在使用整数 ID 进行精确匹配
+            .eq('id', matchId)
             .select();
 
         if (error) {
@@ -686,9 +683,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error(error);
         } else if (data && data.length > 0) {
             alert('赛程比分已成功写入数据库！');
-            await loadScheduleForGroup(getCurrentGroup()); // 成功后刷新数据
+            await loadScheduleForGroup(getCurrentGroup());
         } else {
-            // 添加了更详细的错误提示，以防还有其他问题（如数据库权限）
             alert('更新失败：未找到匹配的比赛记录。请检查数据库的行级安全(RLS)策略是否允许本次更新操作。');
             console.error("Update failed. No matching record found for ID:", matchId);
         }
