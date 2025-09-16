@@ -191,7 +191,13 @@
         }
         .modal-backdrop.visible .modal-content { transform: scale(1); }
         .modal-header { font-size: 1.5em; color: var(--primary-color); margin-bottom: 1.5rem; text-align: center; }
-        .modal-body { display: flex; flex-direction: column; gap: 1rem; }
+        .modal-body {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
         .modal-body input {
             padding: 0.8rem; background-color: var(--bg-color);
             border: 1px solid var(--border-color); color: var(--text-color);
@@ -377,7 +383,7 @@
     <div id="history-modal" class="modal-backdrop">
         <div class="modal-content" style="max-width: 800px;">
             <h3 class="modal-header" id="history-modal-header">预测记录</h3>
-            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+            <div class="modal-body">
                 <table class="history-table">
                     <thead>
                         <tr>
