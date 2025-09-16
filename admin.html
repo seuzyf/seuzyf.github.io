@@ -217,7 +217,7 @@
                      <div style="overflow-x: auto;">
                         <table>
                             <thead>
-                                <tr><th>队伍A</th><th>A队得分</th><th>B队得分</th><th>队伍B</th><th>回放链接</th></tr>
+                                <tr><th>队伍A</th><th>A队得分</th><th>B队得分</th><th>队伍B</th><th>比赛日期</th><th>回放链接</th></tr>
                             </thead>
                             <tbody>
                                 <tr>
@@ -225,6 +225,7 @@
                                     <td><input type="number" id="schedule-score-a" placeholder="得分"></td>
                                     <td><input type="number" id="schedule-score-b" placeholder="得分"></td>
                                     <td><select id="schedule-team-b" disabled></select></td>
+                                    <td><input type="date" id="schedule-date"></td>
                                     <td><input type="text" id="schedule-link" placeholder="https://..."></td>
                                 </tr>
                             </tbody>
@@ -396,6 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             document.getElementById('schedule-score-a').value = matchData.score_a ?? '';
             document.getElementById('schedule-score-b').value = matchData.score_b ?? '';
+            document.getElementById('schedule-date').value = matchData.match_date || '';
             document.getElementById('schedule-link').value = matchData.link || '';
             form.style.display = 'block';
         }
@@ -669,6 +671,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const dataToUpdate = {
             score_a: scoreA === '' ? null : parseInt(scoreA, 10),
             score_b: scoreB === '' ? null : parseInt(scoreB, 10),
+            match_date: document.getElementById('schedule-date').value || null,
             link: document.getElementById('schedule-link').value.trim()
         };
 
