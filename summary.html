@@ -171,6 +171,7 @@
                     <thead>
                         <tr>
                             <th data-sort-key="id">ID<span class="sort-indicator"></span></th>
+                            <th data-sort-key="name">选手姓名<span class="sort-indicator"></span></th>
                             <th data-sort-key="group">组别<span class="sort-indicator"></span></th>
                             <th data-sort-key="team">队伍<span class="sort-indicator"></span></th>
                             <th>最常用角色</th>
@@ -215,13 +216,12 @@
                 localStorage.setItem('theme', isLight ? 'light' : 'dark');
             }
             const savedTheme = localStorage.getItem('theme');
-            // FIX: Corrected theme loading logic
             setTheme((savedTheme === null) ? true : (savedTheme === 'light'));
             themeToggle.addEventListener('change', (e) => setTheme(e.target.checked));
 
             async function loadAndProcessData() {
                 const tableBody = document.getElementById('stats-table-body');
-                tableBody.innerHTML = '<tr><td colspan="13">正在加载数据...</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="14">正在加载数据...</td></tr>';
 
                 try {
                     const [{ data: players, error: playersError }, { data: matches, error: matchesError }] = await Promise.all([
@@ -239,7 +239,7 @@
 
                 } catch (error) {
                     console.error("加载数据失败:", error);
-                    tableBody.innerHTML = `<tr><td colspan="13" style="color:red;">数据加载失败: ${error.message}</td></tr>`;
+                    tableBody.innerHTML = `<tr><td colspan="14" style="color:red;">数据加载失败: ${error.message}</td></tr>`;
                 }
             }
 
@@ -319,7 +319,6 @@
                     if (matchStats) {
                         const stats = matchStats.total_stats;
                         return {
-                            // FIX: Added 'name' property to the returned object
                             id: player.id,
                             name: player.name,
                             group: player.group,
@@ -342,7 +341,6 @@
                     } else {
                         // Player exists but has no match data
                         return {
-                            // FIX: Added 'name' property here as well
                             id: player.id,
                             name: player.name,
                             group: player.group,
@@ -402,15 +400,15 @@
                 updateSortIndicators();
 
                 if (data.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="13">没有符合条件的选手。</td></tr>';
+                    tableBody.innerHTML = '<tr><td colspan="14">没有符合条件的选手。</td></tr>';
                     return;
                 }
 
                 data.forEach(player => {
                     const row = document.createElement('tr');
-                    // FIX: Changed link to use player.name instead of player.id
                     row.innerHTML = `
                         <td><a href="player.html?name=${encodeURIComponent(player.name)}&group=${encodeURIComponent(player.group)}" target="_blank">${player.id}</a></td>
+                        <td>${player.name || '—'}</td>
                         <td>${player.group || '—'}</td>
                         <td>${player.team || '—'}</td>
                         <td>${player.topChars}</td>
