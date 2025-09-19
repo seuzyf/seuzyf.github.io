@@ -755,7 +755,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         betConfirmBtn.onclick = async () => {
             const amount = parseInt(document.getElementById('bet-amount-input').value);
-            if (!selectedTeam || isNaN(amount) || amount < 1 || amount > currentUser.balance) {
+            if (!selectedTeam || isNaN(amount) || amount < 1 || amount > Math.round(currentUser.balance)) {
                 alert("请选择队伍并输入有效的分数（不能超过您的余额）");
                 return;
             }
