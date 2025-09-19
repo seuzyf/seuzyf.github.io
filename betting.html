@@ -197,7 +197,6 @@
             width: 90%; max-width: 500px;
             transform: scale(0.9); transition: transform 0.3s ease;
         }
-        .modal-backdrop.visible .modal-content { transform: scale(1); }
         .modal-header { font-size: 1.5em; color: var(--primary-color); margin-bottom: 1.5rem; text-align: center; }
         .modal-body {
             display: flex;
@@ -509,7 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
             loginBtn.style.display = 'none';
             historyBtn.style.display = 'inline-flex';
             usernameDisplay.textContent = currentUser.username;
-            userBalance.textContent = typeof currentUser.balance === 'number' ? currentUser.balance.toFixed(2) : '100.00';
+            userBalance.textContent = typeof currentUser.balance === 'number' ? Math.round(currentUser.balance) : '100';
             
             if (currentUser.balance === 0) {
                 const userBets = allBetsData.filter(b => b.user_id === currentUser.id);
@@ -608,13 +607,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         const pool = matchPools[bet.match_id];
                         const winnerPool = (winner === match.team_a) ? (100 + pool.betsOnA) : (100 + pool.betsOnB);
                         const loserPool = (winner === match.team_a) ? (100 + pool.betsOnB) : (100 + pool.betsOnA);
-                        const profit = (bet.amount / winnerPool) * loserPool;
+                        const profit = Math.ceil((bet.amount / winnerPool) * loserPool);
                         totalWinnings += bet.amount + profit;
                     }
                 }
             });
             const welfareClaims = allWelfareData.filter(c => c.user_id === user.id).length;
-            user.balance = 100 - totalStaked + totalWinnings + (welfareClaims * 5);
+            user.balance = Math.round(100 - totalStaked + totalWinnings + (welfareClaims * 5));
         });
     }
 
@@ -739,7 +738,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         document.getElementById('bet-modal-header').textContent = `${match.team_a} vs ${match.team_b}`;
-        document.getElementById('modal-user-balance').textContent = currentUser.balance.toFixed(2);
+        document.getElementById('modal-user-balance').textContent = Math.round(currentUser.balance);
         document.getElementById('bet-amount-input').value = '';
 
         const teamABtn = document.getElementById('bet-team-a-btn');
@@ -927,14 +926,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     status = '胜利';
                     const winnerPool = winner === match.team_a ? poolA : poolB;
                     const loserPool = winner === match.team_a ? poolB : poolA;
-                    const profit = (bet.amount / winnerPool) * loserPool;
+                    const profit = Math.ceil((bet.amount / winnerPool) * loserPool);
                     odds = ((bet.amount + profit) / bet.amount).toFixed(2);
-                    settlement = `+${profit.toFixed(2)}`;
+                    settlement = `+${profit}`;
                     color = 'var(--win-color)';
                 } else {
                     status = '失败';
                     odds = (bet.predicted_winner === match.team_a ? (poolA+poolB)/poolA : (poolA+poolB)/poolB).toFixed(2);
-                    settlement = `-${bet.amount.toFixed(2)}`;
+                    settlement = `-${bet.amount}`;
                     color = 'var(--loss-color)';
                 }
             }
@@ -977,7 +976,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <tr>
                 <td>${index + 1}</td>
                 <td class="username-cell" data-user-id="${user.id}" data-username="${user.username}">${user.username}</td>
-                <td>${user.balance.toFixed(2)}</td>
+                <td>${Math.round(user.balance)}</td>
                 <td>${user.predictionCount}</td>
                 <td>${user.accuracy.toFixed(1)}%</td>
                 <td>${user.welfareCount}</td>
