@@ -558,10 +558,13 @@
                             if (stats.length !== 4 || stats.some(isNaN)) continue;
 
                             if (!combinedPlayerData[playerId]) {
-                                combinedPlayerData[playerId] = { id: playerId, name: idNameMap[playerId] || '', team: currentTeamName, characters: new Set(), acs: 0, k: 0, d: 0, a: 0, count: 0 };
+                                combinedPlayerData[playerId] = { id: playerId, name: idNameMap[playerId] || '', team: currentTeamName, characters: new Set(), acs: 0, k: 0, d: 0, a: 0, count: 0, acsCount: 0 };
                             }
                             const pData = combinedPlayerData[playerId];
-                            pData.acs += stats[0];
+                            if (stats[0] > 0) {
+                                pData.acs += stats[0];
+                                pData.acsCount++;
+                            }
                             pData.k += stats[1];
                             pData.d += stats[2];
                             pData.a += stats[3];
@@ -574,8 +577,8 @@
                 const teamAPlayers = Object.values(combinedPlayerData).filter(p => p.team === team_a);
                 const teamBPlayers = Object.values(combinedPlayerData).filter(p => p.team === team_b);
                 
-                const finalTeamAPlayers = teamAPlayers.map(p => ({ ...p, acs: (p.acs / p.count).toFixed(0) })).sort((a, b) => b.acs - a.acs);
-                const finalTeamBPlayers = teamBPlayers.map(p => ({ ...p, acs: (p.acs / p.count).toFixed(0) })).sort((a, b) => b.acs - a.acs);
+                const finalTeamAPlayers = teamAPlayers.map(p => ({ ...p, acs: (p.acsCount > 0 ? p.acs / p.acsCount : 0).toFixed(0) })).sort((a, b) => b.acs - a.acs);
+                const finalTeamBPlayers = teamBPlayers.map(p => ({ ...p, acs: (p.acsCount > 0 ? p.acs / p.acsCount : 0).toFixed(0) })).sort((a, b) => b.acs - a.acs);
 
                 let rowsHTML = '';
                 const maxPlayers = Math.max(finalTeamAPlayers.length, finalTeamBPlayers.length);

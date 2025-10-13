@@ -262,13 +262,16 @@
                             if (!playerData[uniquePlayerKey]) {
                                 playerData[uniquePlayerKey] = {
                                     id: playerId, group: match.group,
-                                    total_stats: { kills: 0, deaths: 0, assists: 0, acs: 0, matchCount: 0, totalRounds: 0 },
+                                    total_stats: { kills: 0, deaths: 0, assists: 0, acs: 0, matchCount: 0, acsMatchCount: 0, totalRounds: 0 },
                                     by_character: {}
                                 };
                             }
                             
                             const p_stats = playerData[uniquePlayerKey].total_stats;
-                            p_stats.acs += stats[0]; 
+                            if (stats[0] > 0) {
+                                p_stats.acs += stats[0];
+                                p_stats.acsMatchCount++;
+                            }
                             p_stats.kills += stats[1]; 
                             p_stats.deaths += stats[2]; 
                             p_stats.assists += stats[3];
@@ -324,7 +327,7 @@
                             group: player.group,
                             team: player.team,
                             matches_played: stats.matchCount,
-                            avg_acs: stats.matchCount > 0 ? stats.acs / stats.matchCount : 0,
+                            avg_acs: stats.acsMatchCount > 0 ? stats.acs / stats.acsMatchCount : 0,
                             kda: stats.deaths > 0 ? (stats.kills + stats.assists) / stats.deaths : (stats.kills + stats.assists),
                             map_k: stats.matchCount > 0 ? stats.kills / stats.matchCount : 0,
                             map_d: stats.matchCount > 0 ? stats.deaths / stats.matchCount : 0,

@@ -367,7 +367,7 @@
                     </label>
                 </div>
                 <button id="settings-btn" title="修改资料">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19.8298 12.1741C19.9363 11.6963 19.9363 11.1963 19.8298 10.7185L21.6569 9.28148C21.8617 9.1237 21.9213 8.84815 21.8024 8.62222L20.0445 5.37778C19.9256 5.15185 19.6582 5.06667 19.4445 5.17037L17.2223 6.0963C16.6371 5.65185 15.9927 5.2963 15.3038 5.03704L14.9334 2.62222C14.9067 2.41481 14.7334 2.25185 14.526 2.25185H10.4741C10.2667 2.25185 10.0934 2.41481 10.0667 2.62222L9.6963 5.03704C8.99824 5.30519 8.36223 5.65185 7.77788 6.0963L5.55565 5.17037C5.34195 5.06667 5.07454 5.15185 4.95565 5.37778L3.19778 8.62222C3.07889 8.84815 3.13843 9.1237 3.34324 9.28148L5.17048 10.7185C5.06399 11.1963 5.06399 11.6963 5.17048 12.1741L3.34324 13.6111C3.13843 13.7689 3.07889 14.0444 3.19778 14.2704L4.95565 17.5148C5.07454 17.7407 5.34195 17.8259 5.55565 17.7222L7.77788 16.7963C8.36223 17.2407 8.99824 17.587 9.6963 17.8552L10.0667 20.27C10.0934 20.4774 10.2667 20.6404 10.4741 20.6404H14.526C14.7334 20.4774 14.9067 20.4774 14.9334 20.27L15.3038 17.8552C15.9927 17.5959 16.6371 17.25 17.2223 16.7963L19.4445 17.7222C19.6582 17.8259 19.9256 17.7407 20.0445 17.5148L21.8024 14.2704C21.9213 14.0444 21.8617 13.7689 21.6569 13.6111L19.8298 12.1741ZM12.5 14.9404C10.8167 14.9404 9.44454 13.5681 9.44454 11.8848C9.44454 10.2015 10.8167 8.82926 12.5 8.82926C14.1834 8.82926 15.5556 10.2015 15.5556 11.8848C15.5556 13.5681 14.1834 14.9404 12.5 14.9404Z"></path></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19.8298 12.1741C19.9363 11.6963 19.9363 11.1963 19.8298 10.7185L21.6569 9.28148C21.8617 9.1237 21.9213 8.84815 21.8024 8.62222L20.0445 5.37778C19.9256 5.15185 19.6582 5.06667 19.4445 5.17037L17.2223 6.0963C16.6371 5.65185 15.9927 5.2963 15.3038 5.03704L14.9334 2.62222C14.9067 2.41481 14.7334 2.25185 14.526 2.25185H10.4741C10.2667 2.25185 10.0934 2.41481 10.0667 2.62222L9.6963 5.03704C8.99824 5.30519 8.36223 5.65185 7.77788 6.0963L5.55565 5.17037C5.34195 5.06667 5.07454 5.15185 4.95565 5.37778L3.19778 8.62222C3.07889 8.84815 3.13843 9.1237 3.34324 9.28148L5.17048 10.7185C5.06399 11.1963 5.06399 11.6963 5.17048 12.1741L3.34324 13.6111C3.13843 13.7689 3.07889 14.0444 3.19778 14.2704L4.95565 17.5148C5.07454 17.7407 5.34195 17.8259 5.55565 17.7222L7.77788 16.7963C8.36223 17.2407 8.99824 17.587 9.6963 17.8552L10.0667 20.27C10.0934 20.4774 10.2667 20.6404 10.4741 20.6404H14.526C14.7334 20.6404 14.9067 20.4774 14.9334 20.27L15.3038 17.8552C15.9927 17.5959 16.6371 17.25 17.2223 16.7963L19.4445 17.7222C19.6582 17.8259 19.9256 17.7407 20.0445 17.5148L21.8024 14.2704C21.9213 14.0444 21.8617 13.7689 21.6569 13.6111L19.8298 12.1741ZM12.5 14.9404C10.8167 14.9404 9.44454 13.5681 9.44454 11.8848C9.44454 10.2015 10.8167 8.82926 12.5 8.82926C14.1834 8.82926 15.5556 10.2015 15.5556 11.8848C15.5556 13.5681 14.1834 14.9404 12.5 14.9404Z"></path></svg>
                 </button>
             </div>
             <h1 id="player-id-header">Loading...</h1>
@@ -948,21 +948,37 @@
                     if (stats.length !== 4 || stats.some(isNaN)) continue;
                     const uniquePlayerKey = `${playerId}::${match.group}`;
                     if (!playerData[uniquePlayerKey]) {
-                        playerData[uniquePlayerKey] = { id: playerId, group: match.group, team: teamName, total_stats: { kills: 0, deaths: 0, assists: 0, acs: 0, matchCount: 0, totalRounds: 0 }, by_character: {} };
+                        playerData[uniquePlayerKey] = { id: playerId, group: match.group, team: teamName, total_stats: { kills: 0, deaths: 0, assists: 0, acs: 0, matchCount: 0, acsMatchCount: 0, totalRounds: 0 }, by_character: {} };
                     }
                     const playerEntry = playerData[uniquePlayerKey];
                     playerEntry.team = teamName;
                     const p_stats = playerEntry.total_stats;
-                    p_stats.acs += stats[0]; p_stats.kills += stats[1]; p_stats.deaths += stats[2]; p_stats.assists += stats[3];
-                    p_stats.matchCount++; p_stats.totalRounds += totalRounds;
+                    
+                    if (stats[0] > 0) {
+                        p_stats.acs += stats[0];
+                        p_stats.acsMatchCount++;
+                    }
+                    p_stats.kills += stats[1]; 
+                    p_stats.deaths += stats[2]; 
+                    p_stats.assists += stats[3];
+                    p_stats.matchCount++; 
+                    p_stats.totalRounds += totalRounds;
+
                     if (playerCh) {
                         const charName = String(playerCh).trim();
                         if (!playerEntry.by_character[charName]) {
-                            playerEntry.by_character[charName] = { kills: 0, deaths: 0, assists: 0, acs: 0, matchCount: 0, totalRounds: 0 };
+                            playerEntry.by_character[charName] = { kills: 0, deaths: 0, assists: 0, acs: 0, matchCount: 0, acsMatchCount: 0, totalRounds: 0 };
                         }
                         const charStats = playerEntry.by_character[charName];
-                        charStats.acs += stats[0]; charStats.kills += stats[1]; charStats.deaths += stats[2]; charStats.assists += stats[3];
-                        charStats.matchCount++; charStats.totalRounds += totalRounds;
+                        if (stats[0] > 0) {
+                            charStats.acs += stats[0];
+                            charStats.acsMatchCount++;
+                        }
+                        charStats.kills += stats[1]; 
+                        charStats.deaths += stats[2]; 
+                        charStats.assists += stats[3];
+                        charStats.matchCount++; 
+                        charStats.totalRounds += totalRounds;
                     }
                 }
             });
@@ -977,12 +993,32 @@
             if (p.group === groupName) {
                 const stats = p.total_stats;
                 if (stats.matchCount === 0 || stats.totalRounds === 0) continue;
-                groupPlayersForRank.push({ id: p.id, acs: stats.acs / stats.matchCount, k_map: stats.kills / stats.matchCount, d_map: stats.deaths / stats.matchCount, a_map: stats.assists / stats.matchCount, k_round: stats.kills / stats.totalRounds, d_round: stats.deaths / stats.totalRounds, a_round: stats.assists / stats.totalRounds, survival_rate: 1 - (stats.deaths / stats.totalRounds), kda: stats.deaths > 0 ? (stats.kills + stats.assists) / stats.deaths : (stats.kills + stats.assists), });
+                groupPlayersForRank.push({ 
+                    id: p.id, 
+                    acs: stats.acsMatchCount > 0 ? stats.acs / stats.acsMatchCount : 0, 
+                    k_map: stats.kills / stats.matchCount, 
+                    d_map: stats.deaths / stats.matchCount, 
+                    a_map: stats.assists / stats.matchCount, 
+                    k_round: stats.kills / stats.totalRounds, 
+                    d_round: stats.deaths / stats.totalRounds, 
+                    a_round: stats.assists / stats.totalRounds, 
+                    survival_rate: 1 - (stats.deaths / stats.totalRounds), 
+                    kda: stats.deaths > 0 ? (stats.kills + stats.assists) / stats.deaths : (stats.kills + stats.assists), 
+                });
                 for (const charName in p.by_character) {
                     const charStats = p.by_character[charName];
                     if (charStats.matchCount === 0) continue;
                     if (!statsByCharacter[charName]) statsByCharacter[charName] = [];
-                    statsByCharacter[charName].push({ id: p.id, acs: charStats.acs / charStats.matchCount, k_map: charStats.kills / charStats.matchCount, d_map: charStats.deaths / charStats.matchCount, a_map: charStats.assists / charStats.matchCount, k_round: charStats.totalRounds > 0 ? charStats.kills / charStats.totalRounds : 0, d_round: charStats.totalRounds > 0 ? charStats.deaths / charStats.totalRounds : 0, a_round: charStats.totalRounds > 0 ? charStats.assists / charStats.totalRounds : 0, });
+                    statsByCharacter[charName].push({ 
+                        id: p.id, 
+                        acs: charStats.acsMatchCount > 0 ? charStats.acs / charStats.acsMatchCount : 0, 
+                        k_map: charStats.kills / charStats.matchCount, 
+                        d_map: charStats.deaths / charStats.matchCount, 
+                        a_map: charStats.assists / charStats.matchCount, 
+                        k_round: charStats.totalRounds > 0 ? charStats.kills / charStats.totalRounds : 0, 
+                        d_round: charStats.totalRounds > 0 ? charStats.deaths / charStats.totalRounds : 0, 
+                        a_round: charStats.totalRounds > 0 ? charStats.assists / charStats.totalRounds : 0, 
+                    });
                 }
             }
         }
@@ -1005,7 +1041,15 @@
     }
     
     function renderSummaryList(playerData, playerId, groupPlayersForRank) {
-        const playerAverages = { acs: playerData.total_stats.matchCount > 0 ? playerData.total_stats.acs / playerData.total_stats.matchCount : 0, k_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.kills / playerData.total_stats.matchCount : 0, d_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.deaths / playerData.total_stats.matchCount : 0, a_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.assists / playerData.total_stats.matchCount : 0, k_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.kills / playerData.total_stats.totalRounds : 0, d_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.deaths / playerData.total_stats.totalRounds : 0, a_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.assists / playerData.total_stats.totalRounds : 0, };
+        const playerAverages = { 
+            acs: playerData.total_stats.acsMatchCount > 0 ? playerData.total_stats.acs / playerData.total_stats.acsMatchCount : 0, 
+            k_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.kills / playerData.total_stats.matchCount : 0, 
+            d_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.deaths / playerData.total_stats.matchCount : 0, 
+            a_map: playerData.total_stats.matchCount > 0 ? playerData.total_stats.assists / playerData.total_stats.matchCount : 0, 
+            k_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.kills / playerData.total_stats.totalRounds : 0, 
+            d_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.deaths / playerData.total_stats.totalRounds : 0, 
+            a_round: playerData.total_stats.totalRounds > 0 ? playerData.total_stats.assists / playerData.total_stats.totalRounds : 0, 
+        };
         document.getElementById('summary-list-content').innerHTML = `
             <div><strong>平均ACS:</strong> <span>${playerAverages.acs.toFixed(2)} <span class="rank-top">${getRank(playerId, 'acs', groupPlayersForRank)}</span></span></div>
             <div><strong>每局击杀:</strong> <span>${playerAverages.k_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_map', groupPlayersForRank)}</span></span></div>
@@ -1020,7 +1064,15 @@
         const tableBody = document.getElementById('character-stats-body');
         tableBody.innerHTML = '';
         Object.entries(playerData.by_character).sort(([,a],[,b]) => b.matchCount - a.matchCount).forEach(([charName, stats]) => {
-            const avg = { acs: stats.matchCount > 0 ? stats.acs / stats.matchCount : 0, k_map: stats.matchCount > 0 ? stats.kills / stats.matchCount : 0, d_map: stats.matchCount > 0 ? stats.deaths / stats.matchCount : 0, a_map: stats.matchCount > 0 ? stats.assists / stats.matchCount : 0, k_round: stats.totalRounds > 0 ? stats.kills / stats.totalRounds : 0, d_round: stats.totalRounds > 0 ? stats.deaths / stats.totalRounds : 0, a_round: stats.totalRounds > 0 ? stats.assists / stats.totalRounds : 0, };
+            const avg = { 
+                acs: stats.acsMatchCount > 0 ? stats.acs / stats.acsMatchCount : 0, 
+                k_map: stats.matchCount > 0 ? stats.kills / stats.matchCount : 0, 
+                d_map: stats.matchCount > 0 ? stats.deaths / stats.matchCount : 0, 
+                a_map: stats.matchCount > 0 ? stats.assists / stats.matchCount : 0, 
+                k_round: stats.totalRounds > 0 ? stats.kills / stats.totalRounds : 0, 
+                d_round: stats.totalRounds > 0 ? stats.deaths / stats.totalRounds : 0, 
+                a_round: stats.totalRounds > 0 ? stats.assists / stats.totalRounds : 0, 
+            };
             const characterRankList = statsByCharacter[charName] || [];
             tableBody.innerHTML += `
                 <tr><td><strong>${charName}</strong></td><td>${stats.matchCount}</td><td>${avg.acs.toFixed(2)} <span class="rank-top">${getRank(playerId, 'acs', characterRankList)}</span></td><td>${avg.k_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_map', characterRankList)}</span></td><td>${avg.d_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_map', characterRankList, true)}</span></td><td>${avg.a_map.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_map', characterRankList)}</span></td><td>${avg.k_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'k_round', characterRankList)}</span></td><td>${avg.d_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'd_round', characterRankList, true)}</span></td><td>${avg.a_round.toFixed(2)} <span class="rank-top">${getRank(playerId, 'a_round', characterRankList)}</span></td></tr>`;
