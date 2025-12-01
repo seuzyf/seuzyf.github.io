@@ -461,10 +461,11 @@
             });
         }
 
+        // Fix 1: Removed backtick escaping in the primary renderBrackets definition
         function renderBrackets(groupName, dataSource = allMatchesData) {
             const rawData = dataSource[groupName] || {};
             const processedData = processResultNodes(rawData);
-            document.getElementById('current-group-name').textContent = \`\${groupName}赛程\`;
+            document.getElementById('current-group-name').textContent = `${groupName}赛程`;
             buildBracket(document.getElementById('swiss-bracket'), swissBracketLayout, processedData);
             buildBracket(document.getElementById('playoff-bracket'), playoffBracketLayout, processedData);
         }
@@ -582,7 +583,7 @@
                             match_date: existingMatch.match_date || null,
                             link: existingMatch.link || null
                         });
-                        operationMessage = \`已生成淘汰赛 \${matchId} 对阵！\`;
+                        operationMessage = `已生成淘汰赛 ${matchId} 对阵！`;
                         advancedPlayoffMatches++;
                     }
                 }
@@ -607,7 +608,7 @@
                     
                     const teamsByRecord = {};
                     for (const team in teamRecords) {
-                        const recordKey = teamRecords[team].played === 0 ? '0-0' : \`\${teamRecords[team].wins}-\${teamRecords[team].losses}\`;
+                        const recordKey = teamRecords[team].played === 0 ? '0-0' : `${teamRecords[team].wins}-${teamRecords[team].losses}`;
                         if (!teamsByRecord[recordKey]) teamsByRecord[recordKey] = [];
                         teamsByRecord[recordKey].push(team);
                     }
@@ -633,7 +634,7 @@
                                  let teamB = teams[teamIndex++] || 'TBD';
                                  if (teamA !== 'TBD' && teamB !== 'TBD') {
                                      dataToUpsert.push({ group: groupName, match_id: matchId, team_a: teamA, team_b: teamB, score_a: 0, score_b: 0 });
-                                     operationMessage = \`已为 \${record} 组生成对阵！\`;
+                                     operationMessage = `已为 ${record} 组生成对阵！`;
                                  }
                              }
                         }
@@ -653,7 +654,7 @@
                         }
                     }
                 } else {
-                     operationMessage = \`在 "\${groupName}" 中没有找到任何队伍信息。\`;
+                     operationMessage = `在 "${groupName}" 中没有找到任何队伍信息。`;
                  }
             }
 
@@ -663,7 +664,7 @@
             pendingIdsToDelete = idsToDelete;
 
             if (pendingDataToUpsert.length > 0) {
-                alert(\`已生成新的对阵! \\n\${operationMessage}\\n\\n请点击 '提交赛程' 按钮以保存更改。\`);
+                alert(`已生成新的对阵! \n${operationMessage}\n\n请点击 '提交赛程' 按钮以保存更改。`);
                 const tempGroupData = { ...allMatchesData[groupName] };
                 pendingIdsToDelete.forEach(id => delete tempGroupData[id]);
                 pendingDataToUpsert.forEach(match => {
@@ -678,11 +679,12 @@
             }
         }
         
+        // Fix 2: Removed backtick escaping in the overloaded renderBrackets definition
         // Overload renderBrackets to accept optional data source
         function renderBrackets(groupName, dataSource = allMatchesData) {
             const rawData = dataSource[groupName] || {};
             const processedData = processResultNodes(rawData);
-            document.getElementById('current-group-name').textContent = \`\${groupName}赛程\`;
+            document.getElementById('current-group-name').textContent = `${groupName}赛程`;
             buildBracket(document.getElementById('swiss-bracket'), swissBracketLayout, processedData);
             buildBracket(document.getElementById('playoff-bracket'), playoffBracketLayout, processedData);
         }
